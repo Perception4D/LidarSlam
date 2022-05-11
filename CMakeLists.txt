@@ -33,6 +33,8 @@ endif()
 # Boost do not use STATIC libs (Superbuild like), coherent with BUILD_SHARED_LIBS ON
 set(Boost_USE_STATIC_LIBS OFF)
 
+find_package(Boost REQUIRED)
+
 #-------------------------
 #  Find dependencies
 #-------------------------
@@ -130,8 +132,25 @@ endif()
 
 # Build optional VTK module
 if (SLAM_VTK_MODULE)
-  add_subdirectory(vtk_wrapping)
+  #add_subdirectory(vtk_wrapping)
 endif()
 
 # To build/use ROS wrapping, just put this entire directory in the catkin src
 # workspace and run `catkin_make` or `catkin build`.
+
+# install(TARGETS LidarSlam
+#         RUNTIME DESTINATION ${SLAM_INSTALL_LIBRARY_DIR}
+#         LIBRARY DESTINATION ${SLAM_INSTALL_LIBRARY_DIR}
+#         ARCHIVE DESTINATION ${SLAM_INSTALL_LIBRARY_DIR}
+#         PUBLIC_HEADER DESTINATION ${SLAM_INSTALL_INCLUDE_DIR}/LidarSlam
+#         COMPONENT Runtime)
+
+# export(EXPORT LidarSlam
+#    FILE "${CMAKE_CURRENT_BINARY_DIR}/LidarSlamTargets.cmake"
+#    NAMESPACE vtkLidarSlam::
+# )
+
+# install(FILES
+#   "${CMAKE_CURRENT_BINARY_DIR}/LidarSlamTargets.cmake"
+#   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Lidarslam
+# )

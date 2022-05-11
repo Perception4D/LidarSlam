@@ -15,7 +15,7 @@ vtk_module_add_module(vtkLidarSlam
 
 target_link_libraries(vtkLidarSlam PUBLIC LidarSlam)
 
-target_include_directories(vtkLidarSlam
-  PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
+#target_include_directories(vtkLidarSlam
+#  INTERFACE
+#    ${CMAKE_CURRENT_SOURCE_DIR}
+#)

@@ -8,7 +8,27 @@ endif()
 # Generate export symbols on Windows to use this lib
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-add_library(LidarSlam
+set(headers
+  include/LidarSlam/CeresCostFunctions.h
+  include/LidarSlam/ConfidenceEstimators.h
+  include/LidarSlam/Enums.h
+  include/LidarSlam/GlobalTrajectoriesRegistration.h
+  include/LidarSlam/KDTreePCLAdaptor.h
+  include/LidarSlam/KeypointsMatcher.h
+  include/LidarSlam/LidarPoint.h
+  include/LidarSlam/LocalOptimizer.h
+  include/LidarSlam/MotionModel.h
+  include/LidarSlam/PointCloudStorage.h
+  include/LidarSlam/PoseGraphOptimization.h
+  include/LidarSlam/RollingGrid.h
+  include/LidarSlam/SensorConstraints.h
+  include/LidarSlam/Slam.h
+  include/LidarSlam/SpinningSensorKeypointExtractor.h
+  include/LidarSlam/Transform.h
+  include/LidarSlam/Utilities.h
+)
+
+add_library(LidarSlam SHARED
   src/ConfidenceEstimators.cxx
   src/GlobalTrajectoriesRegistration.cxx
   src/KeypointsMatcher.cxx
@@ -21,6 +41,14 @@ add_library(LidarSlam
   src/Transform.cxx
   src/Utilities.cxx
   ${SLAM_g2o_sources}
+  ${headers}
+)
+
+#file(GLOB_RECURSE headers "${CMAKE_CURRENT_SOURCE_DIR}/include/LidarSlam/*.h")
+message(STATUS ${headers})
+
+set_target_properties(LidarSlam PROPERTIES
+  PUBLIC_HEADER "${headers}"
 )
 
 target_link_libraries(LidarSlam
@@ -29,18 +57,23 @@ target_link_libraries(LidarSlam
     ceres
     ${PCL_LIBRARIES}
     ${g2o_targets}
-  PRIVATE
     ${Eigen3_target}
     ${OpenMP_target}
 )
 
 target_include_directories(LidarSlam PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/LidarSlam)
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/LidarSlam>
+  $<INSTALL_INTERFACE:include/>
+  $<INSTALL_INTERFACE:include/LidarSlam>
+)
 
 install(TARGETS LidarSlam
-        RUNTIME DESTINATION ${SLAM_INSTALL_LIBRARY_DIR}
-        LIBRARY DESTINATION ${SLAM_INSTALL_LIBRARY_DIR}
-        ARCHIVE DESTINATION ${SLAM_INSTALL_LIBRARY_DIR}
-        PUBLIC_HEADER DESTINATION ${SLAM_INSTALL_INCLUDE_DIR}/LidarSlam
-        COMPONENT Runtime)
+  EXPORT LidarSlam
+  RUNTIME DESTINATION ${SLAM_INSTALL_LIBRARY_DIR}
+  LIBRARY DESTINATION ${SLAM_INSTALL_LIBRARY_DIR}
+  ARCHIVE DESTINATION ${SLAM_INSTALL_LIBRARY_DIR}
+  PUBLIC_HEADER DESTINATION ${SLAM_INSTALL_INCLUDE_DIR}/LidarSlam
+  COMPONENT Runtime
+)
+

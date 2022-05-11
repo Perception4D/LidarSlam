@@ -16,6 +16,7 @@ vtk_module_scan(
 # Build the module we just scanned.
 vtk_module_build(MODULES ${modules}
   INSTALL_HEADERS ON
+  INSTALL_EXPORT LidarSlam
   LIBRARY_DESTINATION lib
   LICENSE_DESTINATION license)
 
@@ -24,7 +25,7 @@ vtk_module_python_default_destination(python_destination)
 
 vtk_module_wrap_python(
   MODULES         ${modules}
-  PYTHON_PACKAGE  "LidarSlam"
+  PYTHON_PACKAGE  LidarSlam
   MODULE_DESTINATION "lib/${python_destination}"
   # Static Python modules are almost never wanted.
   BUILD_STATIC    OFF
@@ -43,8 +44,26 @@ configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/LidarSlamConfig.cmake.
   INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/LidarSlam
 )
 
+# generate the version file for the config file
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/LidarSlamConfigVersion.cmake"
+  VERSION "1.0"
+  COMPATIBILITY AnyNewerVersion
+)
+# export(EXPORT LidarSlamModule
+#   FILE "${CMAKE_CURRENT_BINARY_DIR}/LidarSlamTargets.cmake"
+#   NAMESPACE vtkLidarSlam::
+# )
+
+# install(
+#     EXPORT      LidarSlam
+#     NAMESPACE   vtkLidarSlam::
+#     FILE        LidarSlamTargets.cmake
+#     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/LidarSlam
+#     COMPONENT   "development")
+
 install(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/LidarSlamConfig.cmake"
-  "${CMAKE_INSTALL_PREFIX}/lib/LidarSlamConfigVersion.cmake"
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Lidarslam
+  "${CMAKE_CURRENT_BINARY_DIR}/LidarSlamConfigVersion.cmake"
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/LidarSlam
 )
