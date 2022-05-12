@@ -4,6 +4,8 @@ project(LidarSlam
         LANGUAGES CXX
         VERSION 1.5)
 
+set(CMAKE_BUILD_TYPE "Release")
+
 #-------------------------
 #  CMake parameters
 #-------------------------
@@ -132,7 +134,7 @@ endif()
 
 # Build optional VTK module
 if (SLAM_VTK_MODULE)
-  #add_subdirectory(vtk_wrapping)
+  add_subdirectory(vtk_wrapping)
 endif()
 
 # To build/use ROS wrapping, just put this entire directory in the catkin src

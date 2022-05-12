@@ -2,7 +2,10 @@
 # Build dynamic vtk Module
 set(BUILD_SHARED_LIBS ON)
 
-set(lidarslam_classes
+find_package(VTK REQUIRED)
+find_package(Boost REQUIRED COMPONENTS thread)
+
+set(classes
   vtkSlam
   vtkSlamManager
   vtkSpinningSensorKeypointExtractor
@@ -10,12 +13,19 @@ set(lidarslam_classes
 
 # Create Module
 vtk_module_add_module(vtkLidarSlam
-  CLASSES ${lidarslam_classes}
+  CLASSES ${classes}
 )
 
-target_link_libraries(vtkLidarSlam PUBLIC LidarSlam)
-
-#target_include_directories(vtkLidarSlam
-#  INTERFACE
-#    ${CMAKE_CURRENT_SOURCE_DIR}
-#)
+target_link_libraries(vtkLidarSlam
+  PUBLIC
+    LidarSlam
+    ${Boost_LIBRARIES}
+    ${VTK_LIBRARIES}
+)
+target_include_directories(vtkLidarSlam
+  PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${LIDARSLAM_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}
+    ${EIGEN_INCLUDE_DIRS}
+)
