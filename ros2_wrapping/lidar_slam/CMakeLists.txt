@@ -27,8 +27,8 @@ find_package(apriltag_ros REQUIRED)
 ## Build ##
 ###########
 
-# Specify additional locations of header files
-include_directories(include)
+# Build LidarSlam lib which lies in parent directory
+add_subdirectory(../.. ${CMAKE_BINARY_DIR}/slam)
 
 # Add LiDAR SLAM ROS node
 add_executable(lidar_slam_node
@@ -52,7 +52,6 @@ ament_target_dependencies(lidar_slam_node
 target_link_libraries(lidar_slam_node
   LidarSlam
 )
-
 
 #############
 ## Install ##
