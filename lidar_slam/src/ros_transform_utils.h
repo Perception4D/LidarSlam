@@ -22,6 +22,9 @@
 #include <geometry_msgs/msg/transform_stamped.h>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
+#include <rclcpp/time.hpp>
+#include <tf2/convert.h>
 
 namespace Utils
 {
@@ -66,7 +69,7 @@ geometry_msgs::msg::PoseStamped IsometryToPoseStampedMsg(const Eigen::Isometry3d
 {
   geometry_msgs::msg::PoseStamped PoseStampedMsg;
   PoseStampedMsg.header.frame_id = frameId;
-  PoseStampedMsg.header.stamp = ros::Time(t);
+  PoseStampedMsg.header.stamp = rclcpp::Time(t);
   PoseStampedMsg.pose.position.x = transform.translation().x();
   PoseStampedMsg.pose.position.y = transform.translation().y();
   PoseStampedMsg.pose.position.z = transform.translation().z();
@@ -99,24 +102,29 @@ Eigen::Isometry3d PoseMsgToIsometry(const geometry_msgs::msg::Pose& poseMsg)
 
 //------------------------------------------------------------------------------
 //! Safely get a transform between 2 frames from TF2 server
+//https://docs.ros2.org/galactic/api/tf2_ros/classtf2__ros_1_1Buffer.html
+// using tf2::TimePoint = typedef std::chrono::time_point<std::chrono::system_clock, Duration>
+// using tf2::Duration = typedef std::chrono::nanoseconds
+// ? Not sure lookupTransform works with a duration of 0
 bool Tf2LookupTransform(Eigen::Isometry3d& transform,
                         const tf2_ros::Buffer& tfBuffer,
                         const std::string& targetFrame,
                         const std::string& sourceFrame,
-                        const ros::Time time = ros::Time(0),
-                        const ros::Duration timeout = ros::Duration(0))
+                        const builtin_interfaces::msg::Time msg_time = builtin_interfaces::msg::Time(),
+                        const tf2::Duration timeout = std::chrono::nanoseconds(0))
 {
   geometry_msgs::msg::TransformStamped tfStamped;
   try
   {
-    tfStamped = tfBuffer.lookupTransform(targetFrame, sourceFrame, time, timeout);
+    tf2::TimePoint tf2_time(tf2::durationFromSec(msg_time.sec + msg_time.nanosec * 1e-9));
+    tfStamped = tfBuffer.lookupTransform(targetFrame, sourceFrame, tf2_time, timeout);
   }
   catch (tf2::TransformException& ex)
   {
-    ROS_ERROR("%s", ex.what());
+    PRINT_ERROR(ex.what());
     return false;
   }
-  const geometry_msgs::Transform& t = tfStamped.transform;
+  const geometry_msgs::msg::Transform& t = tfStamped.transform;
   transform = Eigen::Translation3d(t.translation.x, t.translation.y, t.translation.z)
               * Eigen::Quaterniond(t.rotation.w, t.rotation.x, t.rotation.y, t.rotation.z);
   return true;

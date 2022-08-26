@@ -25,6 +25,12 @@
   <depend>nav_msgs</depend>
   <depend>apriltag_ros</depend>
 
+  <exec_depend>message_runtime</exec_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>.
+  <exec_depend>lidar_conversions</exec_depend>
+  <exec_depend>gps_conversions</exec_depend>
+  <exec_depend>rviz</exec_depend>
+
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->
