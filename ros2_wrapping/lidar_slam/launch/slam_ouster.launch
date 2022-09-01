@@ -1,0 +1,88 @@
+<launch>
+
+  <!-- General args -->
+  <arg name="replay" default="true" description="Whether to process live or replayed data"/>
+  <arg name="outdoor" default="true" description="Decide which set of parameters to use."/>
+  <arg name="rviz" default="true" description="Visualize results with RViz."/>
+  <arg name="os_driver" default="false" description="If true, activate os_node."/>
+  <arg name="gps" default="false" description="If true, use GPS data to calibrate SLAM output. Otherwise, provide calibration."/>
+  <arg name="tags_topic" default="tag_detections" description="topic from which to get the tag measurements."/>
+  <!-- Ouster driver parameters -->
+  <arg name="sensor_hostname" default="" description="Hostname or IP in dotted decimal form of the sensor"/>
+  <arg name="udp_dest" default="" description="Hostname or IP where the sensor will send data packets"/>
+  <arg name="lidar_port" default="0" description="Port to which the sensor should send lidar data"/>
+  <arg name="imu_port" default="0" description="Port to which the sensor should send imu data"/>
+  <arg name="metadata_in" default="$(find-pkg-share ouster_ros)/../tests/metadata/1_14_beta_os1-991937000062-64_legacy.json" description="Configuration file for Ouster data to replay"/>
+  <arg name="metadata_out" default="" description="Output Ouster config file"/>
+  <!-- lidar_mode must be linked to frequency / rpm -->
+  <arg name="lidar_mode" default="1024x10" description="Lidar mode : 1024x10, 2048x10, 1024x20, 2048x20"/>
+  <!-- /!\ rpm and timestamp_first_packet are also used to generate approximate point-wise timestamps as 'time' field is not usable. -->
+  <arg name="rpm" default="600." description="Ouster sensor spinning speed."/>
+  <arg name="timestamp_first_packet" default="false" description="If Ouster timestamping is based on the first or last packet of each scan."/>
+
+  <!-- Sim Time, used when replaying rosbag files (with mandatory option 'clock') -->
+  <param name="/use_sim_time" value="$(var replay)"/>
+
+  <!-- Rviz-->
+  <group if="$(var rviz)">
+    <node pkg="rviz" exec="rviz" name="rviz" args="-d $(find-pkg-share lidar_slam)/params/slam.rviz"/>
+  </group>
+
+  <!-- Ouster driver-->
+  <group if="$(var os_driver)">
+    <!-- Replay -->
+    <group if="$(var replay)">
+      <node pkg="ouster_ros" name="os_node" exec="os_node" output="screen" required="true">
+        <param name="~/replay" value="true"/>
+        <param name="~/metadata" value="$(var metadata_in)"/>
+      </node>
+    </group>
+
+
+    <!-- Live -->
+    <group unless="$(var replay)">
+      <node pkg="ouster_ros" name="os_node" exec="os_node" output="screen" required="true">
+        <param name="~/metadata" value="$(var metadata_out)"/>
+        <param name="~/sensor_hostname" value="$(var sensor_hostname)"/>
+        <param name="~/udp_dest" value="$(var udp_dest)"/>
+        <param name="~/lidar_port" value="$(var lidar_port)"/>
+        <param name="~/imu_port" value="$(var imu_port)"/>
+        <param name="~/lidar_mode" value="$(var lidar_mode)"/>
+        <param name="~/timestamp_mode" value="TIME_FROM_INTERNAL_OSC"/>
+        <param name="~/udp_profile_lidar" value="LEGACY"/>
+      </node>
+    </group>
+
+    <node pkg="ouster_ros" exec="os_cloud_node" name="os_cloud_node" output="screen" required="true">
+      <remap from="~/os_config" to="/os_node/os_config"/>
+      <remap from="~/lidar_packets" to="/os_node/lidar_packets"/>
+      <remap from="~/imu_packets" to="/os_node/imu_packets"/>
+    </node>
+  </group>
+
+  <!-- Ouster points conversion -->
+  <node name="ouster_conversion" pkg="lidar_conversions" exec="ouster_conversion_node" output="screen">
+    <param name="rpm" value="$(var rpm)"/>
+    <param name="timestamp_first_packet" value="$(var timestamp_first_packet)"/>
+  </node>
+
+  <!-- LiDAR SLAM : compute TF slam_init -> Ouster -->
+  <node name="lidar_slam" pkg="lidar_slam" exec="lidar_slam_node" output="screen">
+    <!-- <rosparam if="$(var outdoor)" file="$(find lidar_slam)/params/slam_config_outdoor.yaml" command="load"/> -->
+    <param if="$(var outdoor)" from="$(find-pkg-share lidar_slam)/params/slam_config_outdoor.yaml"/>
+    <!-- <rosparam unless="$(var outdoor)" file="$(find lidar_slam)/params/slam_config_indoor.yaml" command="load"/> -->
+    <param unless="$(var outdoor)" from="$(find-pkg-share lidar_slam)/params/slam_config_indoor.yaml"/>
+    <param name="gps/use_gps" value="$(var gps)"/>
+    <remap from="tag_detections" to="$(var tags_topic)"/>
+  </node>
+
+  <!-- Launch GPS/UTM conversions nodes -->
+  <group if="$(var gps)">
+    <include file="$(find-pkg-share lidar_slam)/launch/gps_conversions.launch"/>
+  </group>
+
+  <!-- Moving base coordinates systems description            tf_FROM_to_TO           X  Y  Z  rZ rY rX  FROM     TO -->
+  <node pkg="tf2_ros" exec="static_transform_publisher" name="tf_base_to_lidar" args="0  0  0  0  0  0 base_link os_sensor"/>
+  <node pkg="tf2_ros" exec="static_transform_publisher" name="tf_base_to_gps"   args="0  0  0  0  0  0 base_link gps"/>
+
+</launch>

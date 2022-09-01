@@ -192,7 +192,7 @@ private:
   int NbThreads = 1;
 
   // Maximum number of keypoints to extract
-  int MaxPoints = INT_MAX;
+  int MaxPoints = 1000;
 
   // Sampling ratio to perform for real time issues
   float InputSamplingRatio = 1.;

@@ -21,6 +21,7 @@
 
 #include "ros_transform_utils.h"
 
+
 #include <LidarSlam/Utilities.h>
 #include "pcl_conversions/pcl_conversions.h"
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -29,7 +30,7 @@
 #define BOLD_GREEN(s) "\033[1;32m" << s << "\033[0m"
 
 // Macro to publish with a cast toward the type of publisher
-// because in Ros2, the publisher is templated
+// because Ros2, the publisher has a template
 #define publishWithCast(publisher, type_msg, message) \
     std::static_pointer_cast<rclcpp::Publisher<type_msg>>(publisher)->publish(message);
 
@@ -79,7 +80,6 @@ LidarSlamNode::LidarSlamNode(std::string name_node):
   // ***************************************************************************
   // Init SLAM state
   // Get SLAM params
-  this->SetSlamParameters();
   this->SetSlamInitialState();
 
   // ***************************************************************************
@@ -90,36 +90,37 @@ LidarSlamNode::LidarSlamNode(std::string name_node):
 
   initPublisher(POSE_ODOM,            "slam_odom",           nav_msgs::msg::Odometry, "output/pose/odom",           true,  1, false);
   initPublisher(POSE_PREDICTION_ODOM, "slam_predicted_odom", nav_msgs::msg::Odometry, "output/pose/predicted_odom", false, 1, false);
+  
 
   if(this->LidarSlam.KeypointTypeEnabled(LidarSlam::EDGE))
   {
-    initPublisher(EDGES_MAP,  "maps/edges",  sensor_msgs::msg::PointCloud2, "output/maps/edges",  true, 1, false);
-    initPublisher(EDGES_SUBMAP,  "submaps/edges",  sensor_msgs::msg::PointCloud2, "output/submaps/edges",  true, 1, false);
-    initPublisher(EDGE_KEYPOINTS,  "keypoints/edges",  sensor_msgs::msg::PointCloud2, "output/keypoints/edges",  true, 1, false);
+    initPublisher(EDGES_MAP,  "maps/edges",  Pcl2_msg, "output/maps/edges",  true, 1, false);
+    initPublisher(EDGES_SUBMAP,  "submaps/edges",  Pcl2_msg, "output/submaps/edges",  true, 1, false);
+    initPublisher(EDGE_KEYPOINTS,  "keypoints/edges",  Pcl2_msg, "output/keypoints/edges",  true, 1, false);
   }
 
   if(this->LidarSlam.KeypointTypeEnabled(LidarSlam::INTENSITY_EDGE))
   {
-    initPublisher(INTENSITY_EDGES_MAP,  "maps/intensity_edges",  sensor_msgs::msg::PointCloud2, "output/maps/intensity_edges",  true, 1, false);
-    initPublisher(INTENSITY_EDGES_SUBMAP,  "submaps/intensity_edges",  sensor_msgs::msg::PointCloud2, "output/submaps/intensity_edges",  true, 1, false);
-    initPublisher(INTENSITY_EDGE_KEYPOINTS,  "keypoints/intensity_edges",  sensor_msgs::msg::PointCloud2, "output/keypoints/intensity_edges",  true, 1, false);
+    initPublisher(INTENSITY_EDGES_MAP,  "maps/intensity_edges",  Pcl2_msg, "output/maps/intensity_edges",  true, 1, false);
+    initPublisher(INTENSITY_EDGES_SUBMAP,  "submaps/intensity_edges",  Pcl2_msg, "output/submaps/intensity_edges",  true, 1, false);
+    initPublisher(INTENSITY_EDGE_KEYPOINTS,  "keypoints/intensity_edges",  Pcl2_msg, "output/keypoints/intensity_edges",  true, 1, false);
   }
 
   if(this->LidarSlam.KeypointTypeEnabled(LidarSlam::PLANE))
   {
-    initPublisher(PLANES_MAP, "maps/planes", sensor_msgs::msg::PointCloud2, "output/maps/planes", true, 1, false);
-    initPublisher(PLANES_SUBMAP, "submaps/planes", sensor_msgs::msg::PointCloud2, "output/submaps/planes", true, 1, false);
-    initPublisher(PLANE_KEYPOINTS, "keypoints/planes", sensor_msgs::msg::PointCloud2, "output/keypoints/planes", true, 1, false);
+    initPublisher(PLANES_MAP, "maps/planes", Pcl2_msg, "output/maps/planes", true, 1, false);
+    initPublisher(PLANES_SUBMAP, "submaps/planes", Pcl2_msg, "output/submaps/planes", true, 1, false);
+    initPublisher(PLANE_KEYPOINTS, "keypoints/planes", Pcl2_msg, "output/keypoints/planes", true, 1, false);
   }
 
   if(this->LidarSlam.KeypointTypeEnabled(LidarSlam::BLOB))
   {
-    initPublisher(BLOBS_MAP,  "maps/blobs",  sensor_msgs::msg::PointCloud2, "output/maps/blobs",  true, 1, false);
-    initPublisher(BLOBS_SUBMAP,  "submaps/blobs",  sensor_msgs::msg::PointCloud2, "output/submaps/blobs",  true, 1, false);
-    initPublisher(BLOB_KEYPOINTS,  "keypoints/blobs",  sensor_msgs::msg::PointCloud2, "output/keypoints/blobs",  true, 1, false);
+    initPublisher(BLOBS_MAP,  "maps/blobs",  Pcl2_msg, "output/maps/blobs",  true, 1, false);
+    initPublisher(BLOBS_SUBMAP,  "submaps/blobs",  Pcl2_msg, "output/submaps/blobs",  true, 1, false);
+    initPublisher(BLOB_KEYPOINTS,  "keypoints/blobs",  Pcl2_msg, "output/keypoints/blobs",  true, 1, false);
   }
 
-  initPublisher(SLAM_REGISTERED_POINTS, "slam_registered_points", sensor_msgs::msg::PointCloud2, "output/registered_points", true, 1, false);
+  initPublisher(SLAM_REGISTERED_POINTS, "slam_registered_points", Pcl2_msg, "output/registered_points", true, 1, false);
 
   initPublisher(CONFIDENCE, "slam_confidence", lidar_slam_interfaces::msg::Confidence, "output/confidence", true, 1, false);
 
@@ -128,18 +129,17 @@ LidarSlamNode::LidarSlamNode(std::string name_node):
     initPublisher(PGO_PATH, "pgo_slam_path", nav_msgs::msg::Path, "graph/publish_path", false, 1, true);
   }
 
-  // ***************************************************************************
   // Init ROS subscribers
 
-  // LiDAR inputs
+  // // LiDAR inputs
   std::vector<std::string> lidarTopics;
   lidarTopics.push_back("lidar_points");
-  this->CloudSubs.push_back(this->create_subscription<sensor_msgs::msg::PointCloud2>(lidarTopics[0], 1,
+  this->CloudSubs.push_back(this->create_subscription<Pcl2_msg>(lidarTopics[0], 1,
                                                                             std::bind(&LidarSlamNode::ScanCallback, this, std::placeholders::_1)));
   PRINT_VERBOSE(3, "Using LiDAR frames on topic '" << lidarTopics[0] << "'");
   for (unsigned int lidarTopicId = 1; lidarTopicId < lidarTopics.size(); lidarTopicId++)
   {
-    this->CloudSubs.push_back(this->create_subscription<sensor_msgs::msg::PointCloud2>(lidarTopics[lidarTopicId], 1,
+    this->CloudSubs.push_back(this->create_subscription<Pcl2_msg>(lidarTopics[lidarTopicId], 1,
                                                                                 std::bind(&LidarSlamNode::SecondaryScanCallback, this, std::placeholders::_1)));
     PRINT_VERBOSE(3, "Using secondary LiDAR frames on topic '" << lidarTopics[lidarTopicId] << "'");
   }
@@ -147,10 +147,6 @@ LidarSlamNode::LidarSlamNode(std::string name_node):
   // Set SLAM pose from external guess
   this->SetPoseSub = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>("set_slam_pose", 1,
                                                                                               std::bind(&LidarSlamNode::SetPoseCallback, this, std::placeholders::_1));
-
-  // SLAM commands
-  this->SlamCommandSub = this->create_subscription<lidar_slam_interfaces::msg::SlamCommand>("slam_command", 1,
-                                                                                            std::bind(&LidarSlamNode::SlamCommandCallback, this, std::placeholders::_1));
 
   // Init logging of GPS data for GPS/SLAM calibration or Pose Graph Optimization.
   if (this->UseGps)
@@ -173,7 +169,7 @@ LidarSlamNode::~LidarSlamNode()
 }
 
 //------------------------------------------------------------------------------
-void LidarSlamNode::ScanCallback(const sensor_msgs::msg::PointCloud2& pcl_msg)
+void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
 {
   CloudS::Ptr cloudS_ptr = std::make_shared<CloudS>();
 
@@ -215,7 +211,7 @@ void LidarSlamNode::ScanCallback(const sensor_msgs::msg::PointCloud2& pcl_msg)
 }
 
 //------------------------------------------------------------------------------
-void LidarSlamNode::SecondaryScanCallback(const sensor_msgs::msg::PointCloud2& pcl_msg)
+void LidarSlamNode::SecondaryScanCallback(const Pcl2_msg& pcl_msg)
 {
   CloudS::Ptr cloudS_ptr = std::make_shared<CloudS>();
 
@@ -277,7 +273,7 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
       PRINT_WARNING("The transform between the GPS and the tracking frame was not found -> GPS info ignored");
 }
 
-//------------------------------------------------------------------------------
+// //------------------------------------------------------------------------------
 int LidarSlamNode::BuildId(const std::vector<int>& ids)
 {
   int id = ids[0];
@@ -492,169 +488,6 @@ void LidarSlamNode::SetPoseCallback(const geometry_msgs::msg::PoseWithCovariance
   }
 }
 
-//------------------------------------------------------------------------------
-void LidarSlamNode::SlamCommandCallback(const lidar_slam_interfaces::msg::SlamCommand& msg)
-{
-  // Parse command
-  switch(msg.command)
-  {
-    // Set SLAM pose from last received GPS pose
-    // NOTE : This function should only be called after PGO or SLAM/GPS calib have been triggered.
-    case lidar_slam_interfaces::msg::SlamCommand::GPS_SLAM_CALIBRATION:
-    {
-      if (!this->UseGps || !this->LidarSlam.GpsHasData())
-      {
-        PRINT_ERROR("Cannot set SLAM pose from GPS"
-                         "Please check that 'external_sensors/gps/use_gps' private parameter is set to 'true'."
-                         "and that GPS data have been received.");
-        return;
-      }
-      this->LidarSlam.CalibrateWithGps();
-      PRINT_WARNING("SLAM pose set using GPS pose to :\n" << this->LidarSlam.GetLastState().Isometry.matrix());
-      // Broadcast new calibration offset (GPS reference frame (i.e. generally UTM) to odom)
-      this->BroadcastGpsOffset();
-      break;
-    }
-
-    // Set SLAM pose from last received GPS pose
-    // NOTE : This function should only be called after PGO or SLAM/GPS calib have been triggered.
-    case lidar_slam_interfaces::msg::SlamCommand::SET_SLAM_POSE_FROM_GPS:
-    {
-      if (!this->UseGps || !this->LidarSlam.GpsHasData())
-      {
-        PRINT_ERROR("Cannot set SLAM pose from GPS"
-                          "Please check that 'external_sensors/gps/use_gps' private parameter is set to 'true'."
-                          "and that GPS data have been received.");
-        return;
-      }
-
-      LidarSlam::ExternalSensors::GpsMeasurement& meas = this->LastGpsMeas;
-      // Get position of Lidar in UTM
-      Eigen::Vector3d position = this->LidarSlam.GetGpsCalibration().inverse() * meas.Position;
-      // Get position of Lidar in odometry frame
-      position = this->LidarSlam.GetGpsOffset() * position;
-      // Orientation is supposed to be close to odometry frame
-      // Warning : this hypothesis can be totally wrong and lead to bad registrations
-      Eigen::Isometry3d pose = this->LidarSlam.GetLogStates().front().Isometry;
-      pose.translation() = position;
-      this->LidarSlam.SetWorldTransformFromGuess(pose);
-      PRINT_WARNING("SLAM pose set from GPS pose to :\n" << pose.matrix());
-      break;
-    }
-
-    // Disable SLAM maps update
-    case lidar_slam_interfaces::msg::SlamCommand::DISABLE_SLAM_MAP_UPDATE:
-      this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::NONE);
-      PRINT_WARNING("Disabling SLAM maps update.");
-      break;
-
-    // Enable the agregation of keypoints to a fixed initial map
-    case lidar_slam_interfaces::msg::SlamCommand::ENABLE_SLAM_MAP_EXPANSION:
-      this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::ADD_KPTS_TO_FIXED_MAP);
-      PRINT_WARNING("Enabling SLAM maps expansion with new keypoints.");
-      break;
-
-    // Enable the update of the map with new keypoints
-    case lidar_slam_interfaces::msg::SlamCommand::ENABLE_SLAM_MAP_UPDATE:
-      this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::UPDATE);
-      PRINT_WARNING("Enabling SLAM maps update with new keypoints.");
-      break;
-
-    // Reset the SLAM internal state.
-    case lidar_slam_interfaces::msg::SlamCommand::RESET_SLAM:
-      PRINT_WARNING("Resetting the SLAM internal state.");
-      this->LidarSlam.Reset(true);
-      this->SetSlamInitialState();
-      break;
-
-    // Save SLAM keypoints maps to PCD files
-    case lidar_slam_interfaces::msg::SlamCommand::SAVE_KEYPOINTS_MAPS:
-    {
-      PRINT_VERBOSE(3, "Saving keypoints maps to PCD.");
-      if (this->LidarSlam.GetMapUpdate() == LidarSlam::MappingMode::NONE)
-        PRINT_WARNING("The initially loaded maps were not modified but are saved anyway.");
-      int pcdFormatInt = 0;
-      LidarSlam::PCDFormat pcdFormat = static_cast<LidarSlam::PCDFormat>(pcdFormatInt);
-      if (pcdFormat != LidarSlam::PCDFormat::ASCII &&
-          pcdFormat != LidarSlam::PCDFormat::BINARY &&
-          pcdFormat != LidarSlam::PCDFormat::BINARY_COMPRESSED)
-      {
-        PRINT_ERROR("Incorrect PCD format value (" << pcdFormat << "). Setting it to 'BINARY_COMPRESSED'.");
-        pcdFormat = LidarSlam::PCDFormat::BINARY_COMPRESSED;
-      }
-      this->LidarSlam.SaveMapsToPCD(msg.string_arg, pcdFormat, false);
-      break;
-    }
-
-    // Save SLAM keypoints submaps to PCD files
-    case lidar_slam_interfaces::msg::SlamCommand::SAVE_FILTERED_KEYPOINTS_MAPS:
-    {
-      PRINT_VERBOSE(3, "Saving keypoints submaps to PCD.");
-      int pcdFormatInt = 0;
-      LidarSlam::PCDFormat pcdFormat = static_cast<LidarSlam::PCDFormat>(pcdFormatInt);
-      if (pcdFormat != LidarSlam::PCDFormat::ASCII &&
-          pcdFormat != LidarSlam::PCDFormat::BINARY &&
-          pcdFormat != LidarSlam::PCDFormat::BINARY_COMPRESSED)
-      {
-        PRINT_ERROR("Incorrect PCD format value (" << pcdFormat << "). Setting it to 'BINARY_COMPRESSED'.");
-        pcdFormat = LidarSlam::PCDFormat::BINARY_COMPRESSED;
-      }
-      this->LidarSlam.SaveMapsToPCD(msg.string_arg, pcdFormat, true);
-      break;
-    }
-
-    // Load SLAM keypoints maps from PCD files
-    case lidar_slam_interfaces::msg::SlamCommand::LOAD_KEYPOINTS_MAPS:
-      PRINT_VERBOSE(3, "Loading keypoints maps from PCD.");
-      this->LidarSlam.LoadMapsFromPCD(msg.string_arg);
-      break;
-
-    case lidar_slam_interfaces::msg::SlamCommand::OPTIMIZE_GRAPH:
-      if ((!this->UseGps && !this->UseTags) || this->LidarSlam.GetSensorMaxMeasures() < 2 || this->LidarSlam.GetLoggingTimeout() < 0.2)
-      {
-        PRINT_ERROR("Cannot optimize pose graph as sensor info logging has not been enabled. "
-                         "Please make sure that 'external_sensors/landmark_detector/use_tags' OR 'external_sensors/gps/use_gps' private parameter is set to 'true', "
-                         "and that 'external_sensors/landmark_detector/weight' and 'slam/logging/timeout' private parameters are set to convenient values.");
-        break;
-      }
-
-      if (this->LidarSlam.LmHasData())
-      {
-        if (!msg.string_arg.empty())
-        {
-          PRINT_VERBOSE(3, "Loading the absolute landmark poses");
-          this->LoadLandmarks(msg.string_arg);
-        }
-        else if (this->LidarSlam.GetLandmarkConstraintLocal())
-          PRINT_WARNING("No absolute landmark poses are supplied : the last estimated poses will be used");
-      }
-
-      PRINT_VERBOSE(3, "Optimizing the pose graph");
-      this->LidarSlam.OptimizeGraph();
-      // Broadcast new calibration offset (GPS to base)
-      // if GPS used
-      if (this->LidarSlam.GpsHasData())
-        this->BroadcastGpsOffset();
-      // Publish new trajectory
-      if (this->Publish[PGO_PATH])
-      {
-        nav_msgs::msg::Path optimSlamTraj;
-        optimSlamTraj.header.frame_id = this->OdometryFrameId;
-        std::list<LidarSlam::LidarState> optimizedSlamStates = this->LidarSlam.GetLogStates();
-        optimSlamTraj.header.stamp = rclcpp::Time(optimizedSlamStates.back().Time);
-        for (const LidarSlam::LidarState& s: optimizedSlamStates)
-          optimSlamTraj.poses.emplace_back(Utils::IsometryToPoseStampedMsg(s.Isometry, s.Time, this->OdometryFrameId));
-        publishWithCast(this->Publishers[PGO_PATH], nav_msgs::msg::Path, optimSlamTraj);
-      }
-
-      break;
-
-    // Unknown command
-    default:
-      PRINT_ERROR("Unknown SLAM command : " << (unsigned int) msg.command);
-      break;
-  }
-}
 
 //==============================================================================
 //   Utilities
@@ -677,243 +510,32 @@ bool LidarSlamNode::UpdateBaseToLidarOffset(const std::string& lidarFrameId, uin
   return true;
 }
 
-//------------------------------------------------------------------------------
+// //------------------------------------------------------------------------------
 void LidarSlamNode::PublishOutput()
 {
+
   LidarSlam::LidarState& currentState = this->LidarSlam.GetLastState();
   double currentTime = currentState.Time;
-  // Publish SLAM pose
-  if (this->Publish[POSE_ODOM] || this->Publish[POSE_TF])
-  {
-    // Publish as odometry msg
-    if (this->Publish[POSE_ODOM])
-    {
-      nav_msgs::msg::Odometry odomMsg;
-      odomMsg.header.stamp = rclcpp::Time(currentTime);
-      odomMsg.header.frame_id = this->OdometryFrameId;
-      odomMsg.child_frame_id = this->TrackingFrameId;
-      odomMsg.pose.pose = Utils::IsometryToPoseMsg(currentState.Isometry);
-      // Note : in eigen 3.4 iterators are available on matrices directly
-      //        >> std::copy(currentState.Covariance.begin(), currentState.Covariance.end(), confidenceMsg.covariance.begin());
-      // For now the only way is to copy or iterate on indices :
-      for (unsigned int i = 0; i < currentState.Covariance.size(); ++i)
-        odomMsg.pose.covariance[i] = currentState.Covariance(i);
-      publishWithCast(this->Publishers[POSE_ODOM], nav_msgs::msg::Odometry, odomMsg);
-    }
-
-    // Publish as TF from OdometryFrameId to TrackingFrameId
-    if (this->Publish[POSE_TF])
-    {
-      geometry_msgs::msg::TransformStamped tfMsg;
-      tfMsg.header.stamp = rclcpp::Time(currentTime);
-      tfMsg.header.frame_id = this->OdometryFrameId;
-      tfMsg.child_frame_id = this->TrackingFrameId;
-      tfMsg.transform = Utils::IsometryToTfMsg(currentState.Isometry);
-      this->TfBroadcaster->sendTransform(tfMsg);
-    }
-  }
-
-  // Publish latency compensated SLAM pose
-  if (this->Publish[POSE_PREDICTION_ODOM] || this->Publish[POSE_PREDICTION_TF])
-  {
-    double predTime = currentState.Time + this->LidarSlam.GetLatency();
-    Eigen::Isometry3d predTransfo = this->LidarSlam.GetLatencyCompensatedWorldTransform();
-    // Publish as odometry msg
-    if (this->Publish[POSE_PREDICTION_ODOM])
-    {
-      nav_msgs::msg::Odometry odomMsg;
-      odomMsg.header.stamp = rclcpp::Time(predTime);
-      odomMsg.header.frame_id = this->OdometryFrameId;
-      odomMsg.child_frame_id = this->TrackingFrameId + "_prediction";
-      odomMsg.pose.pose = Utils::IsometryToPoseMsg(predTransfo);
-      // Note : in eigen 3.4 iterators are available on matrices directly
-      //        >> std::copy(currentState.Covariance.begin(), currentState.Covariance.end(), confidenceMsg.covariance.begin());
-      // for now the only way is to copy or iterate on indices :
-      for (unsigned int i = 0; i < currentState.Covariance.size(); ++i)
-        odomMsg.pose.covariance[i] = currentState.Covariance(i);
-      publishWithCast(this->Publishers[POSE_PREDICTION_ODOM], nav_msgs::msg::Odometry, odomMsg);
-    }
-
-    // Publish as TF from OdometryFrameId to <TrackingFrameId>_prediction
-    if (this->Publish[POSE_PREDICTION_TF])
-    {
-      geometry_msgs::msg::TransformStamped tfMsg;
-      tfMsg.header.stamp = rclcpp::Time(predTime);
-      tfMsg.header.frame_id = this->OdometryFrameId;
-      tfMsg.child_frame_id = this->TrackingFrameId + "_prediction";
-      tfMsg.transform = Utils::IsometryToTfMsg(predTransfo);
-      this->TfBroadcaster->sendTransform(tfMsg);
-    }
-  }
+    geometry_msgs::msg::TransformStamped tfMsg;
+    tfMsg.header.stamp = rclcpp::Time(currentTime);
+    tfMsg.header.frame_id = this->OdometryFrameId;
+    tfMsg.child_frame_id = this->TrackingFrameId;
+    tfMsg.transform = Utils::IsometryToTfMsg(currentState.Isometry);
+    this->TfBroadcaster->sendTransform(tfMsg);
 
 
   // Publish a pointcloud only if required and if someone is listening to it to spare bandwidth.
   // Change to publish pcl2 msgs
   // url : https://github.com/mikeferguson/ros2_cookbook/blob/main/rclcpp/pcl.md
   #define publishPointCloud(publisher, pc)                                                  \
-  if (this->Publish[publisher] && this->Publishers[publisher]->get_subscription_count())    \
+  if (this->Publishers[publisher]->get_subscription_count())    \
     {                                                                                       \
-      sensor_msgs::msg::PointCloud2 pcl_msg;                                                \
+      Pcl2_msg pcl_msg;                                                \
       pcl::toROSMsg(*pc, pcl_msg);                                                          \
-      publishWithCast(this->Publishers[publisher], sensor_msgs::msg::PointCloud2, pcl_msg)  \
+      publishWithCast(this->Publishers[publisher], Pcl2_msg, pcl_msg)  \
     }
 
-  // Keypoints maps
-  publishPointCloud(EDGES_MAP,  this->LidarSlam.GetMap(LidarSlam::EDGE));
-  publishPointCloud(INTENSITY_EDGES_MAP,  this->LidarSlam.GetMap(LidarSlam::INTENSITY_EDGE));
   publishPointCloud(PLANES_MAP, this->LidarSlam.GetMap(LidarSlam::PLANE));
-  publishPointCloud(BLOBS_MAP,  this->LidarSlam.GetMap(LidarSlam::BLOB));
-
-  // Keypoints submaps
-  publishPointCloud(EDGES_SUBMAP,  this->LidarSlam.GetTargetSubMap(LidarSlam::EDGE));
-  publishPointCloud(INTENSITY_EDGES_SUBMAP,  this->LidarSlam.GetTargetSubMap(LidarSlam::INTENSITY_EDGE));
-  publishPointCloud(PLANES_SUBMAP, this->LidarSlam.GetTargetSubMap(LidarSlam::PLANE));
-  publishPointCloud(BLOBS_SUBMAP,  this->LidarSlam.GetTargetSubMap(LidarSlam::BLOB));
-
-  // Current keypoints
-  publishPointCloud(EDGE_KEYPOINTS,  this->LidarSlam.GetKeypoints(LidarSlam::EDGE));
-  publishPointCloud(INTENSITY_EDGE_KEYPOINTS,  this->LidarSlam.GetKeypoints(LidarSlam::INTENSITY_EDGE));
-  publishPointCloud(PLANE_KEYPOINTS, this->LidarSlam.GetKeypoints(LidarSlam::PLANE));
-  publishPointCloud(BLOB_KEYPOINTS,  this->LidarSlam.GetKeypoints(LidarSlam::BLOB));
-
-  // Registered aggregated (and optionally undistorted) input scans points
-  publishPointCloud(SLAM_REGISTERED_POINTS, this->LidarSlam.GetRegisteredFrame());
-
-  // Overlap estimation
-  if (this->Publish[CONFIDENCE])
-  {
-    // Get SLAM pose
-    lidar_slam_interfaces::msg::Confidence confidenceMsg;
-    confidenceMsg.header.stamp = rclcpp::Time(currentTime);
-    confidenceMsg.header.frame_id = this->OdometryFrameId;
-    confidenceMsg.overlap = this->LidarSlam.GetOverlapEstimation();
-    confidenceMsg.computation_time = this->LidarSlam.GetLatency();
-    // Note : in eigen 3.4, iterators are available on matrices directly
-    //        >> std::copy(currentState.Covariance.begin(), currentState.Covariance.end(), confidenceMsg.covariance.begin());
-    for (unsigned int i = 0; i < currentState.Covariance.size(); ++i)
-      confidenceMsg.covariance[i] = currentState.Covariance(i);
-    confidenceMsg.nb_matches = this->LidarSlam.GetTotalMatchedKeypoints();
-    confidenceMsg.comply_motion_limits = this->LidarSlam.GetComplyMotionLimits();
-    publishWithCast(this->Publishers[CONFIDENCE], lidar_slam_interfaces::msg::Confidence, confidenceMsg);
-  }
-}
-
-//------------------------------------------------------------------------------
-void LidarSlamNode::SetSlamParameters()
-{
-  #define SetSlamParam(type, rosParam, slamParam) { /*type val; if (this->PrivNh.getParam(rosParam, val)) this->LidarSlam.Set##slamParam(val);*/ }
-  // General
-  SetSlamParam(bool,   "slam/2d_mode", TwoDMode)
-  SetSlamParam(int,    "slam/verbosity", Verbosity)
-  SetSlamParam(int,    "slam/n_threads", NbThreads)
-  SetSlamParam(double, "slam/logging/timeout", LoggingTimeout)
-  SetSlamParam(bool,   "slam/logging/only_keyframes", LogOnlyKeyframes)
-  int egoMotionMode;
-
-  // Frame Ids
-  //this->PrivNh.param("odometry_frame", this->OdometryFrameId, this->OdometryFrameId);
-  this->LidarSlam.SetWorldFrameId(this->OdometryFrameId);
-  //this->PrivNh.param("tracking_frame", this->TrackingFrameId, this->TrackingFrameId);
-  this->LidarSlam.SetBaseFrameId(this->TrackingFrameId);
-
-  // Keypoint extractors
-  auto InitKeypointsExtractor = [this](auto& ke, const std::string& prefix)
-  {
-    #define SetKeypointsExtractorParam(type, rosParam, keParam) {/*type val; if (this->PrivNh.getParam(rosParam, val)) ke->Set##keParam(val);*/}
-    SetKeypointsExtractorParam(int,   "slam/n_threads", NbThreads)
-    SetKeypointsExtractorParam(int,   prefix + "neighbor_width", NeighborWidth)
-    SetKeypointsExtractorParam(float, prefix + "min_distance_to_sensor", MinDistanceToSensor)
-    SetKeypointsExtractorParam(float, prefix + "min_beam_surface_angle", MinBeamSurfaceAngle)
-    SetKeypointsExtractorParam(float, prefix + "min_azimuth", AzimuthMin)
-    SetKeypointsExtractorParam(float, prefix + "max_azimuth", AzimuthMax)
-    SetKeypointsExtractorParam(float, prefix + "plane_sin_angle_threshold", PlaneSinAngleThreshold)
-    SetKeypointsExtractorParam(float, prefix + "edge_sin_angle_threshold", EdgeSinAngleThreshold)
-    SetKeypointsExtractorParam(float, prefix + "edge_depth_gap_threshold", EdgeDepthGapThreshold)
-    SetKeypointsExtractorParam(float, prefix + "edge_nb_gap_points", EdgeNbGapPoints)
-    SetKeypointsExtractorParam(float, prefix + "edge_intensity_gap_threshold", EdgeIntensityGapThreshold)
-    SetKeypointsExtractorParam(int,   prefix + "max_points", MaxPoints)
-    SetKeypointsExtractorParam(float, prefix + "voxel_grid_resolution", VoxelResolution)
-    SetKeypointsExtractorParam(float, prefix + "input_sampling_ratio", InputSamplingRatio)
-    #define EnableKeypoint(kType) \
-    {}
-    EnableKeypoint(LidarSlam::Keypoint::EDGE);
-    EnableKeypoint(LidarSlam::Keypoint::INTENSITY_EDGE);
-    EnableKeypoint(LidarSlam::Keypoint::PLANE);
-    EnableKeypoint(LidarSlam::Keypoint::BLOB);
-  };
-
-  // Multi-LiDAR devices
-      // Init Keypoint extractor with default params
-      auto ke = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
-
-      // Change default parameters using ROS parameter server
-      int deviceId = 0;
-      std::string prefix = "slam/ke/device_" + std::to_string(deviceId) + "/";
-      InitKeypointsExtractor(ke, prefix);
-
-  // Ego motion
-  SetSlamParam(int,    "slam/ego_motion_registration/ICP_max_iter", EgoMotionICPMaxIter)
-  SetSlamParam(int,    "slam/ego_motion_registration/LM_max_iter", EgoMotionLMMaxIter)
-  SetSlamParam(double, "slam/ego_motion_registration/max_neighbors_distance", EgoMotionMaxNeighborsDistance)
-  SetSlamParam(int,    "slam/ego_motion_registration/edge_nb_neighbors", EgoMotionEdgeNbNeighbors)
-  SetSlamParam(int,    "slam/ego_motion_registration/edge_min_nb_neighbors", EgoMotionEdgeMinNbNeighbors)
-  SetSlamParam(double, "slam/ego_motion_registration/edge_max_model_error", EgoMotionEdgeMaxModelError)
-  SetSlamParam(int,    "slam/ego_motion_registration/plane_nb_neighbors", EgoMotionPlaneNbNeighbors)
-  SetSlamParam(double, "slam/ego_motion_registration/planarity_threshold", EgoMotionPlanarityThreshold)
-  SetSlamParam(double, "slam/ego_motion_registration/plane_max_model_error", EgoMotionPlaneMaxModelError)
-  SetSlamParam(double, "slam/ego_motion_registration/init_saturation_distance", EgoMotionInitSaturationDistance)
-  SetSlamParam(double, "slam/ego_motion_registration/final_saturation_distance", EgoMotionFinalSaturationDistance)
-
-  // Localization
-  SetSlamParam(int,    "slam/localization/ICP_max_iter", LocalizationICPMaxIter)
-  SetSlamParam(int,    "slam/localization/LM_max_iter", LocalizationLMMaxIter)
-  SetSlamParam(double, "slam/localization/max_neighbors_distance", LocalizationMaxNeighborsDistance)
-  SetSlamParam(int,    "slam/localization/edge_nb_neighbors", LocalizationEdgeNbNeighbors)
-  SetSlamParam(int,    "slam/localization/edge_min_nb_neighbors", LocalizationEdgeMinNbNeighbors)
-  SetSlamParam(double, "slam/localization/edge_max_model_error", LocalizationEdgeMaxModelError)
-  SetSlamParam(int,    "slam/localization/plane_nb_neighbors", LocalizationPlaneNbNeighbors)
-  SetSlamParam(double, "slam/localization/planarity_threshold", LocalizationPlanarityThreshold)
-  SetSlamParam(double, "slam/localization/plane_max_model_error", LocalizationPlaneMaxModelError)
-  SetSlamParam(int,    "slam/localization/blob_nb_neighbors", LocalizationBlobNbNeighbors)
-  SetSlamParam(double, "slam/localization/init_saturation_distance", LocalizationInitSaturationDistance)
-  SetSlamParam(double, "slam/localization/final_saturation_distance", LocalizationFinalSaturationDistance)
-
-  // External sensors
-  SetSlamParam(float,  "external_sensors/max_measures", SensorMaxMeasures)
-  SetSlamParam(float,  "external_sensors/time_threshold", SensorTimeThreshold)
-  SetSlamParam(float,  "external_sensors/landmark_detector/weight", LandmarkWeight)
-  SetSlamParam(float,  "external_sensors/landmark_detector/saturation_distance", LandmarkSaturationDistance)
-  SetSlamParam(bool,   "external_sensors/landmark_detector/position_only", LandmarkPositionOnly)
-  //this->PrivNh.getParam("external_sensors/landmark_detector/publish_tags", this->PublishTags);
-
-  // Graph parameters
-  SetSlamParam(std::string, "graph/g2o_file_name", G2oFileName)
-  SetSlamParam(bool,   "graph/fix_first", FixFirstVertex)
-  SetSlamParam(bool,   "graph/fix_last", FixLastVertex)
-
-  // Confidence estimators
-  // Overlap
-  SetSlamParam(float,  "slam/confidence/overlap/sampling_ratio", OverlapSamplingRatio)
-  // Motion limitations (hard constraints to detect failure)
-  std::vector<float> acc;
-  std::vector<float> vel;
-
-  SetSlamParam(float, "slam/confidence/motion_limits/time_window_duration", TimeWindowDuration)
-
-  // Keyframes
-  SetSlamParam(double, "slam/keyframes/distance_threshold", KfDistanceThreshold)
-  SetSlamParam(double, "slam/keyframes/angle_threshold", KfAngleThreshold)
-
-  // Maps
-  SetSlamParam(double, "slam/voxel_grid/resolution", VoxelGridResolution)
-  SetSlamParam(int,    "slam/voxel_grid/size", VoxelGridSize)
-  SetSlamParam(double, "slam/voxel_grid/decaying_threshold", VoxelGridDecayingThreshold)
-  SetSlamParam(int,    "slam/voxel_grid/min_frames_per_voxel", VoxelGridMinFramesPerVoxel)
-  for (auto k : LidarSlam::KeypointTypes)
-  {
-    if (!this->LidarSlam.KeypointTypeEnabled(k))
-      continue;
-  }
 }
 
 //------------------------------------------------------------------------------

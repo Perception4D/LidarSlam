@@ -847,7 +847,7 @@ private:
   int NbThreads = 1;
 
   // Booleans to decide whether to extract the keypoints of the relative type or not
-  std::map<Keypoint, bool> UseKeypoints = {{EDGE, true}, {INTENSITY_EDGE, true}, {PLANE, true}, {BLOB, false}};
+  std::map<Keypoint, bool> UseKeypoints = {{EDGE, true}, {INTENSITY_EDGE, false}, {PLANE, true}, {BLOB, false}};
   std::vector<Keypoint> UsableKeypoints = {EDGE, INTENSITY_EDGE, PLANE};
 
   // How to estimate Ego-Motion (approximate relative motion since last frame).
@@ -894,8 +894,8 @@ private:
   // **** COORDINATES SYSTEMS ****
 
   // Coordinates systems (CS) names to fill in pointclouds or poses headers
-  std::string WorldFrameId = "world";  // CS of trajectory and maps
-  std::string BaseFrameId = "base";    // CS of current keypoints
+  std::string WorldFrameId = "odom";  // CS of trajectory and maps
+  std::string BaseFrameId = "base_link";    // CS of current keypoints
 
   // **** LOCALIZATION ****
 

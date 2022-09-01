@@ -47,6 +47,7 @@ public:
 
   using PointS = LidarSlam::Slam::Point;
   using CloudS = pcl::PointCloud<PointS>;
+  using Pcl2_msg = sensor_msgs::msg::PointCloud2;
 
   //----------------------------------------------------------------------------
   /*!
@@ -79,7 +80,7 @@ public:
    *    This id should be the same for all points of the cloud acquired by the same sensor.
    *  - label (uint8): optional input, not yet used.
    */
-  virtual void ScanCallback(const sensor_msgs::msg::PointCloud2& pcl_msg);
+  virtual void ScanCallback(const Pcl2_msg& pcl_msg);
 
   //----------------------------------------------------------------------------
   /*!
@@ -97,7 +98,7 @@ public:
    *    This id should be the same for all points of the cloud acquired by the same sensor.
    *  - label (uint8): optional input, not yet used.
    */
-  virtual void SecondaryScanCallback(const sensor_msgs::msg::PointCloud2& pcl_msg);
+  virtual void SecondaryScanCallback(const Pcl2_msg& pcl_msg);
 
   //----------------------------------------------------------------------------
   /*!
@@ -123,14 +124,6 @@ public:
    */
   void SetPoseCallback(const geometry_msgs::msg::PoseWithCovarianceStamped& msg);
 
-  //----------------------------------------------------------------------------
-  /*!
-   * @brief     Receive an external command to process, such as pose graph
-   *            optimization, GPS/SLAM calibration, set SLAM pose, save maps etc.
-   * @param[in] msg The command message.
-   */
-  void SlamCommandCallback(const lidar_slam_interfaces::msg::SlamCommand& msg);
-
 protected:
 
   //----------------------------------------------------------------------------
@@ -152,12 +145,6 @@ protected:
    *  - undistorted input points registered in odometry frame
    */
   void PublishOutput();
-
-  //----------------------------------------------------------------------------
-  /*!
-   * @brief Get and fill Slam parameters from ROS parameters server.
-   */
-  void SetSlamParameters();
 
   //----------------------------------------------------------------------------
   /*!
@@ -197,7 +184,7 @@ protected:
   std::vector<CloudS::Ptr> Frames;
 
   // ROS node handles, subscribers and publishers
-  std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr> CloudSubs;
+  std::vector<rclcpp::Subscription<Pcl2_msg>::SharedPtr> CloudSubs;
   rclcpp::Subscription<lidar_slam_interfaces::msg::SlamCommand>::SharedPtr SlamCommandSub;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr SetPoseSub;
   std::unordered_map<int, rclcpp::PublisherBase::SharedPtr> Publishers;
