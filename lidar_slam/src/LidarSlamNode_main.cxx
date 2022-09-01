@@ -14,6 +14,7 @@ int main(int argc, char **argv)
 
   // Handle callbacks until shut down
   rclcpp::spin(slam);
+  rclcpp::shutdown();
 
   return 0;
 }
