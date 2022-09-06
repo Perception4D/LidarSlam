@@ -124,6 +124,14 @@ public:
    */
   void SetPoseCallback(const geometry_msgs::msg::PoseWithCovarianceStamped& msg);
 
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief     Receive an external command to process, such as pose graph
+   *            optimization, GPS/SLAM calibration, set SLAM pose, save maps etc.
+   * @param[in] msg The command message.
+   */
+  void SlamCommandCallback(const lidar_slam_interfaces::msg::SlamCommand& msg);
+
 protected:
 
   //----------------------------------------------------------------------------

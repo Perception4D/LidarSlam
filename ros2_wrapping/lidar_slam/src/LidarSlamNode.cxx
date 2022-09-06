@@ -155,17 +155,21 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
 
   this->CloudSubs.push_back(this->create_subscription<Pcl2_msg>(lidarTopics[0], 1,
                                                                             std::bind(&LidarSlamNode::ScanCallback, this, std::placeholders::_1)));
-  PRINT_VERBOSE(3, "Using LiDAR frames on topic '" << lidarTopics[0] << "'");
+  RCLCPP_INFO_STREAM(this->get_logger(), "Using LiDAR frames on topic '" << lidarTopics[0] << "'");
   for (unsigned int lidarTopicId = 1; lidarTopicId < lidarTopics.size(); lidarTopicId++)
   {
     this->CloudSubs.push_back(this->create_subscription<Pcl2_msg>(lidarTopics[lidarTopicId], 1,
                                                                                 std::bind(&LidarSlamNode::SecondaryScanCallback, this, std::placeholders::_1)));
-    PRINT_VERBOSE(3, "Using secondary LiDAR frames on topic '" << lidarTopics[lidarTopicId] << "'");
+    RCLCPP_INFO_STREAM(this->get_logger(), "Using secondary LiDAR frames on topic '" << lidarTopics[lidarTopicId] << "'");
   }
 
   // Set SLAM pose from external guess
   this->SetPoseSub = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>("set_slam_pose", 1,
                                                                                               std::bind(&LidarSlamNode::SetPoseCallback, this, std::placeholders::_1));
+
+  // SLAM commands
+  this->SlamCommandSub = this->create_subscription<lidar_slam_interfaces::msg::SlamCommand>("slam_command", 1,
+                                                                                            std::bind(&LidarSlamNode::SlamCommandCallback, this, std::placeholders::_1));
 
   // Init logging of GPS data for GPS/SLAM calibration or Pose Graph Optimization.
   if (this->UseGps)
@@ -179,7 +183,7 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
                                                                                       std::bind(&LidarSlamNode::TagCallback, this, std::placeholders::_1));
   }
 
-  PRINT_VERBOSE(0, BOLD_GREEN("LiDAR SLAM is ready !"));
+  RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("LiDAR SLAM is ready !"));
 }
 
 //------------------------------------------------------------------------------
@@ -196,7 +200,7 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
 
   if(cloudS_ptr->empty())
   {
-    PRINT_WARNING("Input point cloud sent by Lidar sensor driver is empty -> ignoring message");
+    RCLCPP_WARN(this->get_logger(), "Input point cloud sent by Lidar sensor driver is empty -> ignoring message");
     return;
   }
 
@@ -238,7 +242,7 @@ void LidarSlamNode::SecondaryScanCallback(const Pcl2_msg& pcl_msg)
   
   if(cloudS_ptr->empty())
   {
-    PRINT_WARNING("Secondary input point cloud sent by Lidar sensor driver is empty -> ignoring message");
+    RCLCPP_WARN(this->get_logger(), "Secondary input point cloud sent by Lidar sensor driver is empty -> ignoring message");
     return;
   }
 
@@ -260,7 +264,7 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
     Eigen::Isometry3d baseToGps;
     if (Utils::Tf2LookupTransform(baseToGps, *this->TfBuffer, this->TrackingFrameId, gpsMsg.header.frame_id, gpsMsg.header.stamp))
     {
-      PRINT_VERBOSE(3, "Adding GPS info");
+      RCLCPP_INFO(this->get_logger(), "Adding GPS info");
       // Get gps pose
       this->LastGpsMeas.Position = Utils::PoseMsgToIsometry(gpsMsg.pose.pose).translation();
       // Get gps timestamp
@@ -289,7 +293,7 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
       this->GpsFrameId = gpsMsg.header.frame_id;
     }
     else
-      PRINT_WARNING("The transform between the GPS and the tracking frame was not found -> GPS info ignored");
+      RCLCPP_WARN(this->get_logger(), "The transform between the GPS and the tracking frame was not found -> GPS info ignored");
 }
 
 // //------------------------------------------------------------------------------
@@ -320,7 +324,7 @@ void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray&
     Eigen::Isometry3d baseToLmDetector;
     if (Utils::Tf2LookupTransform(baseToLmDetector, *this->TfBuffer, this->TrackingFrameId, tagInfo.pose.header.frame_id, tagInfo.pose.header.stamp))
     {
-      PRINT_VERBOSE(3, "Adding tag info");
+      RCLCPP_INFO(this->get_logger(), "Adding tag info");
       LidarSlam::ExternalSensors::LandmarkMeasurement lm;
       // Get tag pose
       lm.TransfoRelative = Utils::PoseMsgToIsometry(tagInfo.pose.pose.pose);
@@ -363,7 +367,7 @@ void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray&
       }
     }
     else
-      PRINT_WARNING("The transform between the landmark detector and the tracking frame was not found -> landmarks info ignored");
+      RCLCPP_WARN(this->get_logger(), "The transform between the landmark detector and the tracking frame was not found -> landmarks info ignored");
   }
 }
 
@@ -373,14 +377,14 @@ void LidarSlamNode::LoadLandmarks(const std::string& path)
   // Check the file
   if (path.substr(path.find_last_of(".") + 1) != "csv")
   {
-    PRINT_ERROR("The landmarks file is not csv : landmarks absolute constraint can not be used");
+    RCLCPP_ERROR(this->get_logger(), "The landmarks file is not csv : landmarks absolute constraint can not be used");
     return;
   }
 
   std::ifstream lmFile(path);
   if (lmFile.fail())
   {
-    PRINT_ERROR("The landmarks csv file " << path << " was not found : landmarks absolute constraint can not be used");
+    RCLCPP_ERROR_STREAM(this->get_logger(), "The landmarks csv file " << path << " was not found : landmarks absolute constraint can not be used");
     return;
   }
 
@@ -416,7 +420,7 @@ void LidarSlamNode::LoadLandmarks(const std::string& path)
   }
   if (fields.size() != fieldsNumber)
   {
-    PRINT_WARNING("The landmarks csv file is ill formed : " << fields.size() << " fields were found (" << fieldsNumber
+    RCLCPP_WARN_STREAM(this->get_logger(), "The landmarks csv file is ill formed : " << fields.size() << " fields were found (" << fieldsNumber
                     << " expected), landmarks absolute poses will not be used");
     return;
   }
@@ -439,7 +443,7 @@ void LidarSlamNode::LoadLandmarks(const std::string& path)
     lm.push_back(lmStr.substr(0, pos));
     if (lm.size() != fieldsNumber)
     {
-      PRINT_WARNING("landmark on line " + std::to_string(lineIdx) + " is not correct -> Skip");
+      RCLCPP_WARN_STREAM(this->get_logger(), "landmark on line " + std::to_string(lineIdx) + " is not correct -> Skip");
       ++lineIdx;
       continue;
     }
@@ -463,7 +467,7 @@ void LidarSlamNode::LoadLandmarks(const std::string& path)
       // if this is the first line, it might be a header line,
       // else, print a warning
       if (lineIdx > 1)
-        PRINT_WARNING("landmark on line " + std::to_string(lineIdx) + " contains a not numerical value -> Skip");
+        RCLCPP_WARN_STREAM(this->get_logger(), "landmark on line " + std::to_string(lineIdx) + " contains a not numerical value -> Skip");
       ++lineIdx;
       continue;
     }
@@ -483,7 +487,7 @@ void LidarSlamNode::LoadLandmarks(const std::string& path)
     }
     // Add a new landmark manager for absolute constraint computing
     this->LidarSlam.AddLandmarkManager(id, absolutePose, absolutePoseCovariance);
-    PRINT_VERBOSE(3, "Tag #" << id << " initialized to \n" << absolutePose.transpose());
+    RCLCPP_INFO_STREAM(this->get_logger(), "Tag #" << id << " initialized to \n" << absolutePose.transpose());
     ++ntags;
     ++lineIdx;
   }
@@ -502,8 +506,174 @@ void LidarSlamNode::SetPoseCallback(const geometry_msgs::msg::PoseWithCovariance
     // Compute pose in odometry frame and set SLAM pose
     Eigen::Isometry3d odomToBase = msgFrameToOdom.inverse() * Utils::PoseMsgToIsometry(msg.pose.pose);
     this->LidarSlam.SetWorldTransformFromGuess(odomToBase);
-    PRINT_WARNING("SLAM pose set to :\n" << odomToBase.matrix());
+    RCLCPP_WARN_STREAM(this->get_logger(), "SLAM pose set to :\n" << odomToBase.matrix());
     // TODO: properly deal with covariance: rotate it, pass it to SLAM, notify trajectory jump?
+  }
+}
+
+//------------------------------------------------------------------------------
+void LidarSlamNode::SlamCommandCallback(const lidar_slam_interfaces::msg::SlamCommand& msg)
+{
+  // Parse command
+  switch(msg.command)
+  {
+    // Set SLAM pose from last received GPS pose
+    // NOTE : This function should only be called after PGO or SLAM/GPS calib have been triggered.
+    case lidar_slam_interfaces::msg::SlamCommand::GPS_SLAM_CALIBRATION:
+    {
+      if (!this->UseGps || !this->LidarSlam.GpsHasData())
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "Cannot set SLAM pose from GPS"
+                         "Please check that 'external_sensors.gps/use_gps' private parameter is set to 'true'."
+                         "and that GPS data have been received.");
+        return;
+      }
+      this->LidarSlam.CalibrateWithGps();
+      RCLCPP_WARN_STREAM(this->get_logger(), "SLAM pose set using GPS pose to :\n" << this->LidarSlam.GetLastState().Isometry.matrix());
+      // Broadcast new calibration offset (GPS reference frame (i.e. generally UTM) to odom)
+      this->BroadcastGpsOffset();
+      break;
+    }
+
+    // Set SLAM pose from last received GPS pose
+    // NOTE : This function should only be called after PGO or SLAM/GPS calib have been triggered.
+    case lidar_slam_interfaces::msg::SlamCommand::SET_SLAM_POSE_FROM_GPS:
+    {
+      if (!this->UseGps || !this->LidarSlam.GpsHasData())
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "Cannot set SLAM pose from GPS"
+                          "Please check that 'external_sensors.gps/use_gps' private parameter is set to 'true'."
+                          "and that GPS data have been received.");
+        return;
+      }
+
+      LidarSlam::ExternalSensors::GpsMeasurement& meas = this->LastGpsMeas;
+      // Get position of Lidar in UTM
+      Eigen::Vector3d position = this->LidarSlam.GetGpsCalibration().inverse() * meas.Position;
+      // Get position of Lidar in odometry frame
+      position = this->LidarSlam.GetGpsOffset() * position;
+      // Orientation is supposed to be close to odometry frame
+      // Warning : this hypothesis can be totally wrong and lead to bad registrations
+      Eigen::Isometry3d pose = this->LidarSlam.GetLogStates().front().Isometry;
+      pose.translation() = position;
+      this->LidarSlam.SetWorldTransformFromGuess(pose);
+      RCLCPP_WARN_STREAM(this->get_logger(), "SLAM pose set from GPS pose to :\n" << pose.matrix());
+      break;
+    }
+
+    // Disable SLAM maps update
+    case lidar_slam_interfaces::msg::SlamCommand::DISABLE_SLAM_MAP_UPDATE:
+      this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::NONE);
+      RCLCPP_WARN(this->get_logger(), "Disabling SLAM maps update.");
+      break;
+
+    // Enable the agregation of keypoints to a fixed initial map
+    case lidar_slam_interfaces::msg::SlamCommand::ENABLE_SLAM_MAP_EXPANSION:
+      this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::ADD_KPTS_TO_FIXED_MAP);
+      RCLCPP_WARN(this->get_logger(), "Enabling SLAM maps expansion with new keypoints.");
+      break;
+
+    // Enable the update of the map with new keypoints
+    case lidar_slam_interfaces::msg::SlamCommand::ENABLE_SLAM_MAP_UPDATE:
+      this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::UPDATE);
+      RCLCPP_WARN(this->get_logger(), "Enabling SLAM maps update with new keypoints.");
+      break;
+
+    // Reset the SLAM internal state.
+    case lidar_slam_interfaces::msg::SlamCommand::RESET_SLAM:
+      RCLCPP_WARN(this->get_logger(), "Resetting the SLAM internal state.");
+      this->LidarSlam.Reset(true);
+      this->SetSlamInitialState();
+      break;
+
+    // Save SLAM keypoints maps to PCD files
+    case lidar_slam_interfaces::msg::SlamCommand::SAVE_KEYPOINTS_MAPS:
+    {
+      RCLCPP_INFO_STREAM(this->get_logger(), "Saving keypoints maps to PCD.");
+      if (this->LidarSlam.GetMapUpdate() == LidarSlam::MappingMode::NONE)
+        RCLCPP_WARN(this->get_logger(), "The initially loaded maps were not modified but are saved anyway.");
+      int pcdFormatInt;
+      this->get_parameter_or<int>("maps/export_pcd_format", pcdFormatInt, static_cast<int>(LidarSlam::PCDFormat::BINARY_COMPRESSED));
+      LidarSlam::PCDFormat pcdFormat = static_cast<LidarSlam::PCDFormat>(pcdFormatInt);
+      if (pcdFormat != LidarSlam::PCDFormat::ASCII &&
+          pcdFormat != LidarSlam::PCDFormat::BINARY &&
+          pcdFormat != LidarSlam::PCDFormat::BINARY_COMPRESSED)
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "Incorrect PCD format value (" << pcdFormat << "). Setting it to 'BINARY_COMPRESSED'.");
+        pcdFormat = LidarSlam::PCDFormat::BINARY_COMPRESSED;
+      }
+      this->LidarSlam.SaveMapsToPCD(msg.string_arg, pcdFormat, false);
+      break;
+    }
+
+    // Save SLAM keypoints submaps to PCD files
+    case lidar_slam_interfaces::msg::SlamCommand::SAVE_FILTERED_KEYPOINTS_MAPS:
+    {
+      RCLCPP_INFO_STREAM(this->get_logger(), "Saving keypoints submaps to PCD.");
+      int pcdFormatInt;
+      this->get_parameter_or<int>("maps/export_pcd_format", pcdFormatInt, static_cast<int>(LidarSlam::PCDFormat::BINARY_COMPRESSED));
+      LidarSlam::PCDFormat pcdFormat = static_cast<LidarSlam::PCDFormat>(pcdFormatInt);
+      if (pcdFormat != LidarSlam::PCDFormat::ASCII &&
+          pcdFormat != LidarSlam::PCDFormat::BINARY &&
+          pcdFormat != LidarSlam::PCDFormat::BINARY_COMPRESSED)
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "Incorrect PCD format value (" << pcdFormat << "). Setting it to 'BINARY_COMPRESSED'.");
+        pcdFormat = LidarSlam::PCDFormat::BINARY_COMPRESSED;
+      }
+      this->LidarSlam.SaveMapsToPCD(msg.string_arg, pcdFormat, true);
+      break;
+    }
+
+    // Load SLAM keypoints maps from PCD files
+    case lidar_slam_interfaces::msg::SlamCommand::LOAD_KEYPOINTS_MAPS:
+      RCLCPP_INFO_STREAM(this->get_logger(), "Loading keypoints maps from PCD.");
+      this->LidarSlam.LoadMapsFromPCD(msg.string_arg);
+      break;
+
+    case lidar_slam_interfaces::msg::SlamCommand::OPTIMIZE_GRAPH:
+      if ((!this->UseGps && !this->UseTags) || this->LidarSlam.GetSensorMaxMeasures() < 2 || this->LidarSlam.GetLoggingTimeout() < 0.2)
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "Cannot optimize pose graph as sensor info logging has not been enabled. "
+                         "Please make sure that 'external_sensors.landmark_detector.use_tags' OR 'external_sensors.gps/use_gps' private parameter is set to 'true', "
+                         "and that 'external_sensors.landmark_detector.weight' and 'slam/logging/timeout' private parameters are set to convenient values.");
+        break;
+      }
+
+      if (this->LidarSlam.LmHasData())
+      {
+        if (!msg.string_arg.empty())
+        {
+          RCLCPP_INFO_STREAM(this->get_logger(), "Loading the absolute landmark poses");
+          this->LoadLandmarks(msg.string_arg);
+        }
+        else if (this->LidarSlam.GetLandmarkConstraintLocal())
+          RCLCPP_WARN(this->get_logger(), "No absolute landmark poses are supplied : the last estimated poses will be used");
+      }
+
+      RCLCPP_INFO_STREAM(this->get_logger(), "Optimizing the pose graph");
+      this->LidarSlam.OptimizeGraph();
+      // Broadcast new calibration offset (GPS to base)
+      // if GPS used
+      if (this->LidarSlam.GpsHasData())
+        this->BroadcastGpsOffset();
+      // Publish new trajectory
+      if (this->Publish[PGO_PATH])
+      {
+        nav_msgs::msg::Path optimSlamTraj;
+        optimSlamTraj.header.frame_id = this->OdometryFrameId;
+        std::list<LidarSlam::LidarState> optimizedSlamStates = this->LidarSlam.GetLogStates();
+        optimSlamTraj.header.stamp = rclcpp::Time(optimizedSlamStates.back().Time);
+        for (const LidarSlam::LidarState& s: optimizedSlamStates)
+          optimSlamTraj.poses.emplace_back(Utils::IsometryToPoseStampedMsg(s.Isometry, s.Time, this->OdometryFrameId));
+        //this->Publishers[PGO_PATH].publish(optimSlamTraj);
+        publishWithCast(this->Publishers[PGO_PATH], nav_msgs::msg::Path, optimSlamTraj);
+      }
+      break;
+
+    // Unknown command
+    default:
+      RCLCPP_ERROR_STREAM(this->get_logger(), "Unknown SLAM command : " << (unsigned int) msg.command);
+      break;
   }
 }
 
@@ -534,26 +704,122 @@ void LidarSlamNode::PublishOutput()
 
   LidarSlam::LidarState& currentState = this->LidarSlam.GetLastState();
   double currentTime = currentState.Time;
-    geometry_msgs::msg::TransformStamped tfMsg;
-    tfMsg.header.stamp = rclcpp::Time(currentTime);
-    tfMsg.header.frame_id = this->OdometryFrameId;
-    tfMsg.child_frame_id = this->TrackingFrameId;
-    tfMsg.transform = Utils::IsometryToTfMsg(currentState.Isometry);
-    this->TfBroadcaster->sendTransform(tfMsg);
+  // Publish SLAM pose
+  
+  if (this->Publish[POSE_ODOM] || this->Publish[POSE_TF])
+  {
+    // Publish as odometry msg
+    if (this->Publish[POSE_ODOM])
+    {
+      nav_msgs::msg::Odometry odomMsg;
+      odomMsg.header.stamp = rclcpp::Time(currentTime);
+      odomMsg.header.frame_id = this->OdometryFrameId;
+      odomMsg.child_frame_id = this->TrackingFrameId;
+      odomMsg.pose.pose = Utils::IsometryToPoseMsg(currentState.Isometry);
+      // Note : in eigen 3.4 iterators are available on matrices directly
+      //        >> std::copy(currentState.Covariance.begin(), currentState.Covariance.end(), confidenceMsg.covariance.begin());
+      // For now the only way is to copy or iterate on indices :
+      for (unsigned int i = 0; i < currentState.Covariance.size(); ++i)
+        odomMsg.pose.covariance[i] = currentState.Covariance(i);
+      publishWithCast(this->Publishers[POSE_ODOM], nav_msgs::msg::Odometry, odomMsg);
+    }
+
+    // Publish as TF from OdometryFrameId to TrackingFrameId
+    if (this->Publish[POSE_TF])
+    {
+      geometry_msgs::msg::TransformStamped tfMsg;
+      tfMsg.header.stamp = rclcpp::Time(currentTime);
+      tfMsg.header.frame_id = this->OdometryFrameId;
+      tfMsg.child_frame_id = this->TrackingFrameId;
+      tfMsg.transform = Utils::IsometryToTfMsg(currentState.Isometry);
+      this->TfBroadcaster->sendTransform(tfMsg);
+    }
+  }
+
+  // Publish latency compensated SLAM pose
+  if (this->Publish[POSE_PREDICTION_ODOM] || this->Publish[POSE_PREDICTION_TF])
+  {
+    double predTime = currentState.Time + this->LidarSlam.GetLatency();
+    Eigen::Isometry3d predTransfo = this->LidarSlam.GetLatencyCompensatedWorldTransform();
+    // Publish as odometry msg
+    if (this->Publish[POSE_PREDICTION_ODOM])
+    {
+      nav_msgs::msg::Odometry odomMsg;
+      odomMsg.header.stamp = rclcpp::Time(predTime);
+      odomMsg.header.frame_id = this->OdometryFrameId;
+      odomMsg.child_frame_id = this->TrackingFrameId + "_prediction";
+      odomMsg.pose.pose = Utils::IsometryToPoseMsg(predTransfo);
+      // Note : in eigen 3.4 iterators are available on matrices directly
+      //        >> std::copy(currentState.Covariance.begin(), currentState.Covariance.end(), confidenceMsg.covariance.begin());
+      // for now the only way is to copy or iterate on indices :
+      for (unsigned int i = 0; i < currentState.Covariance.size(); ++i)
+        odomMsg.pose.covariance[i] = currentState.Covariance(i);
+      publishWithCast(this->Publishers[POSE_PREDICTION_ODOM], nav_msgs::msg::Odometry, odomMsg);
+    }
+
+    // Publish as TF from OdometryFrameId to <TrackingFrameId>_prediction
+    if (this->Publish[POSE_PREDICTION_TF])
+    {
+      geometry_msgs::msg::TransformStamped tfMsg;
+      tfMsg.header.stamp = rclcpp::Time(predTime);
+      tfMsg.header.frame_id = this->OdometryFrameId;
+      tfMsg.child_frame_id = this->TrackingFrameId + "_prediction";
+      tfMsg.transform = Utils::IsometryToTfMsg(predTransfo);
+      this->TfBroadcaster->sendTransform(tfMsg);
+    }
+  }
 
 
+//*HERE
   // Publish a pointcloud only if required and if someone is listening to it to spare bandwidth.
   // Change to publish pcl2 msgs
   // url : https://github.com/mikeferguson/ros2_cookbook/blob/main/rclcpp/pcl.md
   #define publishPointCloud(publisher, pc)                                                  \
-  if (this->Publishers[publisher]->get_subscription_count())    \
+  if (this->Publish[publisher] && this->Publishers[publisher]->get_subscription_count())    \
     {                                                                                       \
       Pcl2_msg pcl_msg;                                                \
       pcl::toROSMsg(*pc, pcl_msg);                                                          \
       publishWithCast(this->Publishers[publisher], Pcl2_msg, pcl_msg)  \
     }
 
+  // Keypoints maps
+  publishPointCloud(EDGES_MAP,  this->LidarSlam.GetMap(LidarSlam::EDGE));
+  publishPointCloud(INTENSITY_EDGES_MAP,  this->LidarSlam.GetMap(LidarSlam::INTENSITY_EDGE));
   publishPointCloud(PLANES_MAP, this->LidarSlam.GetMap(LidarSlam::PLANE));
+  publishPointCloud(BLOBS_MAP,  this->LidarSlam.GetMap(LidarSlam::BLOB));
+
+  // Keypoints submaps
+  publishPointCloud(EDGES_SUBMAP,  this->LidarSlam.GetTargetSubMap(LidarSlam::EDGE));
+  publishPointCloud(INTENSITY_EDGES_SUBMAP,  this->LidarSlam.GetTargetSubMap(LidarSlam::INTENSITY_EDGE));
+  publishPointCloud(PLANES_SUBMAP, this->LidarSlam.GetTargetSubMap(LidarSlam::PLANE));
+  publishPointCloud(BLOBS_SUBMAP,  this->LidarSlam.GetTargetSubMap(LidarSlam::BLOB));
+
+  // Current keypoints
+  publishPointCloud(EDGE_KEYPOINTS,  this->LidarSlam.GetKeypoints(LidarSlam::EDGE));
+  publishPointCloud(INTENSITY_EDGE_KEYPOINTS,  this->LidarSlam.GetKeypoints(LidarSlam::INTENSITY_EDGE));
+  publishPointCloud(PLANE_KEYPOINTS, this->LidarSlam.GetKeypoints(LidarSlam::PLANE));
+  publishPointCloud(BLOB_KEYPOINTS,  this->LidarSlam.GetKeypoints(LidarSlam::BLOB));
+
+  // Registered aggregated (and optionally undistorted) input scans points
+  publishPointCloud(SLAM_REGISTERED_POINTS, this->LidarSlam.GetRegisteredFrame());
+
+  // Overlap estimation
+  if (this->Publish[CONFIDENCE])
+  {
+    // Get SLAM pose
+    lidar_slam_interfaces::msg::Confidence confidenceMsg;
+    confidenceMsg.header.stamp = rclcpp::Time(currentTime);
+    confidenceMsg.header.frame_id = this->OdometryFrameId;
+    confidenceMsg.overlap = this->LidarSlam.GetOverlapEstimation();
+    confidenceMsg.computation_time = this->LidarSlam.GetLatency();
+    // Note : in eigen 3.4, iterators are available on matrices directly
+    //        >> std::copy(currentState.Covariance.begin(), currentState.Covariance.end(), confidenceMsg.covariance.begin());
+    for (unsigned int i = 0; i < currentState.Covariance.size(); ++i)
+      confidenceMsg.covariance[i] = currentState.Covariance(i);
+    confidenceMsg.nb_matches = this->LidarSlam.GetTotalMatchedKeypoints();
+    confidenceMsg.comply_motion_limits = this->LidarSlam.GetComplyMotionLimits();
+    publishWithCast(this->Publishers[CONFIDENCE], lidar_slam_interfaces::msg::Confidence, confidenceMsg);
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -576,7 +842,7 @@ void LidarSlamNode::SetSlamParameters()
         egoMotion != LidarSlam::EgoMotionMode::REGISTRATION &&
         egoMotion != LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION_AND_REGISTRATION)
     {
-      PRINT_ERROR("Invalid ego-motion mode (" << egoMotionMode << "). Setting it to 'MOTION_EXTRAPOLATION'.");
+      RCLCPP_ERROR_STREAM(this->get_logger(), "Invalid ego-motion mode (" << egoMotionMode << "). Setting it to 'MOTION_EXTRAPOLATION'.");
       egoMotion = LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION;
     }
     this->LidarSlam.SetEgoMotion(egoMotion);
@@ -590,7 +856,7 @@ void LidarSlamNode::SetSlamParameters()
         undistortion != LidarSlam::UndistortionMode::ONCE &&
         undistortion != LidarSlam::UndistortionMode::REFINED)
     {
-      PRINT_ERROR("Invalid undistortion mode (" << undistortion << "). Setting it to 'REFINED'.");
+      RCLCPP_ERROR_STREAM(this->get_logger(), "Invalid undistortion mode (" << undistortion << "). Setting it to 'REFINED'.");
       undistortion = LidarSlam::UndistortionMode::REFINED;
     }
     LidarSlam.SetUndistortion(undistortion);
@@ -606,7 +872,7 @@ void LidarSlamNode::SetSlamParameters()
         storage != LidarSlam::PointCloudStorageType::PCD_BINARY &&
         storage != LidarSlam::PointCloudStorageType::PCD_BINARY_COMPRESSED)
     {
-      PRINT_ERROR("Incorrect pointcloud logging type value (" << storage << "). Setting it to 'PCL'.");
+      RCLCPP_ERROR_STREAM(this->get_logger(), "Incorrect pointcloud logging type value (" << storage << "). Setting it to 'PCL'.");
       storage = LidarSlam::PointCloudStorageType::PCL_CLOUD;
     }
     LidarSlam.SetLoggingStorage(storage);
@@ -643,9 +909,9 @@ void LidarSlamNode::SetSlamParameters()
       if (this->get_parameter<bool>(prefix + "enable."+ name, enabled)) \
         this->LidarSlam.EnableKeypointType(kType, enabled); \
       if (enabled) \
-        {PRINT_VERBOSE(3, "Keypoint of type " + name + " enabled");} \
+        {RCLCPP_INFO_STREAM(this->get_logger(), "Keypoint of type " + name + " enabled");} \
       else \
-        PRINT_VERBOSE(3, "Keypoint of type " + name + " disabled"); \
+        RCLCPP_INFO_STREAM(this->get_logger(), "Keypoint of type " + name + " disabled"); \
     }
     EnableKeypoint(LidarSlam::Keypoint::EDGE);
     EnableKeypoint(LidarSlam::Keypoint::INTENSITY_EDGE);
@@ -752,7 +1018,7 @@ void LidarSlamNode::SetSlamParameters()
         mapUpdate != LidarSlam::MappingMode::ADD_KPTS_TO_FIXED_MAP &&
         mapUpdate != LidarSlam::MappingMode::UPDATE)
     {
-      PRINT_ERROR("Invalid map update mode (" << mapUpdateMode << "). Setting it to 'UPDATE'.");
+      RCLCPP_ERROR_STREAM(this->get_logger(), "Invalid map update mode (" << mapUpdateMode << "). Setting it to 'UPDATE'.");
       mapUpdate = LidarSlam::MappingMode::UPDATE;
     }
     this->LidarSlam.SetMapUpdate(mapUpdate);
@@ -785,7 +1051,7 @@ void LidarSlamNode::SetSlamParameters()
           sampling != LidarSlam::SamplingMode::CENTER_POINT &&
           sampling != LidarSlam::SamplingMode::CENTROID)
       {
-        PRINT_ERROR("Invalid sampling mode (" << samplingMode << ") for "
+        RCLCPP_ERROR_STREAM(this->get_logger(), "Invalid sampling mode (" << samplingMode << ") for "
                                                    << LidarSlam::Utils::Plural(LidarSlam::KeypointTypeNames.at(k))
                                                    << ". Setting it to 'MAX_INTENSITY'.");
         sampling = LidarSlam::SamplingMode::MAX_INTENSITY;
@@ -803,7 +1069,7 @@ void LidarSlamNode::SetSlamInitialState()
   this->get_parameter<std::string>("maps.initial_maps", mapsPathPrefix);
   if (!mapsPathPrefix.empty())
   {
-    PRINT_VERBOSE(3, "Loading initial keypoints maps from PCD.");
+    RCLCPP_INFO_STREAM(this->get_logger(), "Loading initial keypoints maps from PCD.");
     this->LidarSlam.LoadMapsFromPCD(mapsPathPrefix);
   }
 
@@ -812,7 +1078,7 @@ void LidarSlamNode::SetSlamInitialState()
   this->get_parameter("external_sensors.landmark_detector.landmarks_file_path", lmpath);
   if (!lmpath.empty())
   {
-    PRINT_VERBOSE(3, "Loading initial landmarks info from CSV.");
+    RCLCPP_INFO_STREAM(this->get_logger(), "Loading initial landmarks info from CSV.");
     this->LoadLandmarks(lmpath);
     this->LidarSlam.SetLandmarkConstraintLocal(false);
   }
@@ -825,7 +1091,7 @@ void LidarSlamNode::SetSlamInitialState()
   {
     Eigen::Isometry3d poseTransform = LidarSlam::Utils::XYZRPYtoIsometry(initialPose.data());
     this->LidarSlam.SetWorldTransformFromGuess(poseTransform);
-    PRINT_VERBOSE(3, "Setting initial SLAM pose to:\n" << poseTransform.matrix());
+    RCLCPP_INFO_STREAM(this->get_logger(), "Setting initial SLAM pose to:\n" << poseTransform.matrix());
   }
 }
 

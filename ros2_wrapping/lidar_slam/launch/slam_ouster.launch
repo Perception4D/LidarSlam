@@ -27,6 +27,7 @@
     </node>
   </group>
 
+<!-- TODO pass Ouster driver to ROS2 -->
   <!-- Ouster driver-->
   <group if="$(var os_driver)">
     <!-- Replay -->
