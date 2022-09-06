@@ -54,7 +54,7 @@ public:
    * @brief     Constructor.
    * LidarSlamNode is directly the node used to init publisher/subscribers
    */
-  LidarSlamNode(std::string name_node);
+  LidarSlamNode(std::string name_node = "lidar_slam", const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 
   //----------------------------------------------------------------------------
   /*!
@@ -145,6 +145,12 @@ protected:
    *  - undistorted input points registered in odometry frame
    */
   void PublishOutput();
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Get and fill Slam parameters from ROS parameters server.
+   */
+  void SetSlamParameters();
 
   //----------------------------------------------------------------------------
   /*!

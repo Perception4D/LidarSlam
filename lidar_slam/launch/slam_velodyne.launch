@@ -20,10 +20,6 @@
     <param name="use_sim_time" value="$(var use_sim_time)"/>
   </node>
 
-  <!-- TODO look for use_sim_tim -->
-  <!-- Sim Time, used when replaying rosbag files (with mandatory option 'clock') -->
-  <!-- /!\ if replaying pcap files use_sim_time must be false-->
-
   <!-- Rviz -->
   <group if="$(var rviz)">
     <node pkg="rviz2" exec="rviz2" name="rviz2"  args="-d $(find-pkg-share lidar_slam)/params/slam.rviz">
@@ -35,10 +31,10 @@
   <group if="$(var vlp16_driver)">
     <!-- start nodelet manager and driver nodelets -->
     <group>
-      <include file="$(find-pkg-share velodyne_driver)/launch/nodelet_manager.launch"/>
+      <!-- <include file="$(find-pkg-share velodyne_driver)/launch/nodelet_manager.launch"/> -->
       <let name="device_ip"              value="$(var device_ip)"/>
       <let name="frame_id"               value="velodyne"/>
-      <let name="manager"                value="velodyne_nodelet_manager" />
+      <!-- <let name="manager"                value="velodyne_nodelet_manager" /> -->
       <let name="model"                  value="VLP16"/>
       <let name="pcap"                   value="$(var pcap)"/>
       <let name="port"                   value="$(var port)"/>
@@ -53,10 +49,8 @@
 
     <!-- start transform nodelet -->
     <group>
-      <include file="$(find-pkg-share velodyne_pointcloud)/launch/transform_nodelet.launch"/>
-      <let name="model"          value="VLP16"/>
       <let name="calibration"    value="$(find-pkg-share velodyne_pointcloud)/params/VLP16db.yaml"/>
-      <let name="manager"        value="velodyne_nodelet_manager" />
+      <!-- <let name="manager"        value="velodyne_nodelet_manager" /> -->
       <let name="fixed_frame"    value="" />
       <let name="target_frame"   value="" />
       <let name="max_range"      value="130.0"/>
@@ -72,32 +66,29 @@
     <param name="timestamp_first_packet" value="$(var timestamp_first_packet)"/>
   </node>
 
-  <!-- TODO parameters files -->
   <!-- LiDAR SLAM : compute TF slam_init -> velodyne -->
-      <!-- <param from="$(find-pkg-share lidar_slam)/params/slam_config_outdoor.yaml"/> -->
-      <!-- <param from="$(find-pkg-share lidar_slam)/params/slam_config_indoor.yaml"/> -->
   <group if="$(var outdoor)">
     <node name="lidar_slam" pkg="lidar_slam" exec="lidar_slam_node" output="screen">
+      <param from="$(find-pkg-share lidar_slam)/params/slam_config_outdoor.yaml"/>
       <param name="use_sim_time" value="$(var use_sim_time)"/>
       <param name="gps/use_gps" value="$(var gps)"/>
       <remap from="tag_detections" to="$(var tags_topic)"/>
     </node>
   </group>
 
-  <!-- <group unless="$(var outdoor)">
+
+  <group unless="$(var outdoor)">
     <node name="lidar_slam" pkg="lidar_slam" exec="lidar_slam_node" output="screen">
+      <param from="$(find-pkg-share lidar_slam)/params/slam_config_indoor.yaml"/>
       <param name="use_sim_time" value="$(var use_sim_time)"/>
       <param name="gps/use_gps" value="$(var gps)"/>
       <remap from="tag_detections" to="$(var tags_topic)"/>
     </node>
-  </group> -->
+  </group>
 
   <!-- Launch GPS/UTM conversions nodes -->
   <group if="$(var gps)">
     <include file="$(find-pkg-share lidar_slam)/launch/gps_conversions.launch"/>
   </group>
-
- 
-  <!-- <node pkg="tf2_ros" exec="static_transform_publisher" name="tf_base_to_gps"   args="0  0  0  0  0  0 base_link gps"/> -->
 
 </launch>
