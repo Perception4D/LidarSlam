@@ -16,7 +16,6 @@
 
   <depend>rclcpp</depend>
   <depend>tf2_ros</depend>
-  <depend>pcl_ros</depend>
   <depend>pcl_conversions</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
@@ -26,7 +25,7 @@
   <depend>apriltag_ros</depend>
 
   <exec_depend>message_runtime</exec_depend>
-  <exec_depend>rosidl_default_runtime</exec_depend>.
+  <!-- <exec_depend>rosidl_default_runtime</exec_depend>. -->
   <exec_depend>lidar_conversions</exec_depend>
   <exec_depend>gps_conversions</exec_depend>
   <exec_depend>rviz2</exec_depend>

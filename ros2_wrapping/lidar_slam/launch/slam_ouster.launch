@@ -19,6 +19,7 @@
   <!-- /!\ rpm and timestamp_first_packet are also used to generate approximate point-wise timestamps as 'time' field is not usable. -->
   <arg name="rpm" default="600." description="Ouster sensor spinning speed."/>
   <arg name="timestamp_first_packet" default="false" description="If Ouster timestamping is based on the first or last packet of each scan."/>
+  <arg name="aggregate" default="false" description="run aggregation node"/>
 
   <!-- Rviz-->
   <group if="$(var rviz)">
@@ -91,6 +92,13 @@
   <!-- Launch GPS/UTM conversions nodes -->
   <group if="$(var gps)">
     <include file="$(find-pkg-share lidar_slam)/launch/gps_conversions.launch"/>
+  </group>
+
+  <group if="$(var aggregate)">
+	  <!-- Aggregate points -->
+	  <node name="aggregation" pkg="lidar_slam" exec="aggregation_node" output="screen">
+		<param from="$(find-pkg-share lidar_slam)/params/aggregation_config.yaml"/>
+	  </node>
   </group>
 
   <!-- Moving base coordinates systems description            tf_FROM_to_TO           X  Y  Z  rZ rY rX  FROM     TO -->
