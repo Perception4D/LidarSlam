@@ -15,11 +15,10 @@ int main(int argc, char **argv)
 
   // Create lidar slam node, which subscribes to pointclouds coming from conversion node
   // and to external sensor messages in parallel.
-  std::shared_ptr<LidarSlamNode> slam = std::make_shared<LidarSlamNode>("lidar_slam", options);
+  std::shared_ptr<LidarSlamNode> slamNode = std::make_shared<LidarSlamNode>("lidar_slam", options);
 
   // Handle callbacks until shut down
-  rclcpp::spin(slam);
-  rclcpp::shutdown();
+  rclcpp::spin(slamNode);
 
   return 0;
 }

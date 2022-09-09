@@ -29,7 +29,7 @@
   <exec_depend>rosidl_default_runtime</exec_depend>.
   <exec_depend>lidar_conversions</exec_depend>
   <exec_depend>gps_conversions</exec_depend>
-  <exec_depend>rviz</exec_depend>
+  <exec_depend>rviz2</exec_depend>
   <!-- to exec package with a launchfile -->
   <exec_depend>ros2launch</exec_depend>
 
