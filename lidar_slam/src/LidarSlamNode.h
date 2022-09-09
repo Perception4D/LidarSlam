@@ -52,14 +52,16 @@ public:
   //----------------------------------------------------------------------------
   /*!
    * @brief     Constructor.
+     @param[in] name_node Name of the node
+     @param[in] options Options of the node
    * LidarSlamNode is directly the node used to init publisher/subscribers
    */
-  LidarSlamNode(std::string name_node = "lidar_slam", const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
+  LidarSlamNode(std::string name_node = "lidar_slam",
+                const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 
   //----------------------------------------------------------------------------
   /*!
    * @brief     Destructor.
-   *
    * Used to shut down external spinners
    */
   ~LidarSlamNode();

@@ -20,9 +20,14 @@ set(MSG_FILES
   "msg/SlamCommand.msg"
 )
 
-# generate message
+set(SRV_FILES
+  "srv/SavePc.srv"
+)
+
+# generate slam interfaces
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${MSG_FILES}
+  ${SRV_FILES}
   DEPENDENCIES std_msgs
 )
 
