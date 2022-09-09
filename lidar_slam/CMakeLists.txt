@@ -14,6 +14,7 @@ find_package(rclcpp REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(pcl_ros REQUIRED)
 find_package(pcl_conversions REQUIRED)
+#for custom messages
 find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
