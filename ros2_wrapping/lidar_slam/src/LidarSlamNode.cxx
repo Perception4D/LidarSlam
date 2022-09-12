@@ -141,8 +141,8 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
   // Init ROS subscribers
 
   // LiDAR inputs
-  //check if the parameter type is a string_array
-  //if the parameter doesn't exist or is a string, push back a value
+  // Check if the parameter type is a string_array
+  // If the parameter doesn't exist or is a string, push back a value
   std::vector<std::string> lidarTopics;
   if (this->has_parameter("intput") && this->get_parameter_types({"input"})[0] == rclcpp::ParameterType::PARAMETER_STRING_ARRAY)
     this->get_parameter<std::vector<std::string>>("input", lidarTopics);
@@ -196,6 +196,7 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
 {
   CloudS::Ptr cloudS_ptr = std::make_shared<CloudS>();
 
+  // Convert message to cloudS pointer
   pcl::fromROSMsg(pcl_msg, *cloudS_ptr);
 
   if(cloudS_ptr->empty())
@@ -462,8 +463,8 @@ void LidarSlamNode::LoadLandmarks(const std::string& path)
     }
     if (numericalIssue)
     {
-      // if this is the first line, it might be a header line,
-      // else, print a warning
+      // If this is the first line, it might be a header line,
+      // Else, print a warning
       if (lineIdx > 1)
         RCLCPP_WARN_STREAM(this->get_logger(), "landmark on line " + std::to_string(lineIdx) + " contains a not numerical value -> Skip");
       ++lineIdx;
@@ -769,10 +770,9 @@ void LidarSlamNode::PublishOutput()
   }
 
 
-//*HERE
   // Publish a pointcloud only if required and if someone is listening to it to spare bandwidth.
   // Change to publish pcl2 msgs
-  // url : https://github.com/mikeferguson/ros2_cookbook/blob/main/rclcpp/pcl.md
+  // Url : https://github.com/mikeferguson/ros2_cookbook/blob/main/rclcpp/pcl.md
   #define publishPointCloud(publisher, pc)                                                  \
   if (this->Publish[publisher] && this->Publishers[publisher]->get_subscription_count())    \
     {                                                                                       \

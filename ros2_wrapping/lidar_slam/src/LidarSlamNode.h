@@ -51,10 +51,9 @@ public:
 
   //----------------------------------------------------------------------------
   /*!
-   * @brief     Constructor.
-     @param[in] name_node Name of the node
-     @param[in] options Options of the node
-   * LidarSlamNode is directly the node used to init publisher/subscribers
+   * @brief     Constructor. LidarSlamNode is directly the node
+   * @param[in] name_node Name of the node, used to init publisher/subscribers and log messages
+   * @param[in] options Options of the node, default no options
    */
   LidarSlamNode(std::string name_node = "lidar_slam",
                 const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
@@ -69,7 +68,7 @@ public:
   //----------------------------------------------------------------------------
   /*!
    * @brief     New main LiDAR frame callback, running SLAM and publishing TF.
-   * @param[in] cloud New frame, published by conversion node.
+   * @param[in] cloud New frame message, published by conversion node.
    *
    * Input pointcloud must have following fields :
    *  - x, y, z (float): point coordinates
@@ -87,7 +86,7 @@ public:
   //----------------------------------------------------------------------------
   /*!
    * @brief     New secondary lidar frame callback, buffered to be latered processed by SLAM.
-   * @param[in] cloud New frame, published by conversion node.
+   * @param[in] cloud New frame message, published by conversion node.
    *
    * Input pointcloud must have following fields :
    *  - x, y, z (float): point coordinates
@@ -199,7 +198,7 @@ protected:
   LidarSlam::Slam LidarSlam;
   std::vector<CloudS::Ptr> Frames;
 
-  // ROS node handles, subscribers and publishers
+  // ROS subscribers and publishers
   std::vector<rclcpp::Subscription<Pcl2_msg>::SharedPtr> CloudSubs;
   rclcpp::Subscription<lidar_slam_interfaces::msg::SlamCommand>::SharedPtr SlamCommandSub;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr SetPoseSub;

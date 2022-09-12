@@ -86,7 +86,7 @@ void AggregationNode::Callback(const Pcl2_msg& registeredCloudMsg)
   Pcl2_msg aggregatedCloudMsg;
   pcl::toROSMsg(*aggregatedCloud, aggregatedCloudMsg);
 
-  // Publish them
+  // Publish aggregatedCloud
   this->PointsPublisher->publish(aggregatedCloudMsg);
 }
 

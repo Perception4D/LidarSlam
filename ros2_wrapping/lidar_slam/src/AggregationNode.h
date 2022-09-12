@@ -50,7 +50,7 @@ public:
   //----------------------------------------------------------------------------
   /*!
    * @brief     New main frame callback, aggregating frames
-   * @param[in] cloud New registered frame published by the LidarSlamNode
+   * @param[in] registeredCloudMsg New registered frame message published by the LidarSlamNode
    *
    * Input pointcloud must have following fields :
    *  - x, y, z (float): point coordinates
@@ -71,6 +71,7 @@ public:
 
 private:
 
+  // ROS subscribers, publishers and services
   rclcpp::Subscription<Pcl2_msg>::SharedPtr FrameSubscriber;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr PointsPublisher;
   rclcpp::Service<lidar_slam_interfaces::srv::SavePc>::SharedPtr SaveService; 
