@@ -102,7 +102,7 @@ Eigen::Isometry3d PoseMsgToIsometry(const geometry_msgs::msg::Pose& poseMsg)
 
 //------------------------------------------------------------------------------
 //! Safely get a transform between 2 frames from TF2 server
-//https://docs.ros2.org/galactic/api/tf2_ros/classtf2__ros_1_1Buffer.html
+// new API: https://docs.ros2.org/latest/api/tf2_ros/classtf2__ros_1_1Buffer.html
 // using tf2::TimePoint = typedef std::chrono::time_point<std::chrono::system_clock, Duration>
 // using tf2::Duration = typedef std::chrono::nanoseconds
 // ? Not sure lookupTransform works with a duration of 0

@@ -8,6 +8,10 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
+##################
+## Dependencies ##
+##################
+
 find_package(ament_cmake REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -22,6 +26,7 @@ set(MSG_FILES
   "msg/AprilTagDetectionArray.msg"
 )
 
+# Generate messages
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${MSG_FILES}
   DEPENDENCIES
