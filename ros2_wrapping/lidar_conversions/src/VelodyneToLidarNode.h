@@ -19,7 +19,6 @@
 #pragma once
 
 #include <rclcpp/rclcpp.hpp>
-// #include <pcl_ros/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <velodyne_point.h>
 #include <LidarSlam/LidarPoint.h>
@@ -46,8 +45,11 @@ public:
   //----------------------------------------------------------------------------
   /*!
    * @brief Constructor.
+   * @param[in] name_node Name of the node used to init publisher/subscribers and log messages
+   * @param[in] options Options of the node, default no options
    */
-  VelodyneToLidarNode(std::string node_name = "velodyne_conversion");
+  VelodyneToLidarNode(std::string node_name = "velodyne_conversion",
+                      const rclcpp::NodeOptions options = rclcpp::NodeOptions());
 
   //----------------------------------------------------------------------------
   /*!
@@ -70,7 +72,7 @@ private:
   // If unset, identity mapping (no laser_id change) will be used.
   // NOTE: the Velodyne ROS driver should already correctly modify the laser_id,
   // so this shouldn't be needed.
-  std::vector<int> LaserIdMapping;
+  std::vector<int64_t> LaserIdMapping;
 
   int DeviceId = 0;  ///< LiDAR device identifier to set for each point.
 
