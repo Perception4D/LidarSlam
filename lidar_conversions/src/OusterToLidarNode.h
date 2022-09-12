@@ -47,8 +47,10 @@ public:
   /*!
    * @brief Constructor.
    * @param node_name name of the node created
+   * @param[in] options Options of the node, default no options
    */
-  OusterToLidarNode(std::string node_name);
+  OusterToLidarNode(std::string node_name,
+                    rclcpp::NodeOptions options = rclcpp::NodeOptions());
 
   //----------------------------------------------------------------------------
   /*!
@@ -71,7 +73,7 @@ private:
   // If unset, identity mapping (no laser_id change) will be used.
   // NOTE: the Velodyne ROS driver should already correctly modify the laser_id,
   // so this shouldn't be needed.
-  std::vector<int> LaserIdMapping;
+  std::vector<int64_t> LaserIdMapping;
 
   int DeviceId = 0;  ///< LiDAR device identifier to set for each point.
 

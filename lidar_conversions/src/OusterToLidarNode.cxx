@@ -25,9 +25,19 @@
 namespace lidar_conversions
 {
 
-OusterToLidarNode::OusterToLidarNode(std::string node_name)
-  : Node(node_name)
+OusterToLidarNode::OusterToLidarNode(std::string node_name, const rclcpp::NodeOptions options)
+  : Node(node_name, options)
 {
+  // Get laser ID mapping
+  this->get_parameter("laser_id_mapping", this->LaserIdMapping);
+
+  //  Get LiDAR id
+  this->get_parameter("device_id", this->DeviceId);
+
+  //  Get LiDAR spinning speed and first timestamp option
+  this->get_parameter("rpm", this->Rpm);
+  this->get_parameter("timestamp_first_packet", this->TimestampFirstPacket);
+
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
@@ -107,9 +117,17 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
+<<<<<<< HEAD
+=======
+
+  // Create options for the node to use undeclared parameters
+  rclcpp::NodeOptions options;
+  options.automatically_declare_parameters_from_overrides(true);
+  options.allow_undeclared_parameters(true);
+>>>>>>> dc8edb9 ([ROS][feat] ROS2 Add parameters to lidar_conversions)
 
   std::shared_ptr<lidar_conversions::OusterToLidarNode> v2s
-    = std::make_shared<lidar_conversions::OusterToLidarNode>("ouster_conversion");
+    = std::make_shared<lidar_conversions::OusterToLidarNode>("ouster_conversion", options);
 
   rclcpp::spin(v2s);
 

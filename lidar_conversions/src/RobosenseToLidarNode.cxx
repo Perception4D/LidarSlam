@@ -32,9 +32,18 @@ namespace
   const std::array<uint16_t, 16> LASER_ID_MAPPING_RS16 = {0, 1, 2, 3, 4, 5, 6, 7, 15, 14, 13, 12, 11, 10, 9, 8};
 }
 
-RobosenseToLidarNode::RobosenseToLidarNode(std::string node_name)
-  : Node(node_name)
+RobosenseToLidarNode::RobosenseToLidarNode(std::string node_name, const rclcpp::NodeOptions options)
+  : Node(node_name, options)
 {
+  // Get laser ID mapping
+  this->get_parameter("laser_id_mapping", this->LaserIdMapping);
+
+  //  Get LiDAR id
+  this->get_parameter("device_id", this->DeviceId);
+
+  // Get LiDAR spinning speed
+  this->get_parameter("rpm", this->Rpm);
+
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
@@ -137,9 +146,17 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
+<<<<<<< HEAD
+=======
+
+  // Create options for the node to use undeclared parameters
+  rclcpp::NodeOptions options;
+  options.automatically_declare_parameters_from_overrides(true);
+  options.allow_undeclared_parameters(true);
+>>>>>>> dc8edb9 ([ROS][feat] ROS2 Add parameters to lidar_conversions)
 
   std::shared_ptr<lidar_conversions::RobosenseToLidarNode> rs2s
-    = std::make_shared<lidar_conversions::RobosenseToLidarNode>("rslidar_conversion");
+    = std::make_shared<lidar_conversions::RobosenseToLidarNode>("rslidar_conversion", options);
 
   rclcpp::spin(rs2s);
 

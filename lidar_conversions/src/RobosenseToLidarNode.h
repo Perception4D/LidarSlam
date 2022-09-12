@@ -48,8 +48,10 @@ public:
   /*!
    * @brief Constructor.
    * @param node_name Name of the node created
+   * @param[in] options Options of the node, default no options
    */
-  RobosenseToLidarNode(std::string node_name);
+  RobosenseToLidarNode(std::string node_name,
+                        const rclcpp::NodeOptions options = rclcpp::NodeOptions());
 
   //----------------------------------------------------------------------------
   /*!
@@ -72,7 +74,7 @@ private:
   // If unset, the following mappings will be used :
   // - if input cloud has 16 rings : RS16 mapping [0, 1, 2, 3, 4, 5, 6, 7, 15, 14, 13, 12, 11, 10, 9, 8]
   // - otherwise : identity mapping (no laser_id change)
-  std::vector<int> LaserIdMapping;
+  std::vector<int64_t> LaserIdMapping;
 
   int DeviceId = 0;  ///< LiDAR device identifier to set for each point.
 
