@@ -117,14 +117,11 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
-<<<<<<< HEAD
-=======
 
   // Create options for the node to use undeclared parameters
   rclcpp::NodeOptions options;
   options.automatically_declare_parameters_from_overrides(true);
   options.allow_undeclared_parameters(true);
->>>>>>> dc8edb9 ([ROS][feat] ROS2 Add parameters to lidar_conversions)
 
   std::shared_ptr<lidar_conversions::OusterToLidarNode> v2s
     = std::make_shared<lidar_conversions::OusterToLidarNode>("ouster_conversion", options);
