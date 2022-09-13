@@ -8,6 +8,14 @@ project(LidarSlam
 #  CMake parameters
 #-------------------------
 
+# Doesn't build if if is with colcon and not from lidar_slam
+if ("$ENV{COLCON}" AND NOT "${slamlib_from_subdirectory}")
+    message(FATAL_ERROR
+    "You are trying to build LidarSlam ROS2 package from root\n"
+    "This package must be built from ros2_wrapping folder :\n"
+    "colcon build --base-paths slam_path/slam/ros2_wrapping/")
+endif()
+
 set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ standard")
 message(STATUS "Building LidarSlam with C++${CMAKE_CXX_STANDARD} standard")
 

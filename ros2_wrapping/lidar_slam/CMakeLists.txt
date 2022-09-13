@@ -34,6 +34,7 @@ find_package(apriltag_ros REQUIRED)
 ###########
 
 # Build LidarSlam lib which lies in parent directory
+set(slamlib_from_subdirectory true)
 add_subdirectory(../.. ${CMAKE_BINARY_DIR}/slam)
 
 # Add LiDAR SLAM ROS node, link dependencies and librairies
