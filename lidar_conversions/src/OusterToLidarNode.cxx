@@ -42,7 +42,8 @@ OusterToLidarNode::OusterToLidarNode(std::string node_name, const rclcpp::NodeOp
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
   // Init ROS subscriber
-  this->Listener = this->create_subscription<Pcl2_msg>("os_cloud_node/points", 1,
+  //TODO os_cloud_node/points has been changed
+  this->Listener = this->create_subscription<Pcl2_msg>("/points", 1,
                                         std::bind(&OusterToLidarNode::Callback, this, std::placeholders::_1));
 
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("Ouster data converter is ready !"));
