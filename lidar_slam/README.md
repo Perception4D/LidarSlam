@@ -82,7 +82,7 @@ SLAM outputs can also be configured out to publish :
 - keypoints maps as *sensor_msgs/msg/PointCloud2* on topics '*maps/{edges,planes,blobs}*';
 - Current target keypoints maps (i.e submaps) as *sensor_msgs/msg/PointCloud2* on topics '*submaps/{edges,planes,blobs}*';
 - registered and undistorted point cloud from current frame, in odometry frame, as *sensor_msgs/msg/PointCloud2* on topic '*slam_registered_points*';
-- confidence estimations on pose output, as *lidar_slam_interfaces/msg/Confidence* custom message on topic '*slam_confidence*'. It contains the pose covariance, an overlap estimation, the number of matched keypoints, a binary estimator to check motion limitations and the computation time.
+- confidence estimations on pose output, as *lidar_slam/msg/Confidence* custom message on topic '*slam_confidence*'. It contains the pose covariance, an overlap estimation, the number of matched keypoints, a binary estimator to check motion limitations and the computation time.
 
 UTM/GPS conversion node can output SLAM pose as a *gps_msgs/msg/GPSFix* message on topic '*slam_fix*'.
 
@@ -92,7 +92,7 @@ UTM/GPS conversion node can output SLAM pose as a *gps_msgs/msg/GPSFix* message 
 
 ##### Map update modes
 
-At any time, commands `lidar_slam/SlamCommand/DISABLE_SLAM_MAP_UPDATE`, `lidar_slam/SlamCommand/ENABLE_SLAM_MAP_EXPANSION` and `lidar_slam/SlamCommand/ENABLE_SLAM_MAP_UPDATE` can be published to '*slam_command*' topic as *lidar_slam_interfaces/msg/SlamCommand* to change SLAM map update mode.
+At any time, commands `lidar_slam/SlamCommand/DISABLE_SLAM_MAP_UPDATE`, `lidar_slam/SlamCommand/ENABLE_SLAM_MAP_EXPANSION` and `lidar_slam/SlamCommand/ENABLE_SLAM_MAP_UPDATE` can be published to '*slam_command*' topic as *lidar_slam/msg/SlamCommand* to change SLAM map update mode.
 - `DISABLE_SLAM_MAP_UPDATE` : when an initial map is loaded, it is kept untouched through the SLAM process.
 - `ENABLE_SLAM_MAP_EXPANSION` : when an initial map is loaded, its points are remained untouched but new points can be added if they lay in an unexplored area
 - `ENABLE_SLAM_MAP_UPDATE` : the map is updated at any time
@@ -101,7 +101,7 @@ _NOTE_ : if no initial map is loaded, ENABLE_SLAM_MAP_EXPANSION and ENABLE_SLAM_
 
 Example :
 ```bash
-ros2 topic pub -1 /slam_command lidar_slam_interfaces/msg/SlamCommand "command: 9"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 9"
 ```
 
 ##### Save maps
@@ -109,11 +109,11 @@ ros2 topic pub -1 /slam_command lidar_slam_interfaces/msg/SlamCommand "command: 
 The current maps can be saved as PCD at any time publishing the command `SAVE_KEYPOINTS_MAPS` (to save the whole maps) or the command `SAVE_FILTERED_KEYPOINTS_MAPS` (to remove the potential moving objects) to `slam_command` topic:
 
 ```bash
-ros2 topic pub -1 /slam_command lidar_slam_interfaces/msg/SlamCommand "{command: 16, string_arg: /path/to/maps/prefix}"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 16, string_arg: /path/to/maps/prefix}"
 ```
 OR
 ```bash
-ros2 topic pub -1 /slam_command lidar_slam_interfaces/msg/SlamCommand "{command: 17, string_arg: /path/to/maps_filtered/prefix}"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 17, string_arg: /path/to/maps_filtered/prefix}"
 ```
 
 ##### Set pose
@@ -146,7 +146,7 @@ To enable this GPS/SLAM auto-calibration, you can use option `gps:=true` :
 ```bash
 ros2 launch lidar_slam slam_velodyne.launch gps:=true  # Start SLAM node and enable GPS use.
 ...
-ros2 topic pub -1 /slam_command lidar_slam_interfaces/msg/SlamCommand "command: 0"  # Trigger GPS/SLAM calibration
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 0"  # Trigger GPS/SLAM calibration
 ```
 
 ### SLAM pose graph optimization (PGO) with GPS prior
@@ -161,7 +161,7 @@ To enable PGO, you can use option `gps:=true` :
 ```bash
 ros2 launch lidar_slam slam_velodyne.launch gps:=true  # Start SLAM node and enable GPS use.
 ...
-ros2 topic pub -1 /slam_command lidar_slam_interfaces/msg/SlamCommand "command: 20"  # Trigger PGO
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 20"  # Trigger PGO
 ```
 
 ### Running SLAM on same zone at different times (e.g. refining/aggregating map or running localization only on fixed map)
@@ -178,9 +178,9 @@ To sum up, if you want to run SLAM on same zone, use :
 ```bash
 ros2 launch lidar_slam slam_velodyne.launch gps:=true  # Start SLAM node and enable GPS use.
 ...  # Run 1st real test or bag file
-ros2 topic pub -1 /slam_command lidar_slam_interfaces/msg/SlamCommand "command: 20"   # Trigger PGO : optimize SLAM map and compute GPS/SLAM calibration
-(ros2 topic pub -1 /slam_command lidar_slam_interfaces/msg/SlamCommand "command: 8")  # Disable SLAM map update (optional)
-ros2 topic pub -1 /slam_command lidar_slam_interfaces/msg/SlamCommand "command: 2"    # If the starting pose of the new bag does not match with last SLAM pose, use GPS position to set an initial guess. Warning, if the orientation has changed to much, SLAM may not converge.
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 20"   # Trigger PGO : optimize SLAM map and compute GPS/SLAM calibration
+(ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 8")  # Disable SLAM map update (optional)
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 2"    # If the starting pose of the new bag does not match with last SLAM pose, use GPS position to set an initial guess. Warning, if the orientation has changed to much, SLAM may not converge.
 ...  # Run 2nd real test or bag file
 ```
 
@@ -223,8 +223,8 @@ If you want to run SLAM and then to optimize the graph using landmarks, one pipe
 ros2 launch lidar_slam slam_velodyne.launch tags_topic:="your_tag_topic" # Start SLAM (tags use must be enabled).
 ...  # Run 1st real test or bag file
 ...  # Stop the acquisition or pause the system
-ros2 topic pub -1 /slam_command lidar_slam_interfaces/msg/SlamCommand "{command: 20, string_arg: path/to/landmarksAbsolutePoses.csv}"    # Trigger PGO : optimize SLAM map and update last pose (if fix_last is set to false)
-ros2 topic pub -1 /slam_command lidar_slam_interfaces/msg/SlamCommand "{command: 16, string_arg: /path/to/maps/prefix}" # Save keypoint maps for further use
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 20, string_arg: path/to/landmarksAbsolutePoses.csv}"    # Trigger PGO : optimize SLAM map and update last pose (if fix_last is set to false)
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 16, string_arg: /path/to/maps/prefix}" # Save keypoint maps for further use
 ...  # Run 2nd real test or bag file
 ```
 
@@ -232,7 +232,7 @@ ros2 topic pub -1 /slam_command lidar_slam_interfaces/msg/SlamCommand "{command:
 
 **NOTE** : If the SLAM was running with initially loaded tag poses (`landmarks_file_path` is not empty), and one wants to run the pose graph optimization, the file parameter is not compulsory, one can just launch :
 ```bash
-ros2 topic pub -1 /slam_command lidar_slam_interfaces/msg/SlamCommand "command: 20"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 20"
 ```
 Again, running the SLAM in mapping mode with initially loaded tag poses can be dangerous though. If you don't have any absolute tag poses to supply, the last estimated tag poses will be used. It means the map will be updated so it fits the last frames.
 
@@ -273,7 +273,7 @@ Another node called **aggregation_node** is included in the **lidar_slam** packa
 This node can answer to a service called **save_pc** to save the pointcloud on disk as a PCD file. The command should be :
 
 ```bash
-ros2 service call lidar_slam_interfaces/srv/SavePc "prefix/path/where/to/save/the/cloud" 0
+ros2 service call lidar_slam/srv/SavePc "prefix/path/where/to/save/the/cloud" 0
 ```
 
 To save the pointcloud as a PCD ASCII file at *prefix/path/where/to/save/the/cloud_CurrentTime.pcd*.

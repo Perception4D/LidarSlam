@@ -20,7 +20,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
-#include <lidar_slam_interfaces/msg/confidence.hpp>
+#include <lidar_slam/msg/confidence.hpp>
 #include <Eigen/Geometry>
 
 namespace Eigen
@@ -82,7 +82,7 @@ public:
    * @brief confidence estimators call back, log the data and compare it with reference if required
    * @param confidence message defined in lidar slam package
    */
-  void ConfidenceCallback(const lidar_slam_interfaces::msg::Confidence& confidence);
+  void ConfidenceCallback(const lidar_slam::msg::Confidence& confidence);
 
 private:
 
@@ -90,7 +90,7 @@ private:
 
   // ROS subscriber and publisher
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr PoseListener;
-  rclcpp::Subscription<lidar_slam_interfaces::msg::Confidence>::SharedPtr ConfidenceListener;
+  rclcpp::Subscription<lidar_slam::msg::Confidence>::SharedPtr ConfidenceListener;
 
   bool Verbose = false;
 

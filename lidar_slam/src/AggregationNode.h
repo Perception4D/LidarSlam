@@ -24,7 +24,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 
 // Service
-#include <lidar_slam_interfaces/srv/save_pc.hpp>
+#include <lidar_slam/srv/save_pc.hpp>
 
 // LidarSlam
 #include <LidarSlam/LidarPoint.h>
@@ -66,15 +66,15 @@ public:
   void Callback(const Pcl2_msg& registeredCloudMsg);
 
   void SavePointcloudService(
-    const std::shared_ptr<lidar_slam_interfaces::srv::SavePc::Request> req,
-    const std::shared_ptr<lidar_slam_interfaces::srv::SavePc::Response> res);
+    const std::shared_ptr<lidar_slam::srv::SavePc::Request> req,
+    const std::shared_ptr<lidar_slam::srv::SavePc::Response> res);
 
 private:
 
   // ROS subscribers, publishers and services
   rclcpp::Subscription<Pcl2_msg>::SharedPtr FrameSubscriber;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr PointsPublisher;
-  rclcpp::Service<lidar_slam_interfaces::srv::SavePc>::SharedPtr SaveService; 
+  rclcpp::Service<lidar_slam::srv::SavePc>::SharedPtr SaveService; 
 
   // Dense map containing aggregated points from all frames
   std::shared_ptr<LidarSlam::RollingGrid> DenseMap;

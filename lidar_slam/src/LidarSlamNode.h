@@ -28,8 +28,8 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <nav_msgs/msg/odometry.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <lidar_slam_interfaces/msg/confidence.hpp>
-#include <lidar_slam_interfaces/msg/slam_command.hpp>
+#include <lidar_slam/msg/confidence.hpp>
+#include <lidar_slam/msg/slam_command.hpp>
 #include <apriltag_ros/msg/april_tag_detection.hpp>
 #include <apriltag_ros/msg/april_tag_detection_array.hpp>
 
@@ -131,7 +131,7 @@ public:
    *            optimization, GPS/SLAM calibration, set SLAM pose, save maps etc.
    * @param[in] msg The command message.
    */
-  void SlamCommandCallback(const lidar_slam_interfaces::msg::SlamCommand& msg);
+  void SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg);
 
 protected:
 
@@ -200,7 +200,7 @@ protected:
 
   // ROS subscribers and publishers
   std::vector<rclcpp::Subscription<Pcl2_msg>::SharedPtr> CloudSubs;
-  rclcpp::Subscription<lidar_slam_interfaces::msg::SlamCommand>::SharedPtr SlamCommandSub;
+  rclcpp::Subscription<lidar_slam::msg::SlamCommand>::SharedPtr SlamCommandSub;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr SetPoseSub;
   std::unordered_map<int, rclcpp::PublisherBase::SharedPtr> Publishers;
   std::unordered_map<int, bool> Publish;

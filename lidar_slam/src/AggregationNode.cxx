@@ -45,7 +45,7 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
             "slam_registered_points", 1, std::bind(&AggregationNode::Callback, this, std::placeholders::_1));
 
   // Init service
-  this->SaveService = this->create_service<lidar_slam_interfaces::srv::SavePc>(
+  this->SaveService = this->create_service<lidar_slam::srv::SavePc>(
       "lidar_slam/save_pc",
       std::bind(&AggregationNode::SavePointcloudService, this, std::placeholders::_1, std::placeholders::_2));
 
@@ -92,8 +92,8 @@ void AggregationNode::Callback(const Pcl2_msg& registeredCloudMsg)
 
 
 void AggregationNode::SavePointcloudService(
-    const std::shared_ptr<lidar_slam_interfaces::srv::SavePc::Request> req,
-    const std::shared_ptr<lidar_slam_interfaces::srv::SavePc::Response> res)
+    const std::shared_ptr<lidar_slam::srv::SavePc::Request> req,
+    const std::shared_ptr<lidar_slam::srv::SavePc::Response> res)
 {
   std::string outputPrefix = req->output_prefix_path.empty() ? std::getenv("HOME") : req->output_prefix_path;
   boost::filesystem::path outputPrefixPath(outputPrefix);

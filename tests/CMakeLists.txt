@@ -10,11 +10,11 @@ endif()
 
 # Find ament macros and libraries
 find_package(ament_cmake REQUIRED)
-# Generate custom interfaces
-find_package(rosidl_default_generators REQUIRED)
+# # Generate custom interfaces
+# find_package(rosidl_default_generators REQUIRED)
 find_package(rclcpp REQUIRED)
 # Custom interfaces
-find_package(lidar_slam_interfaces REQUIRED)
+find_package(lidar_slam REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
 
@@ -28,7 +28,7 @@ add_executable(lidar_slam_test_node
 )
 ament_target_dependencies(lidar_slam_test_node
   rclcpp
-  lidar_slam_interfaces
+  lidar_slam
   nav_msgs
   tf2_eigen
 )
