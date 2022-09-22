@@ -12,10 +12,14 @@
   - [Dependencies](#dependencies-1)
   - [Installation](#installation-1)
   - [Usage](#usage)
-- [ParaView wrapping](#paraview-wrapping)
+- [ROS2 wrapping](#ros2-wrapping)
   - [Dependencies](#dependencies-2)
   - [Installation](#installation-2)
   - [Usage](#usage-1)
+- [ParaView wrapping](#paraview-wrapping)
+  - [Dependencies](#dependencies-3)
+  - [Installation](#installation-3)
+  - [Usage](#usage-2)
   - [Use SLAM in LidarView](#use-slam-in-lidarview)
 
 ## Introduction and contents
@@ -36,6 +40,7 @@ Repo contents :
 - `slam_lib/` : core *LidarSlam* library containing SLAM algorithm and other utilities.
 - `superbuild/` : Cross-platform installer.
 - `ros_wrapping/` : ROS packages to enable SLAM use on a ROS system.
+- `ros2_wrapping/`: ROS2 packages to enable SLAM use on a ROS2 system.
 - `paraview_wrapping/` : ParaView plugin to enable SLAM use with ParaView/LidarView.
 - `ci/` : continuous integration files to automatically build and check *LidarSlam* lib.
 - `CMakeLists.txt` : *CMakeLists* used to call to build core *LidarSlam* lib and *paraview_wrapping*.
@@ -202,6 +207,52 @@ roslaunch lidar_slam slam_ouster.launch replay:=false gps:=true   # if GPS/SLAM 
 ```
 
 See [ros_wrapping/lidar_slam/README.md](ros_wrapping/lidar_slam/README.md) for more details.
+
+## ROS2 wrapping
+
+The ROS wrapping has been tested on Linux only.
+
+### Dependencies
+
+Ensure all *LidarSlam* dependencies are respected. Specific ROS packages dependencies are listed in the table below along with the version used during development and testing.
+
+| Dependency     | Tested Versions | Install (`sudo apt-get install <pkg>`)                                           |
+|:--------------:|:---------------:|:--------------------------------------------------------------------------------:|
+| ROS            | humble          | `ros-humble-desktop-full` and [tutorial](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html)  |
+| gps_common     | 0.3.0           | `ros-$ROS_DISTRO-gps-common`                                                     |
+| geodesy        | 0.5.3           | `ros-$ROS_DISTRO-geodesy`                                                        |
+| pcl-ros        | 2.4.0           | `ros-$ROS_DISTRO-pcl-ros`                   | 
+
+For Velodyne usage, please note that the ROS Velodyne driver with minimum version 1.6 is needed.
+Be careful, this ROS Velodyne driver 1.6 is not backward-compatible with previous versions.
+If you're running on Ubuntu 20 / ROS Noetic, you can install the new Velodyne driver using the command `sudo apt install ros-humble-velodyne ros-humble-velodyne-pcl`.
+If running on previous versions of Ubuntu/ROS (18/Melodic and below), you need to compile this driver from source : just clone the [git repo](https://github.com/ros-drivers/velodyne) in your ros2_wrapping sources, it will be automatically built with next  `colcon build --base-paths slam/ros2_wrapping`.
+
+For Ouster usage, the driver can be found in this [git repo](https://github.com/ouster-lidar/ouster_example)
+
+### Installation
+
+Clone this git repo directly into your catkin directory, and run `colcon build --base-paths slam/ros2_wrapping -DCMAKE_BUILD_TYPE=RelWithDebInfo` or `colcon build --base-paths slam/ros2_wrapping -DCMAKE_BUILD_TYPE=Release` (to turn on optimizations, highly recommended when using Eigen). It will automatically build *LidarSlam* lib with ROS2 packages.
+
+**NOTE** : The superbuild can also be used here setting the **SUPERBUILD_INSTALL_DIR** variable.
+
+**WARNING** : Be sure to use the same PCL library dependency for ROS basic tools and slam library to avoid compilation errors and/or segfaults.
+
+### Live usage
+
+For Velodyne :
+```bash
+ros2 launch lidar_slam slam_velodyne.py use_sim_time:=false
+ros2 lidar_slam slam_velodyne.py use_sim_time:=false gps:=true   # if GPS/SLAM calibration has to be run
+```
+
+For Ouster :
+```bash
+ros2 launch lidar_slam slam_ouster.launch replay:=false
+ros2 launch lidar_slam slam_ouster.launch replay:=false gps:=true   # if GPS/SLAM calibration has to be run
+```
+
+See [ros2_wrapping/lidar_slam/README.md](ros2_wrapping/lidar_slam/README.md) for more details.
 
 ## ParaView wrapping
 

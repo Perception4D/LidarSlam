@@ -133,7 +133,7 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
 
   initPublisher(SLAM_REGISTERED_POINTS, "slam_registered_points", Pcl2_msg, "output.registered_points", true, 1, false);
 
-  initPublisher(CONFIDENCE, "slam_confidence", lidar_slam_interfaces::msg::Confidence, "output.confidence", true, 1, false);
+  initPublisher(CONFIDENCE, "slam_confidence", lidar_slam::msg::Confidence, "output.confidence", true, 1, false);
 
   if (this->UseExtSensor[LidarSlam::GPS] || this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR])
     initPublisher(PGO_PATH, "pgo_slam_path", nav_msgs::msg::Path, "graph.publish_path", false, 1, true);
@@ -168,7 +168,7 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
                                                                                               std::bind(&LidarSlamNode::SetPoseCallback, this, std::placeholders::_1));
 
   // SLAM commands
-  this->SlamCommandSub = this->create_subscription<lidar_slam_interfaces::msg::SlamCommand>("slam_command", 1,
+  this->SlamCommandSub = this->create_subscription<lidar_slam::msg::SlamCommand>("slam_command", 1,
                                                                                             std::bind(&LidarSlamNode::SlamCommandCallback, this, std::placeholders::_1));
 
   // Init logging of GPS data for GPS/SLAM calibration or Pose Graph Optimization.
@@ -511,14 +511,14 @@ void LidarSlamNode::SetPoseCallback(const geometry_msgs::msg::PoseWithCovariance
 }
 
 //------------------------------------------------------------------------------
-void LidarSlamNode::SlamCommandCallback(const lidar_slam_interfaces::msg::SlamCommand& msg)
+void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
 {
   // Parse command
   switch(msg.command)
   {
     // Set SLAM pose from last received GPS pose
     // NOTE : This function should only be called after PGO or SLAM/GPS calib have been triggered.
-    case lidar_slam_interfaces::msg::SlamCommand::GPS_SLAM_CALIBRATION:
+    case lidar_slam::msg::SlamCommand::GPS_SLAM_CALIBRATION:
     {
       if (!this->UseExtSensor[LidarSlam::GPS] || !this->LidarSlam.GpsHasData())
       {
@@ -536,7 +536,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam_interfaces::msg::SlamCo
 
     // Set SLAM pose from last received GPS pose
     // NOTE : This function should only be called after PGO or SLAM/GPS calib have been triggered.
-    case lidar_slam_interfaces::msg::SlamCommand::SET_SLAM_POSE_FROM_GPS:
+    case lidar_slam::msg::SlamCommand::SET_SLAM_POSE_FROM_GPS:
     {
       if (!this->UseExtSensor[LidarSlam::GPS] || !this->LidarSlam.GpsHasData())
       {
@@ -561,32 +561,32 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam_interfaces::msg::SlamCo
     }
 
     // Disable SLAM maps update
-    case lidar_slam_interfaces::msg::SlamCommand::DISABLE_SLAM_MAP_UPDATE:
+    case lidar_slam::msg::SlamCommand::DISABLE_SLAM_MAP_UPDATE:
       this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::NONE);
       RCLCPP_WARN(this->get_logger(), "Disabling SLAM maps update.");
       break;
 
     // Enable the agregation of keypoints to a fixed initial map
-    case lidar_slam_interfaces::msg::SlamCommand::ENABLE_SLAM_MAP_EXPANSION:
+    case lidar_slam::msg::SlamCommand::ENABLE_SLAM_MAP_EXPANSION:
       this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::ADD_KPTS_TO_FIXED_MAP);
       RCLCPP_WARN(this->get_logger(), "Enabling SLAM maps expansion with new keypoints.");
       break;
 
     // Enable the update of the map with new keypoints
-    case lidar_slam_interfaces::msg::SlamCommand::ENABLE_SLAM_MAP_UPDATE:
+    case lidar_slam::msg::SlamCommand::ENABLE_SLAM_MAP_UPDATE:
       this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::UPDATE);
       RCLCPP_WARN(this->get_logger(), "Enabling SLAM maps update with new keypoints.");
       break;
 
     // Reset the SLAM internal state.
-    case lidar_slam_interfaces::msg::SlamCommand::RESET_SLAM:
+    case lidar_slam::msg::SlamCommand::RESET_SLAM:
       RCLCPP_WARN(this->get_logger(), "Resetting the SLAM internal state.");
       this->LidarSlam.Reset(true);
       this->SetSlamInitialState();
       break;
 
     // Save SLAM keypoints maps to PCD files
-    case lidar_slam_interfaces::msg::SlamCommand::SAVE_KEYPOINTS_MAPS:
+    case lidar_slam::msg::SlamCommand::SAVE_KEYPOINTS_MAPS:
     {
       RCLCPP_INFO_STREAM(this->get_logger(), "Saving keypoints maps to PCD.");
       if (this->LidarSlam.GetMapUpdate() == LidarSlam::MappingMode::NONE)
@@ -606,7 +606,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam_interfaces::msg::SlamCo
     }
 
     // Save SLAM keypoints submaps to PCD files
-    case lidar_slam_interfaces::msg::SlamCommand::SAVE_FILTERED_KEYPOINTS_MAPS:
+    case lidar_slam::msg::SlamCommand::SAVE_FILTERED_KEYPOINTS_MAPS:
     {
       RCLCPP_INFO_STREAM(this->get_logger(), "Saving keypoints submaps to PCD.");
       int pcdFormatInt;
@@ -624,12 +624,12 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam_interfaces::msg::SlamCo
     }
 
     // Load SLAM keypoints maps from PCD files
-    case lidar_slam_interfaces::msg::SlamCommand::LOAD_KEYPOINTS_MAPS:
+    case lidar_slam::msg::SlamCommand::LOAD_KEYPOINTS_MAPS:
       RCLCPP_INFO_STREAM(this->get_logger(), "Loading keypoints maps from PCD.");
       this->LidarSlam.LoadMapsFromPCD(msg.string_arg);
       break;
 
-    case lidar_slam_interfaces::msg::SlamCommand::OPTIMIZE_GRAPH:
+    case lidar_slam::msg::SlamCommand::OPTIMIZE_GRAPH:
       if ((!this->UseExtSensor[LidarSlam::GPS] && !this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR])
             || this->LidarSlam.GetSensorMaxMeasures() < 2 || this->LidarSlam.GetLoggingTimeout() < 0.2)
       {
@@ -806,7 +806,7 @@ void LidarSlamNode::PublishOutput()
   if (this->Publish[CONFIDENCE])
   {
     // Get SLAM pose
-    lidar_slam_interfaces::msg::Confidence confidenceMsg;
+    lidar_slam::msg::Confidence confidenceMsg;
     confidenceMsg.header.stamp = rclcpp::Time(currentTime);
     confidenceMsg.header.frame_id = this->OdometryFrameId;
     confidenceMsg.overlap = this->LidarSlam.GetOverlapEstimation();
@@ -817,7 +817,7 @@ void LidarSlamNode::PublishOutput()
       confidenceMsg.covariance[i] = currentState.Covariance(i);
     confidenceMsg.nb_matches = this->LidarSlam.GetTotalMatchedKeypoints();
     confidenceMsg.comply_motion_limits = this->LidarSlam.GetComplyMotionLimits();
-    publishWithCast(this->Publishers[CONFIDENCE], lidar_slam_interfaces::msg::Confidence, confidenceMsg);
+    publishWithCast(this->Publishers[CONFIDENCE], lidar_slam::msg::Confidence, confidenceMsg);
   }
 }
 

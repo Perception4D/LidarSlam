@@ -105,9 +105,11 @@ def generate_launch_description():
   )
 
   # LiDAR SLAM : compute TF slam_init -> velodyne
+
   # Outdoor Lidar Slam node
   with open(os.path.join(lidar_slam_share_path, 'params', "slam_config_outdoor.yaml"), 'r') as f:
     params_slam_out = yaml.safe_load(f)['/lidar_slam']['ros__parameters']
+  # Manualy override lidar_config_outdoor_node parameters from parameter file
   params_slam_out['use_sim_time'] = LaunchConfiguration("use_sim_time")
   params_slam_out['gps.use_gps'] = LaunchConfiguration("gps")
 
@@ -116,9 +118,11 @@ def generate_launch_description():
     remappings=[("tag_detections", LaunchConfiguration("tags_topic")),],
     condition=IfCondition(LaunchConfiguration("outdoor")),
   )
+
   # Indoor Lidar Slam node
   with open(os.path.join(lidar_slam_share_path, 'params', "slam_config_indoor.yaml"), 'r') as f:
     params_slam_in = yaml.safe_load(f)['/lidar_slam']['ros__parameters']
+  # Manualy override lidar_config_indoor_node parameters from parameter file
   params_slam_in['use_sim_time'] = LaunchConfiguration("use_sim_time")
   params_slam_in['gps.use_gps'] = LaunchConfiguration("gps")
 

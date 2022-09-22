@@ -159,7 +159,7 @@ LidarSlamTestNode::LidarSlamTestNode(std::string name_node, const rclcpp::NodeOp
   // Init ROS subscriber
   this->PoseListener = this->create_subscription<nav_msgs::msg::Odometry>
     ("slam_odom", 1, std::bind(&LidarSlamTestNode::PoseCallback, this, std::placeholders::_1));
-  this->ConfidenceListener = this->create_subscription<lidar_slam_interfaces::msg::Confidence>
+  this->ConfidenceListener = this->create_subscription<lidar_slam::msg::Confidence>
     ("slam_confidence", 1, std::bind(&LidarSlamTestNode::ConfidenceCallback, this, std::placeholders::_1));
 
   RCLCPP_INFO_STREAM(this->get_logger(), ("Lidar slam evaluator is ready !"));
@@ -347,7 +347,7 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::msg::Odometry& poseMsg)
 }
 
 //------------------------------------------------------------------------------
-void LidarSlamTestNode::ConfidenceCallback(const lidar_slam_interfaces::msg::Confidence& confidenceMsg)
+void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::msg::Confidence& confidenceMsg)
 {
   // Log the confidence values
   double time = confidenceMsg.header.stamp.sec + confidenceMsg.header.stamp.nanosec * 10e-9;

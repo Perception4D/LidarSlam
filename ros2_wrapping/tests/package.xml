@@ -18,7 +18,8 @@
   <build_depend>message_generation</build_depend>
 
   <depend>rclcpp</depend>
-  <depend>lidar_slam_interfaces</depend> <!-- for message type + execution -->
+  <depend>lidar_slam</depend>
+  <!-- <depend>lidar_slam_interfaces</depend> for message type + execution -->
   <depend>nav_msgs</depend>
   <depend>tf2_eigen</depend>
 
