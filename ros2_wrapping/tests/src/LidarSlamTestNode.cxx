@@ -144,17 +144,10 @@ LidarSlamTestNode::LidarSlamTestNode(std::string name_node, const rclcpp::NodeOp
   std::remove((this->ResPath + "/Evaluators.csv").c_str());
 
   // Loading parameters
-  float val;
-  if (this->get_parameter("time_threshold", val))
-    this->TimeThreshold = val;
-  if (this->get_parameter("position_threshold", val))
-    this->PositionThreshold = val;
-  if (this->get_parameter("angle_threshold", val))
-    this->AngleThreshold = val;
-
-  bool verbose;
-  if (this->get_parameter("verbose", verbose))
-    this->Verbose = verbose;
+  this->get_parameter("time_threshold", this->TimeThreshold);
+  this->get_parameter("position_threshold", this->PositionThreshold);
+  this->get_parameter("angle_threshold", this->AngleThreshold);
+  this->get_parameter("verbose", this->Verbose);
 
   // Init ROS subscriber
   this->PoseListener = this->create_subscription<nav_msgs::msg::Odometry>
