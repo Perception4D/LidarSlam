@@ -847,7 +847,7 @@ private:
   int NbThreads = 1;
 
   // Booleans to decide whether to extract the keypoints of the relative type or not
-  std::map<Keypoint, bool> UseKeypoints = {{EDGE, true}, {INTENSITY_EDGE, false}, {PLANE, true}, {BLOB, false}};
+  std::map<Keypoint, bool> UseKeypoints = {{EDGE, true}, {INTENSITY_EDGE, true}, {PLANE, true}, {BLOB, false}};
   std::vector<Keypoint> UsableKeypoints = {EDGE, INTENSITY_EDGE, PLANE};
 
   // How to estimate Ego-Motion (approximate relative motion since last frame).

@@ -299,7 +299,7 @@
         # Single LiDAR input
         enable:
           edge: true
-          intensity_edge: false #!SEGFAULT when true
+          intensity_edge: true
           plane: true
           blob: false
         max_points: 1000                   # Maximum number of keypoints of each type to extract
