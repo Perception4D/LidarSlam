@@ -78,7 +78,7 @@ void AggregationNode::Callback(const Pcl2_msg& registeredCloudMsg)
   pcl::fromROSMsg(registeredCloudMsg, *registeredCloud);
 
   // Aggregated points from all frames
-  this->DenseMap->Add(registeredCloud, true);
+  this->DenseMap->Add(registeredCloud, false);
   CloudS::Ptr aggregatedCloud = this->DenseMap->Get(true);
   aggregatedCloud->header = registeredCloud->header;
 
