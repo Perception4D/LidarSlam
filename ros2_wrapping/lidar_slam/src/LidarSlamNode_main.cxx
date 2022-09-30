@@ -19,7 +19,9 @@ int main(int argc, char **argv)
             std::make_shared<LidarSlamNode>("lidar_slam", options);
 
   // Handle callbacks until shut down
-  rclcpp::spin(slamNodePtr);
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(slamNodePtr);
+  executor.spin();
 
   return 0;
 }

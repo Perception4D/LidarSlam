@@ -216,7 +216,9 @@ protected:
   std::shared_ptr<tf2_ros::StaticTransformBroadcaster> StaticTfBroadcaster;
 
   // External sensors
-
+  // Callback group separate from default one to receive  messages from external sensors in parallel
+  rclcpp::CallbackGroup::SharedPtr ExternalSensorGroup;
+  
   // Booleans to select which sensor to activate
   // If sensor enabled, data are received and stored
   // External sensor data can be used in local optimization or in postprocess pose graph optimization
