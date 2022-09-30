@@ -179,8 +179,12 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
   // Init logging of landmark data
   if (this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR])
   {
-    this->LandmarkSub = this->create_subscription<apriltag_ros::msg::AprilTagDetectionArray>("tag_detections", 200,
-                                                                                      std::bind(&LidarSlamNode::TagCallback, this, std::placeholders::_1));
+    //creation callback group to get the landmarks' info in a parallel way
+    this->ExternalSensorGroup = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    rclcpp::SubscriptionOptions ops;
+    ops.callback_group = this->ExternalSensorGroup;
+    this->LandmarkSub = this->create_subscription<apriltag_ros::msg::AprilTagDetectionArray>("tag_detections",
+                                      200, std::bind(&LidarSlamNode::TagCallback, this, std::placeholders::_1), ops);
   }
 
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("LiDAR SLAM is ready !"));
