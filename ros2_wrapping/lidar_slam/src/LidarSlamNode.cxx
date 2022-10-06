@@ -77,10 +77,10 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
   this->StaticTfBroadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
 
   // ***************************************************************************
-  // Init SLAM state
-  this->SetSlamInitialState();
   // Get SLAM params
+  // Init SLAM state
   this->SetSlamParameters();
+  this->SetSlamInitialState();
 
   // Use GPS data for GPS/SLAM calibration or Pose Graph Optimization.
   this->get_parameter_or<bool>("external_sensors.gps.use_gps", this->UseExtSensor[LidarSlam::GPS], false);
@@ -101,7 +101,6 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
 
   initPublisher(POSE_ODOM,            "slam_odom",           nav_msgs::msg::Odometry, "output.pose.odom",           true,  1, false);
   initPublisher(POSE_PREDICTION_ODOM, "slam_predicted_odom", nav_msgs::msg::Odometry, "output.pose.predicted_odom", false, 1, false);
-  
 
   if(this->LidarSlam.KeypointTypeEnabled(LidarSlam::EDGE))
   {
@@ -294,7 +293,7 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
 
       // Add gps measurement to measurements list
       this->LidarSlam.AddGpsMeasurement(this->LastGpsMeas);
-      this->GpsLastTime = rclcpp::Time(this->LastGpsMeas.Time);
+      this->GpsLastTime = rclcpp::Time(this->LastGpsMeas.Time * 1e9);
       this->GpsFrameId = gpsMsg.header.frame_id;
     }
     else
@@ -361,12 +360,8 @@ void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray&
       if (this->PublishTags)
       {
         // Publish tf
-        geometry_msgs::msg::TransformStamped tfStamped;
-        tfStamped.header.stamp = tagInfo.pose.header.stamp;
-        tfStamped.header.frame_id = this->TrackingFrameId;
-        tfStamped.child_frame_id = "tag_" + std::to_string(id);
-        tfStamped.transform = Utils::IsometryToTfMsg(lm.TransfoRelative);
-        this->TfBroadcaster->sendTransform(tfStamped);
+        double TagTimeSec = tagInfo.pose.header.stamp.sec + tagInfo.pose.header.stamp.nanosec * 1e-9;
+        this->PublishTransformTF(TagTimeSec, this->TrackingFrameId, "tag_" + std::to_string(id), lm.TransfoRelative);
       }
     }
     else
@@ -666,10 +661,9 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
         nav_msgs::msg::Path optimSlamTraj;
         optimSlamTraj.header.frame_id = this->OdometryFrameId;
         std::list<LidarSlam::LidarState> optimizedSlamStates = this->LidarSlam.GetLogStates();
-        optimSlamTraj.header.stamp = rclcpp::Time(optimizedSlamStates.back().Time);
+        optimSlamTraj.header.stamp = rclcpp::Time(optimizedSlamStates.back().Time * 1e9);
         for (const LidarSlam::LidarState& s: optimizedSlamStates)
           optimSlamTraj.poses.emplace_back(Utils::IsometryToPoseStampedMsg(s.Isometry, s.Time, this->OdometryFrameId));
-        //this->Publishers[PGO_PATH].publish(optimSlamTraj);
         publishWithCast(this->Publishers[PGO_PATH], nav_msgs::msg::Path, optimSlamTraj);
       }
       break;
@@ -716,7 +710,7 @@ void LidarSlamNode::PublishOutput()
     if (this->Publish[POSE_ODOM])
     {
       nav_msgs::msg::Odometry odomMsg;
-      odomMsg.header.stamp = rclcpp::Time(currentTime);
+      odomMsg.header.stamp = rclcpp::Time(currentTime * 1e9);
       odomMsg.header.frame_id = this->OdometryFrameId;
       odomMsg.child_frame_id = this->TrackingFrameId;
       odomMsg.pose.pose = Utils::IsometryToPoseMsg(currentState.Isometry);
@@ -730,26 +724,20 @@ void LidarSlamNode::PublishOutput()
 
     // Publish as TF from OdometryFrameId to TrackingFrameId
     if (this->Publish[POSE_TF])
-    {
-      geometry_msgs::msg::TransformStamped tfMsg;
-      tfMsg.header.stamp = rclcpp::Time(currentTime);
-      tfMsg.header.frame_id = this->OdometryFrameId;
-      tfMsg.child_frame_id = this->TrackingFrameId;
-      tfMsg.transform = Utils::IsometryToTfMsg(currentState.Isometry);
-      this->TfBroadcaster->sendTransform(tfMsg);
-    }
+      this->PublishTransformTF(currentTime, this->OdometryFrameId, this->TrackingFrameId, currentState.Isometry);
+
   }
 
   // Publish latency compensated SLAM pose
   if (this->Publish[POSE_PREDICTION_ODOM] || this->Publish[POSE_PREDICTION_TF])
   {
-    double predTime = currentState.Time + this->LidarSlam.GetLatency();
+    double predTime = currentTime + this->LidarSlam.GetLatency();
     Eigen::Isometry3d predTransfo = this->LidarSlam.GetLatencyCompensatedWorldTransform();
     // Publish as odometry msg
     if (this->Publish[POSE_PREDICTION_ODOM])
     {
       nav_msgs::msg::Odometry odomMsg;
-      odomMsg.header.stamp = rclcpp::Time(predTime);
+      odomMsg.header.stamp = rclcpp::Time(predTime * 1e9);
       odomMsg.header.frame_id = this->OdometryFrameId;
       odomMsg.child_frame_id = this->TrackingFrameId + "_prediction";
       odomMsg.pose.pose = Utils::IsometryToPoseMsg(predTransfo);
@@ -763,14 +751,7 @@ void LidarSlamNode::PublishOutput()
 
     // Publish as TF from OdometryFrameId to <TrackingFrameId>_prediction
     if (this->Publish[POSE_PREDICTION_TF])
-    {
-      geometry_msgs::msg::TransformStamped tfMsg;
-      tfMsg.header.stamp = rclcpp::Time(predTime);
-      tfMsg.header.frame_id = this->OdometryFrameId;
-      tfMsg.child_frame_id = this->TrackingFrameId + "_prediction";
-      tfMsg.transform = Utils::IsometryToTfMsg(predTransfo);
-      this->TfBroadcaster->sendTransform(tfMsg);
-    }
+      this->PublishTransformTF(predTime, this->OdometryFrameId, this->TrackingFrameId + "_prediction", predTransfo);
   }
 
 
@@ -811,7 +792,7 @@ void LidarSlamNode::PublishOutput()
   {
     // Get SLAM pose
     lidar_slam::msg::Confidence confidenceMsg;
-    confidenceMsg.header.stamp = rclcpp::Time(currentTime);
+    confidenceMsg.header.stamp = rclcpp::Time(currentTime * 1e9);
     confidenceMsg.header.frame_id = this->OdometryFrameId;
     confidenceMsg.overlap = this->LidarSlam.GetOverlapEstimation();
     confidenceMsg.computation_time = this->LidarSlam.GetLatency();
@@ -1099,8 +1080,20 @@ void LidarSlamNode::SetSlamInitialState()
   {
     Eigen::Isometry3d poseTransform = LidarSlam::Utils::XYZRPYtoIsometry(initialPose.data());
     this->LidarSlam.SetWorldTransformFromGuess(poseTransform);
+
     RCLCPP_INFO_STREAM(this->get_logger(), "Setting initial SLAM pose to:\n" << poseTransform.matrix());
   }
+}
+
+//------------------------------------------------------------------------------
+void LidarSlamNode::PublishTransformTF(double timeSec, std::string frameId, std::string childFrameId, const Eigen::Isometry3d& transfo)
+{
+  geometry_msgs::msg::TransformStamped tfMsg;
+  tfMsg.header.stamp = rclcpp::Time(timeSec * 1e9);
+  tfMsg.header.frame_id = frameId;
+  tfMsg.child_frame_id = childFrameId;
+  tfMsg.transform = Utils::IsometryToTfMsg(transfo);
+  this->TfBroadcaster->sendTransform(tfMsg);
 }
 
 //------------------------------------------------------------------------------
