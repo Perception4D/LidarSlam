@@ -187,10 +187,24 @@ protected:
    */
   int BuildId(const std::vector<int>& ids);
 
+  //----------------------------------------------------------------------------
   // Publish static tf to link world (UTM) frame to SLAM origin
   // PGO must have been run, so we can average
   // the correspondant poses (GPS/LidarSLAM) distances to get the offset
   void BroadcastGpsOffset();
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Publish a Tf2 static transform
+   *        Use the StaticTfBroadcaster of the node
+   * 
+   * @param[in] timeSec The time in second 
+   * @param[in] frameId The frame Id 
+   * @param[in] childFrameId The child frame Id
+   * @param[in] transfo The transformation matrix
+   */
+  void PublishTransformTF(double timeSec, std::string frameId, std::string childFrameId, const Eigen::Isometry3d& transfo);
+
 
   //----------------------------------------------------------------------------
 
