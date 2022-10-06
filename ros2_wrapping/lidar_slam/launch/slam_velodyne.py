@@ -141,9 +141,12 @@ def generate_launch_description():
 
   # Moving base coordinates systems description            tf_FROM_to_TO           X  Y  Z  rZ rY rX  FROM     TO
   tf_base_to_velo_node = Node( package="tf2_ros",executable="static_transform_publisher",name="tf_base_to_lidar",
-    arguments=['--frame-id', 'base_link', '--child-frame-id', 'velodyne'],
+    #           X    Y    Z    rZ   rY   rX      FROM      TO
+    arguments=["0", "0", "0", "0", "0", "0", "base_link", "velodyne"],
     parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')},],
   )
+
+
 
   # Launch GPS/UTM conversions nodes
   gps_conversions_include = IncludeLaunchDescription(
@@ -157,7 +160,12 @@ def generate_launch_description():
     arguments=["0", "0", "0", "0", "0", "0", "base_link", "gps"]
   )
 
-  ld.add_action(rviz_node)
+  # Default transformation for Odom frame
+  odom_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_odom_to_base",
+    #           X    Y    Z    rZ   rY   rX      FROM      TO
+    arguments=["0", "0", "0", "0", "0", "0", "odom", "base_link"]
+  )
+
   ld.add_action(velodyne_group)
   ld.add_action(velodyne_conversion_node)
   ld.add_action(slam_outdoor_node)
@@ -166,4 +174,6 @@ def generate_launch_description():
   ld.add_action(tf_base_to_velo_node)
   ld.add_action(gps_conversions_include)
   ld.add_action(gps_tf_node)
+  ld.add_action(odom_tf_node)
+  ld.add_action(rviz_node)
   return (ld)

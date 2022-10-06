@@ -25,6 +25,7 @@
 #include <tf2_ros/buffer.h>
 #include <rclcpp/time.hpp>
 #include <tf2/convert.h>
+#include <chrono>
 
 namespace Utils
 {
@@ -111,12 +112,12 @@ bool Tf2LookupTransform(Eigen::Isometry3d& transform,
                         const std::string& targetFrame,
                         const std::string& sourceFrame,
                         const builtin_interfaces::msg::Time msg_time = builtin_interfaces::msg::Time(),
-                        const tf2::Duration timeout = std::chrono::nanoseconds(0))
+                        const tf2::Duration timeout = tf2::durationFromSec(0.))
 {
   geometry_msgs::msg::TransformStamped tfStamped;
   try
   {
-    tf2::TimePoint tf2_time(tf2::durationFromSec(msg_time.sec + msg_time.nanosec * 1e-9));
+    tf2::TimePoint tf2_time = tf2::timeFromSec(msg_time.sec + msg_time.nanosec * 1e-9);
     tfStamped = tfBuffer.lookupTransform(targetFrame, sourceFrame, tf2_time, timeout);
   }
   catch (tf2::TransformException& ex)
