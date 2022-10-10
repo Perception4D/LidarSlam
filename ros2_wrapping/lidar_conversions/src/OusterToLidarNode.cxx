@@ -1,7 +1,7 @@
 //==============================================================================
 // Copyright 2021-2022 Kitware, Inc., Kitware SAS
-// Author: Sanchez Julia (Kitware SAS)
-// Creation date: 2022-05-10
+// Author: Arthur Bourbousson (Kitware SAS)
+// Creation date: 2022-09-02
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
