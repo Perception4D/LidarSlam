@@ -980,6 +980,10 @@ void LidarSlamNode::SetSlamParameters()
   // Confidence estimators
   // Overlap
   SetSlamParam(float,  "slam.confidence.overlap.sampling_ratio", OverlapSamplingRatio)
+  
+  // Motion limitations (hard constraints to detect failure)
+  std::vector<double> acc;
+  if (this->get_parameter("slam.confidence.motion_limits.acceleration", acc) && acc.size() == 2)
   {
     //convert to float for Eigen
     std::vector<float> accf{(float)acc[0], (float)acc[1]};
