@@ -20,17 +20,30 @@
 
 ## Introduction and contents
 
-This repo contains LiDAR-only visual SLAM developped by Kitware, as well as ROS and ParaView wrappings for easier use.
+This repo contains the pure C++ LiDAR SLAM codebase, as well as wrappers as ROS node and as LidarStudio Plugins for easier use.
+
+The codebase was created by [Bastien Jacquet](https://www.linkedin.com/in/bastienjacquet)'s Computer Vision Team at Kitware, and is now under active development by both Kitware and [Perception4D](https://www.perception4d.com)
+
+It is conceptually based on LOAM, include the framework for:
+ - pure, pointcloud-only LiDAR SLAM
+ - IMU aided LiDAR SLAM
+ - odometry-aided LiDAR SLAM
+ - visual-SLAM aided LiDAR SLAM
+ - tighly coupled imu, odometry LiDAR SLAM
+ - Loop Closure (mainly re-optimisation, not detection)
+
+
 
 It has been successfully tested on data from several common LiDAR sensors:
 - Velodyne (VLP-16, VLP-32c, HDL-32, HDL-64, VLS-128)
 - Ouster (OS0/1/2-32/64/128)
-- RoboSense (RS-LiDAR-16)
-- Hesai (Pandar128)
+- RoboSense (RS-LiDAR-16 RS-LiDAR-32)
+- Hesai (PandarXT16, PandarXT32, Pandar64, Pandar128)
+- Leishen (LSC32)
 
 Have a look at our [SLAM demo video](https://vimeo.com/524848891)!
 
-This codebase is under active development. If you're interested by new features, new sensors' support or any project that could be using this SLAM, do not hesitate to contact us at kitware@kitware.com.
+This codebase is under active development. If you're interested by new features, new sensors' support or any project that could be using this SLAM, do not hesitate to contact us.
 
 Repo contents :
 - `slam_lib/` : core *LidarSlam* library containing SLAM algorithm and other utilities.
