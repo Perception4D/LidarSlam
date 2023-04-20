@@ -1849,24 +1849,8 @@ bool Slam::DetectLoopClosureIndices(std::list<LidarState>::iterator& itQueryStat
       // When LogOnlyKeyFrames is enabled, only keyframes are stored in the LogStates.
       // It is possible that the inputs frame indices are not keyframes.
       // In this case, replace the input frame index by its neighbor keyframe
-      itQueryState = itRevisitedState = this->LogStates.begin();
-      while (itQueryState->Index < this->LoopParams.QueryIdx && itQueryState->Index != this->LogStates.back().Index)
-        ++itQueryState;
-      if (itQueryState->Index != this->LoopParams.QueryIdx)
-      {
-        this->LoopParams.QueryIdx = itQueryState->Index;
-        PRINT_WARNING("The input query frame index is not found in Logstates and is replaced by frame #"
-                      << this->LoopParams.QueryIdx << ".");
-      }
-
-      while (itRevisitedState->Index < this->LoopParams.RevisitedIdx && itRevisitedState->Index != this->LogStates.back().Index)
-        ++itRevisitedState;
-      if (itRevisitedState->Index != this->LoopParams.RevisitedIdx)
-      {
-        this->LoopParams.RevisitedIdx = itRevisitedState->Index;
-        PRINT_WARNING("The input revisited frame index is not found in Logstates and is replaced by frame #"
-                      << this->LoopParams.RevisitedIdx << ".");
-      }
+      itQueryState     = this->GetKeyStateIterator(this->LoopParams.QueryIdx);
+      itRevisitedState = this->GetKeyStateIterator(this->LoopParams.RevisitedIdx);
       PRINT_VERBOSE(3, "Loop closure is detected by external information. The relevant frame indices are:\n"
                     << " Query frame #" << this->LoopParams.QueryIdx << " Revisited frame #" << this->LoopParams.RevisitedIdx);
       detectionValid = true;
@@ -1889,6 +1873,26 @@ bool Slam::DetectLoopClosureIndices(std::list<LidarState>::iterator& itQueryStat
   }
 
   return detectionValid;
+}
+
+//-----------------------------------------------------------------------------
+std::list<LidarState>::iterator Slam::GetKeyStateIterator(unsigned int& frameIdx)
+{
+  // Get the state iterator
+  auto itState = std::upper_bound(this->LogStates.begin(),
+                                  this->LogStates.end(),
+                                  frameIdx,
+                                  [&](unsigned int idx, const LidarState& state) {return idx < state.Index;});
+  if (itState == this->LogStates.end() || itState == this->LogStates.begin())
+  {
+    PRINT_ERROR("The frame index #" << frameIdx << " is not in the range of Logstates.");
+    return this->LogStates.begin();
+  }
+
+  if (itState->Index != frameIdx)
+    PRINT_WARNING("The frame index #" << frameIdx << " is not found in Logstates "
+                  "and is replaced by frame #" << itState->Index << ".");
+  return itState;
 }
 
 //-----------------------------------------------------------------------------
