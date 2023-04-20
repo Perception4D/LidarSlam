@@ -198,6 +198,19 @@ void vtkSlam::OptimizeGraphWithIMU()
 }
 
 //-----------------------------------------------------------------------------
+void vtkSlam::DetectLoop()
+{
+  const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
+  if (lidarStates.size() < 2)
+    return;
+
+  this->SetLoopDetected(this->SlamAlgo->DetectLoopClosureIndices(this->LoopIdx));
+
+  // Refresh view
+  this->ParametersModificationTime.Modified();
+}
+
+//-----------------------------------------------------------------------------
 void vtkSlam::OptimizeGraph()
 {
   const std::list<LidarSlam::LidarState>& initLidarStates = this->SlamAlgo->GetLogStates();

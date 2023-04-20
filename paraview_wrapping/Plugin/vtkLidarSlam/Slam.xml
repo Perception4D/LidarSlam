@@ -1902,6 +1902,14 @@
         </Documentation>
       </StringVectorProperty>
 
+      <Property name="Detect Loop"
+                command="DetectLoop"
+                panel_visibility="advanced">
+        <Documentation>
+          Detect loop closure for current frame with the chosen detector.
+        </Documentation>
+      </Property>
+
       <IntVectorProperty name="Loop closure detector"
                          command="SetLoopDetector"
                          number_of_elements="1"
@@ -2052,6 +2060,7 @@
 
       <PropertyGroup label="Loop closure parameters">
         <Property name="Load loop indices" />
+        <Property name="Detect Loop" />
         <Property name="Loop closure detector" />
         <Property name="Query map start range" />
         <Property name="Query map end range" />
