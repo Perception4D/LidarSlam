@@ -700,7 +700,7 @@ bool LidarSlamNode::UpdateBaseToLidarOffset(const std::string& lidarFrameId, uin
 void LidarSlamNode::PublishOutput()
 {
 
-  LidarSlam::LidarState& currentState = this->LidarSlam.GetLastState();
+  LidarSlam::LidarState currentState = this->LidarSlam.GetLastState();
   double currentTime = currentState.Time;
   // Publish SLAM pose
   
