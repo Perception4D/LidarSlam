@@ -212,6 +212,8 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
     return;
   }
 
+  this->StartTime = this->now().seconds();
+
   if (!this->LidarTimePosix)
   {
     // Compute time offset
@@ -705,9 +707,8 @@ void LidarSlamNode::PublishOutput()
 {
   // Get current SLAM poses in WORLD coordinates at the specified frequency
   std::vector<LidarSlam::LidarState> lastStates = this->LidarSlam.GetLastStates(this->TrajFrequency);
-  auto& currentState = lastStates.back();
-  double currentTime = currentState.Time;
-  
+  double computationTime = (this->now().seconds() - this->StartTime);
+
   // Publish SLAM pose
   if (this->Publish[POSE_ODOM] || this->Publish[POSE_TF])
   {
@@ -732,14 +733,19 @@ void LidarSlamNode::PublishOutput()
       // Publish as TF from OdometryFrameId to TrackingFrameId
       if (this->Publish[POSE_TF])
         this->PublishTransformTF(state.Time, this->OdometryFrameId, this->TrackingFrameId, state.Isometry);
+    
+      // Enable subscribers to receive those messages
+      // Warning : this may alter cout working in this code area
+      rclcpp::sleep_for(std::chrono::milliseconds(1));
     }
   }
 
   // Publish latency compensated SLAM pose
   if (this->Publish[POSE_PREDICTION_ODOM] || this->Publish[POSE_PREDICTION_TF])
   {
-    double predTime = currentTime + this->LidarSlam.GetLatency();
-    Eigen::Isometry3d predTransfo = this->LidarSlam.GetLatencyCompensatedWorldTransform();
+    double predTime = lastStates.back().Time + computationTime;
+    Eigen::Isometry3d predIsometry = this->LidarSlam.GetTworld(predTime);
+
     // Publish as odometry msg
     if (this->Publish[POSE_PREDICTION_ODOM])
     {
@@ -747,18 +753,15 @@ void LidarSlamNode::PublishOutput()
       odomMsg.header.stamp = rclcpp::Time(predTime * 1e9);
       odomMsg.header.frame_id = this->OdometryFrameId;
       odomMsg.child_frame_id = this->TrackingFrameId + "_prediction";
-      odomMsg.pose.pose = Utils::IsometryToPoseMsg(predTransfo);
-      // Note : in eigen 3.4 iterators are available on matrices directly
-      //        >> std::copy(state.Covariance.begin(), state.Covariance.end(), confidenceMsg.covariance.begin());
-      // for now the only way is to copy or iterate on indices :
-      for (unsigned int i = 0; i < currentState.Covariance.size(); ++i)
-        odomMsg.pose.covariance[i] = currentState.Covariance(i);
+      odomMsg.pose.pose = Utils::IsometryToPoseMsg(predIsometry);
+      for (unsigned int i = 0; i < lastStates.back().Covariance.size(); ++i)
+        odomMsg.pose.covariance[i] = lastStates.back().Covariance(i);
       publishWithCast(this->Publishers[POSE_PREDICTION_ODOM], nav_msgs::msg::Odometry, odomMsg);
     }
 
     // Publish as TF from OdometryFrameId to <TrackingFrameId>_prediction
     if (this->Publish[POSE_PREDICTION_TF])
-      this->PublishTransformTF(predTime, this->OdometryFrameId, this->TrackingFrameId + "_prediction", predTransfo);
+      this->PublishTransformTF(predTime, this->OdometryFrameId, this->TrackingFrameId + "_prediction", predIsometry);
   }
 
 
@@ -799,14 +802,15 @@ void LidarSlamNode::PublishOutput()
   {
     // Get SLAM pose
     lidar_slam::msg::Confidence confidenceMsg;
-    confidenceMsg.header.stamp = rclcpp::Time(currentTime * 1e9);
+    confidenceMsg.header.stamp = rclcpp::Time(lastStates.back().Time * 1e9);
     confidenceMsg.header.frame_id = this->OdometryFrameId;
     confidenceMsg.overlap = this->LidarSlam.GetOverlapEstimation();
-    confidenceMsg.computation_time = this->LidarSlam.GetLatency();
+    confidenceMsg.computation_time = computationTime;
     // Note : in eigen 3.4, iterators are available on matrices directly
-    //        >> std::copy(currentState.Covariance.begin(), currentState.Covariance.end(), confidenceMsg.covariance.begin());
-    for (unsigned int i = 0; i < currentState.Covariance.size(); ++i)
-      confidenceMsg.covariance[i] = currentState.Covariance(i);
+    //        >> std::copy(lastStates.back().Covariance.begin(), lastStates.back().Covariance.end(), confidenceMsg.covariance.begin());
+    for (unsigned int i = 0; i < lastStates.back().Covariance.size(); ++i)
+      confidenceMsg.covariance[i] = lastStates.back().Covariance(i);
+
     confidenceMsg.nb_matches = this->LidarSlam.GetTotalMatchedKeypoints();
     confidenceMsg.comply_motion_limits = this->LidarSlam.GetComplyMotionLimits();
     publishWithCast(this->Publishers[CONFIDENCE], lidar_slam::msg::Confidence, confidenceMsg);
