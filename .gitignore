@@ -1,3 +1,4 @@
 build*
 */build*
 settings.json
+__pycache__
