@@ -845,6 +845,19 @@ void LidarSlamNode::SetSlamParameters()
     }
     LidarSlam.SetUndistortion(undistortion);
   }
+  int i_interpolationModel;
+  if (this->get_parameter<int>("slam.interpolation_model", i_interpolationModel))
+  {
+    auto interpoModel = static_cast<LidarSlam::Interpolation::Model>(i_interpolationModel);
+    if (interpoModel != LidarSlam::Interpolation::Model::LINEAR &&
+        interpoModel != LidarSlam::Interpolation::Model::QUADRATIC &&
+        interpoModel != LidarSlam::Interpolation::Model::CUBIC)
+    {
+      RCLCPP_ERROR_STREAM(this->get_logger(), "Invalid interpolation model (" << interpoModel << "). Setting it to 'LINEAR'.");
+      interpoModel = LidarSlam::Interpolation::Model::LINEAR;
+    }
+    LidarSlam.SetInterpolation(interpoModel);
+  }
 
   int pointCloudStorage;
   if (this->get_parameter<int>("slam.logging.storage_type", pointCloudStorage))
