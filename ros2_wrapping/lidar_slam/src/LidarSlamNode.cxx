@@ -137,6 +137,10 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
   if (this->UseExtSensor[LidarSlam::GPS] || this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR])
     initPublisher(PGO_PATH, "pgo_slam_path", nav_msgs::msg::Path, "graph.publish_path", false, 1, true);
 
+  // Set frequency of output pose (all poses are published at the end of the frames process)
+  this->get_parameter_or<double>("output.pose.frequency", this->TrajFrequency, -1.);
+
+  // ***************************************************************************
   // Init ROS subscribers
 
   // LiDAR inputs
