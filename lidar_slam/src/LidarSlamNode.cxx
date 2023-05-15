@@ -700,36 +700,39 @@ bool LidarSlamNode::UpdateBaseToLidarOffset(const std::string& lidarFrameId, uin
   return true;
 }
 
-// //------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 void LidarSlamNode::PublishOutput()
 {
-
-  LidarSlam::LidarState currentState = this->LidarSlam.GetLastState();
+  // Get current SLAM poses in WORLD coordinates at the specified frequency
+  std::vector<LidarSlam::LidarState> lastStates = this->LidarSlam.GetLastStates(this->TrajFrequency);
+  auto& currentState = lastStates.back();
   double currentTime = currentState.Time;
-  // Publish SLAM pose
   
+  // Publish SLAM pose
   if (this->Publish[POSE_ODOM] || this->Publish[POSE_TF])
   {
-    // Publish as odometry msg
-    if (this->Publish[POSE_ODOM])
+    for (const auto& state : lastStates)
     {
-      nav_msgs::msg::Odometry odomMsg;
-      odomMsg.header.stamp = rclcpp::Time(currentTime * 1e9);
-      odomMsg.header.frame_id = this->OdometryFrameId;
-      odomMsg.child_frame_id = this->TrackingFrameId;
-      odomMsg.pose.pose = Utils::IsometryToPoseMsg(currentState.Isometry);
-      // Note : in eigen 3.4 iterators are available on matrices directly
-      //        >> std::copy(currentState.Covariance.begin(), currentState.Covariance.end(), confidenceMsg.covariance.begin());
-      // For now the only way is to copy or iterate on indices :
-      for (unsigned int i = 0; i < currentState.Covariance.size(); ++i)
-        odomMsg.pose.covariance[i] = currentState.Covariance(i);
-      publishWithCast(this->Publishers[POSE_ODOM], nav_msgs::msg::Odometry, odomMsg);
+      // Publish as odometry msg
+      if (this->Publish[POSE_ODOM])
+      {
+        nav_msgs::msg::Odometry odomMsg;
+        odomMsg.header.stamp = rclcpp::Time(state.Time * 1e9);
+        odomMsg.header.frame_id = this->OdometryFrameId;
+        odomMsg.child_frame_id = this->TrackingFrameId;
+        odomMsg.pose.pose = Utils::IsometryToPoseMsg(state.Isometry);
+        // Note : in eigen 3.4 iterators are available on matrices directly
+        //        >> std::copy(state.Covariance.begin(), state.Covariance.end(), confidenceMsg.covariance.begin());
+        // For now the only way is to copy or iterate on indices :
+        for (unsigned int i = 0; i < state.Covariance.size(); ++i)
+          odomMsg.pose.covariance[i] = state.Covariance(i);
+        publishWithCast(this->Publishers[POSE_ODOM], nav_msgs::msg::Odometry, odomMsg);
+      }
+
+      // Publish as TF from OdometryFrameId to TrackingFrameId
+      if (this->Publish[POSE_TF])
+        this->PublishTransformTF(state.Time, this->OdometryFrameId, this->TrackingFrameId, state.Isometry);
     }
-
-    // Publish as TF from OdometryFrameId to TrackingFrameId
-    if (this->Publish[POSE_TF])
-      this->PublishTransformTF(currentTime, this->OdometryFrameId, this->TrackingFrameId, currentState.Isometry);
-
   }
 
   // Publish latency compensated SLAM pose
@@ -746,7 +749,7 @@ void LidarSlamNode::PublishOutput()
       odomMsg.child_frame_id = this->TrackingFrameId + "_prediction";
       odomMsg.pose.pose = Utils::IsometryToPoseMsg(predTransfo);
       // Note : in eigen 3.4 iterators are available on matrices directly
-      //        >> std::copy(currentState.Covariance.begin(), currentState.Covariance.end(), confidenceMsg.covariance.begin());
+      //        >> std::copy(state.Covariance.begin(), state.Covariance.end(), confidenceMsg.covariance.begin());
       // for now the only way is to copy or iterate on indices :
       for (unsigned int i = 0; i < currentState.Covariance.size(); ++i)
         odomMsg.pose.covariance[i] = currentState.Covariance(i);
