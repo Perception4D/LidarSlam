@@ -219,6 +219,9 @@ protected:
   std::unordered_map<int, rclcpp::PublisherBase::SharedPtr> Publishers;
   std::unordered_map<int, bool> Publish;
 
+  // Output pose required frequency (Hz)
+  double TrajFrequency = -1;
+
   // TF stuff
   std::string OdometryFrameId = "odom";       ///< Frame in which SLAM odometry and maps are expressed.
   std::string TrackingFrameId = "base_link";  ///< Frame to track (ensure a valid TF tree is published).
