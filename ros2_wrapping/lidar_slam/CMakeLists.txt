@@ -4,7 +4,7 @@ project(lidar_slam VERSION 1.5)
 # Compile as C++14, supported in ROS Kinetic and newer
 set(CMAKE_CXX_STANDARD 14)
 if (NOT CMAKE_BUILD_TYPE)
-    message(STATUS "No build type selected, default to RelWithDebInfo")
+    message(STATUS "ROS2 Wrapping : No build type selected, default to RelWithDebInfo")
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
@@ -28,6 +28,8 @@ find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(apriltag_ros REQUIRED)
+
+find_package(cv_bridge)
 
 ###########
 ## Build ##
@@ -55,6 +57,18 @@ add_executable(lidar_slam_node
   src/LidarSlamNode.cxx
   src/LidarSlamNode_main.cxx
 )
+
+# Optionnal dependency cv_bridge
+if(cv_bridge_FOUND)
+  message("ROS2 wrapping : cv_bridge was found, camera interface is built")
+  list(APPEND optional_DEP cv_bridge)
+  list(APPEND optional_LIBRARIES ${cv_bridge_LIBRARIES})
+  # Anything else you need to do to enable use of the optional dep, like add definitions
+  # target_compile_definitions(lidar_slam_node PUBLIC "-DUSE_CV_BRIDGE")
+else()
+  message("ROS wrapping : cv_bridge was not found, camera interface cannot be used")
+endif()
+
 ament_target_dependencies(lidar_slam_node
   rclcpp
   tf2_ros
@@ -64,11 +78,14 @@ ament_target_dependencies(lidar_slam_node
   geometry_msgs
   sensor_msgs
   apriltag_ros
+  # ${optional_DEP}
 )
+
 target_link_libraries(lidar_slam_node
   LidarSlam
   "${cpp_typesupport_target}"
-)
+  # ${optional_LIBRARIES}
+  )
 
 # Add aggregation node, link dependencies and librairies
 add_executable(aggregation_node
