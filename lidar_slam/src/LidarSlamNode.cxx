@@ -25,6 +25,11 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <nav_msgs/msg/path.hpp>
 
+#ifdef USE_CV_BRIDGE
+#include <cv_bridge/cv_bridge.h>
+#endif
+//? #include <sensor_msgs/msg/image_encodings.hpp>
+
 #define BOLD_GREEN(s) "\033[1;32m" << s << "\033[0m"
 
 // Macro to publish with a cast toward the type of publisher
@@ -87,6 +92,9 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
 
   // Use tags data for local optimization.
   this->get_parameter_or<bool>("external_sensors.landmark_detector.use_tags", this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR], false);
+
+  // Use camera rgb images in local optimization.
+  this->get_parameter_or<bool>("external_sensors.camera.use_camera", this->UseExtSensor[LidarSlam::CAMERA], false);
 
   // ***************************************************************************
   // Init ROS publishers
@@ -175,19 +183,30 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
                                                                                             std::bind(&LidarSlamNode::SlamCommandCallback, this, std::placeholders::_1));
 
   // Init logging of GPS data for GPS/SLAM calibration or Pose Graph Optimization.
+  // Perfect synchronization is not required as GPS data are not used in SLAM local process
   if (this->UseExtSensor[LidarSlam::GPS])
     this->GpsOdomSub = this->create_subscription<nav_msgs::msg::Odometry>("gps_odom", 1,
                                                 std::bind(&LidarSlamNode::GpsCallback, this, std::placeholders::_1));
 
-  // Init logging of landmark data
-  if (this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR])
+  // Init logging of landmark data and/or Camera data
+  if (this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR] || this->UseExtSensor[LidarSlam::CAMERA])
   {
-    //creation callback group to get the landmarks' info in a parallel way
+    // Create an external independent spinner to get the landmarks and/or camera info in a parallel way
     this->ExternalSensorGroup = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     rclcpp::SubscriptionOptions ops;
     ops.callback_group = this->ExternalSensorGroup;
-    this->LandmarkSub = this->create_subscription<apriltag_ros::msg::AprilTagDetectionArray>("tag_detections",
-                                      200, std::bind(&LidarSlamNode::TagCallback, this, std::placeholders::_1), ops);
+
+    if (this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR])
+    {
+        this->LandmarkSub = this->create_subscription<apriltag_ros::msg::AprilTagDetectionArray>("tag_detections",
+                                          200, std::bind(&LidarSlamNode::TagCallback, this, std::placeholders::_1), ops);
+    }
+
+    if (this->UseExtSensor[LidarSlam::CAMERA])
+    {
+      this->CameraSub = this->create_subscription<sensor_msgs::msg::Image>("camera",
+                                        10, std::bind(&LidarSlamNode::ImageCallback, this, std::placeholders::_1), ops);
+    }
   }
 
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("LiDAR SLAM is ready !"));
@@ -264,6 +283,41 @@ void LidarSlamNode::SecondaryScanCallback(const Pcl2_msg& pcl_msg)
 
   // Add new frame to SLAM input frames
   this->Frames.push_back(cloudS_ptr);
+}
+
+//------------------------------------------------------------------------------
+void LidarSlamNode::ImageCallback(const sensor_msgs::msg::Image& imageMsg)
+{
+  #ifdef USE_CV_BRIDGE
+  if (!this->UseExtSensor[LidarSlam::CAMERA])
+    return;
+
+  // Transform to apply to points represented in GPS frame to express them in base frame
+  Eigen::Isometry3d baseToCamera;
+  if (Utils::Tf2LookupTransform(baseToCamera, *this->TfBuffer, this->TrackingFrameId, imageMsg.header.frame_id, imageMsg.header.stamp))
+  {
+    cv_bridge::CvImagePtr cvPtr;
+    try
+    {
+      cvPtr = cv_bridge::toCvCopy(imageMsg, sensor_msgs::image_encodings::BGR8);
+    }
+    catch (cv_bridge::Exception& e)
+    {
+      RCLCPP_ERROR(this->get_logger(), "Camera info cannot be used -> cv_bridge exception: %s", e.what());
+      return;
+    }
+
+    RCLCPP_INFO_STREAM(this->get_logger(), "Adding Camera info : "<< std::fixed << std::setprecision(9) << imageMsg.header.stamp.sec + imageMsg.header.stamp.nanosec * 1e-9);
+    // Add camera measurement to measurements list
+    LidarSlam::ExternalSensors::Image image;
+    image.Time = imageMsg.header.stamp.sec + imageMsg.header.stamp.nanosec * 1e-9;
+    image.Data = cvPtr->image;
+    this->LidarSlam.AddCameraImage(image);
+  }
+  #else
+  static_cast<void>(imageMsg);
+  RCLCPP_WARN_STREAM(this->get_logger(), "cv_bridge was not found so images cannot be processed, camera will not be used");
+  #endif
 }
 
 //------------------------------------------------------------------------------
@@ -988,11 +1042,11 @@ void LidarSlamNode::SetSlamParameters()
   // External sensors
   SetSlamParam(int,  "external_sensors.max_measures", SensorMaxMeasures)
   SetSlamParam(float,  "external_sensors.time_threshold", SensorTimeThreshold)
+  this->get_parameter_or<bool>("external_sensors.lidar_is_posix", this->LidarTimePosix, true);
   SetSlamParam(float,  "external_sensors.landmark_detector.weight", LandmarkWeight)
   SetSlamParam(float,  "external_sensors.landmark_detector.saturation_distance", LandmarkSaturationDistance)
   SetSlamParam(bool,   "external_sensors.landmark_detector.position_only", LandmarkPositionOnly)
   this->get_parameter_or<bool>("external_sensors.landmark_detector.publish_tags", this->PublishTags, false);
-  this->get_parameter_or<bool>("external_sensors.landmark_detector.lidar_is_posix", this->LidarTimePosix, true);
 
   // Graph parameters
   SetSlamParam(std::string, "graph.g2o_file_name", G2oFileName)
