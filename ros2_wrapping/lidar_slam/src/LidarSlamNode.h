@@ -33,6 +33,7 @@
 #include <apriltag_ros/msg/april_tag_detection.hpp>
 #include <apriltag_ros/msg/april_tag_detection_array.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/msg/camera_info.hpp>
 
 // SLAM
 #include <LidarSlam/Slam.h>
@@ -119,6 +120,13 @@ public:
    * @param[in] msg compressed RGB image
    */
   void ImageCallback(const sensor_msgs::msg::Image& imageMsg);
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief     Optional image info callback, when using RGB camera into SLAM
+   * @param[in] msg camera calibration
+   */
+  void CameraInfoCallback(const sensor_msgs::msg::CameraInfo& calibMsg);
 
   //----------------------------------------------------------------------------
   /*!
@@ -257,6 +265,8 @@ protected:
   // The offset between network reception time
   // and Lidar time is computed
   bool LidarTimePosix = true;
+  // Offset to apply to external sensors to get lidar time
+  float SensorTimeOffset = 0.;
 
   // Landmarks
   rclcpp::Subscription<apriltag_ros::msg::AprilTagDetectionArray>::SharedPtr LandmarkSub;
@@ -269,6 +279,7 @@ protected:
 
   // Camera
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr CameraSub;
+  rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr CameraInfoSub;
 };
 
 #endif // LIDAR_SLAM_NODE_H

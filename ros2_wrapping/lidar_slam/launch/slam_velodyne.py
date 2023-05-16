@@ -26,6 +26,8 @@ def generate_launch_description():
     DeclareLaunchArgument("vlp16_driver", default_value="false", description="If true, start Velodyne driver for vlp16."),
     DeclareLaunchArgument("gps", default_value="false", description="If true, use GPS data to calibrate SLAM output. Otherwise, provide calibration."),
     DeclareLaunchArgument("tags_topic", default_value="tag_detections", description="Topic from which to get the tag measurements"),
+    DeclareLaunchArgument("camera_topic", default_value="camera", description="topic from which to get the rgb camera data"),
+    DeclareLaunchArgument("camera_info_topic", default_value="camera_info", description="topic from which to get the rgb camera info"),
     # Velodyne driver parameters
     DeclareLaunchArgument("device_ip", default_value=""),
     DeclareLaunchArgument("port", default_value=TextSubstitution(text="2368")),
@@ -115,7 +117,9 @@ def generate_launch_description():
 
   slam_outdoor_node = Node(name="lidar_slam", package="lidar_slam", executable="lidar_slam_node", output="screen",
     parameters=[params_slam_out],
-    remappings=[("tag_detections", LaunchConfiguration("tags_topic")),],
+    remappings=[("tag_detections", LaunchConfiguration("tags_topic")),
+                ("camera", LaunchConfiguration("camera_topic")),
+                ("camera_info", LaunchConfiguration("camera_info_topic")),],
     condition=IfCondition(LaunchConfiguration("outdoor")),
   )
 
@@ -128,7 +132,9 @@ def generate_launch_description():
 
   slam_indoor_node = Node(name="lidar_slam", package="lidar_slam", executable="lidar_slam_node", output="screen",
     parameters=[params_slam_in],
-    remappings=[("tag_detections", LaunchConfiguration("tags_topic")),],
+    remappings=[("tag_detections", LaunchConfiguration("tags_topic")),
+                ("camera", LaunchConfiguration("camera_topic")),
+                ("camera_info", LaunchConfiguration("camera_info_topic")),],
     condition= UnlessCondition(LaunchConfiguration("outdoor")),
   )
 

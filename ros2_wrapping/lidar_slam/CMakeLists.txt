@@ -64,7 +64,7 @@ if(cv_bridge_FOUND)
   list(APPEND optional_DEP cv_bridge)
   list(APPEND optional_LIBRARIES ${cv_bridge_LIBRARIES})
   # Anything else you need to do to enable use of the optional dep, like add definitions
-  # target_compile_definitions(lidar_slam_node PUBLIC "-DUSE_CV_BRIDGE")
+  target_compile_definitions(lidar_slam_node PUBLIC "-DUSE_CV_BRIDGE")
 else()
   message("ROS wrapping : cv_bridge was not found, camera interface cannot be used")
 endif()
@@ -78,13 +78,13 @@ ament_target_dependencies(lidar_slam_node
   geometry_msgs
   sensor_msgs
   apriltag_ros
-  # ${optional_DEP}
+  ${optional_DEP}
 )
 
 target_link_libraries(lidar_slam_node
   LidarSlam
   "${cpp_typesupport_target}"
-  # ${optional_LIBRARIES}
+  ${optional_LIBRARIES}
   )
 
 # Add aggregation node, link dependencies and librairies

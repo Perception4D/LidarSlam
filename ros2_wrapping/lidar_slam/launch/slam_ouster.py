@@ -25,6 +25,8 @@ def generate_launch_description():
     # Check github repo : https://github.com/ros-drivers/velodyne/tree/ros2
     DeclareLaunchArgument("os_driver", default_value="false", description="If true, activate os_node."),
     DeclareLaunchArgument("tags_topic", default_value="tag_detections", description="Topic from which to get the tag measurements"),
+    DeclareLaunchArgument("camera_topic", default_value="camera", description="topic from which to get the rgb camera data"),
+    DeclareLaunchArgument("camera_info_topic", default_value="camera_info", description="topic from which to get the rgb camera info"),
     #  Ouster driver parameters
     DeclareLaunchArgument("sensor_hostname", default_value="10.5.5.96", description="Hostname or IP in dotted decimal form of the sensor"),
     DeclareLaunchArgument("udp_dest", default_value="", description="Hostname or IP where the sensor will send data packets"),
@@ -113,7 +115,9 @@ def generate_launch_description():
 
   slam_outdoor_node = Node(name="lidar_slam", package="lidar_slam", executable="lidar_slam_node", output="screen",
     parameters=[params_slam_out],
-    remappings=[("tag_detections", LaunchConfiguration("tags_topic")),],
+    remappings=[("tag_detections", LaunchConfiguration("tags_topic")),
+                ("camera", LaunchConfiguration("camera_topic")),
+                ("camera_info", LaunchConfiguration("camera_info_topic")),],
     condition=IfCondition(LaunchConfiguration("outdoor")),
   )
 
@@ -125,7 +129,9 @@ def generate_launch_description():
 
   slam_indoor_node = Node(name="lidar_slam", package="lidar_slam", executable="lidar_slam_node", output="screen",
     parameters=[params_slam_in],
-    remappings=[("tag_detections", LaunchConfiguration("tags_topic")),],
+    remappings=[("tag_detections", LaunchConfiguration("tags_topic")),
+                ("camera", LaunchConfiguration("camera_topic")),
+                ("camera_info", LaunchConfiguration("camera_info_topic")),],
     condition= UnlessCondition(LaunchConfiguration("outdoor")),
   )
 

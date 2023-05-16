@@ -77,6 +77,7 @@
                            # as we expect external sensor timestamps to be POSIX, we can directly
                            # use header timestamp to synchronize data.
                            # If not, we use message reception time as reference.
+      time_offset: 0.      # [s] Offset to apply on external sensor time data to get lidar time
 
       # Optional GPS position use (if 'gps/use_gps'=true), subscribing to Odometry msg on 'gps_odom' topic.
       # It allows to estimate calibration between GPS and SLAM trajectories,
@@ -113,6 +114,10 @@
 
       camera:
         use_camera: false        # [bool] To receive and use RGB images from a camera
+        weight: 0.               # Weight to apply to one pixel match constraint in the local optimization
+                                # 0 disables the feature
+                                # It is to be compared to each geometric constraint defined by a keypoint match
+        saturation_distance: 10. # Pixelic distance threshold to discard a pixel match from optical flow
 
     graph:
       g2o_file_name: ""    # File where to store the g2o log info (viewable with g2o_viewer tool)
