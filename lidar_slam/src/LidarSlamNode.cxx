@@ -206,6 +206,8 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
     {
       this->CameraSub = this->create_subscription<sensor_msgs::msg::Image>("camera",
                                         10, std::bind(&LidarSlamNode::ImageCallback, this, std::placeholders::_1), ops);
+      this->CameraInfoSub = this->create_subscription<sensor_msgs::msg::CameraInfo>("camera_info",
+                                        10, std::bind(&LidarSlamNode::CameraInfoCallback, this, std::placeholders::_1), ops);
     }
   }
 
@@ -246,8 +248,10 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
     double absCurrentOffset = std::abs(this->LidarSlam.GetSensorTimeOffset());
     // If the current computed offset is more accurate, replace it
     if (absCurrentOffset < 1e-6 || std::abs(potentialOffset) < absCurrentOffset)
-      this->LidarSlam.SetSensorTimeOffset(potentialOffset);
+      this->LidarSlam.SetSensorTimeOffset(potentialOffset + this->SensorTimeOffset);
   }
+  else
+    this->LidarSlam.SetSensorTimeOffset(this->SensorTimeOffset);
 
   // Update TF from BASE to LiDAR
   if (!this->UpdateBaseToLidarOffset(cloudS_ptr->header.frame_id, cloudS_ptr->front().device_id))
@@ -296,6 +300,9 @@ void LidarSlamNode::ImageCallback(const sensor_msgs::msg::Image& imageMsg)
   Eigen::Isometry3d baseToCamera;
   if (Utils::Tf2LookupTransform(baseToCamera, *this->TfBuffer, this->TrackingFrameId, imageMsg.header.frame_id, imageMsg.header.stamp))
   {
+    if (!this->LidarSlam.CameraCanBeUsedLocally())
+      this->LidarSlam.SetCameraCalibration(baseToCamera);
+
     cv_bridge::CvImagePtr cvPtr;
     try
     {
@@ -317,6 +324,25 @@ void LidarSlamNode::ImageCallback(const sensor_msgs::msg::Image& imageMsg)
   #else
   static_cast<void>(imageMsg);
   RCLCPP_WARN_STREAM(this->get_logger(), "cv_bridge was not found so images cannot be processed, camera will not be used");
+  #endif
+}
+
+//------------------------------------------------------------------------------
+void LidarSlamNode::CameraInfoCallback(const sensor_msgs::msg::CameraInfo& calibMsg)
+{
+  #ifdef USE_CV_BRIDGE
+  // The intrinsic calibration must not changed so we can only use
+  // the camera info until the camera is ready to be used
+  if (this->LidarSlam.CameraCanBeUsedLocally())
+    return;
+
+  Eigen::Matrix3f k;
+  for (int i = 0; i < 9; ++i)
+    k(int(i / 3), i % 3) = calibMsg.k[i];
+
+  this->LidarSlam.SetCameraIntrinsicCalibration(k);
+  #else
+  static_cast<void>(calibMsg);
   #endif
 }
 
@@ -1043,10 +1069,14 @@ void LidarSlamNode::SetSlamParameters()
   SetSlamParam(int,  "external_sensors.max_measures", SensorMaxMeasures)
   SetSlamParam(float,  "external_sensors.time_threshold", SensorTimeThreshold)
   this->get_parameter_or<bool>("external_sensors.lidar_is_posix", this->LidarTimePosix, true);
+  SetSlamParam(float,   "external_sensors.time_offset", SensorTimeOffset)
+  this->SensorTimeOffset = this->LidarSlam.GetSensorTimeOffset();
   SetSlamParam(float,  "external_sensors.landmark_detector.weight", LandmarkWeight)
   SetSlamParam(float,  "external_sensors.landmark_detector.saturation_distance", LandmarkSaturationDistance)
   SetSlamParam(bool,   "external_sensors.landmark_detector.position_only", LandmarkPositionOnly)
   this->get_parameter_or<bool>("external_sensors.landmark_detector.publish_tags", this->PublishTags, false);
+  SetSlamParam(float,  "external_sensors.camera.weight", CameraWeight)
+  SetSlamParam(float,  "external_sensors.camera.saturation_distance", CameraSaturationDistance)
 
   // Graph parameters
   SetSlamParam(std::string, "graph.g2o_file_name", G2oFileName)
