@@ -216,12 +216,15 @@ The ROS wrapping has been tested on Linux only.
 
 Ensure all *LidarSlam* dependencies are respected. Specific ROS packages dependencies are listed in the table below along with the version used during development and testing.
 
-| Dependency     | Tested Versions | Install (`sudo apt-get install <pkg>`)                                           |
-|:--------------:|:---------------:|:--------------------------------------------------------------------------------:|
+| Dependency      | Tested Versions | Install (`sudo apt-get install <pkg>`)                                             | status    |
+|:---------------:|:---------------:|:----------------------------------------------------------------------------------:|:---------:|
 | ROS            | humble          | `ros-humble-desktop-full` and [tutorial](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html)  |
-| gps_common     | 0.3.0           | `ros-$ROS_DISTRO-gps-common`                                                     |
-| geodesy        | 0.5.3           | `ros-$ROS_DISTRO-geodesy`                                                        |
-| pcl-ros        | 2.4.0           | `ros-$ROS_DISTRO-pcl-ros`                   | 
+| pcl-ros         | 1.7.4           | `ros-$ROS_DISTRO-pcl-ros`                                                          | mandatory |
+| geodesy         | 0.5.3           | `ros-$ROS_DISTRO-geodesy`                                                          | mandatory |
+| gps_common      | 0.3.0           | `ros-$ROS_DISTRO-gps-common`                                                       | optionnal |
+| apriltag        | 3.2.0           | `ros-$ROS_DISTRO-apriltag`                                                         | optionnal |
+| g2o             | 5.3             | `ros-$ROS_DISTRO-libg2o`                                                           | optionnal |
+
 
 For Velodyne usage, please note that the ROS Velodyne driver with minimum version 1.6 is needed.
 Be careful, this ROS Velodyne driver 1.6 is not backward-compatible with previous versions.
@@ -232,11 +235,42 @@ For Ouster usage, the driver can be found in this [git repo](https://github.com/
 
 ### Installation
 
-Clone this git repo directly into your catkin directory, and run `colcon build --base-paths slam/ros2_wrapping -DCMAKE_BUILD_TYPE=RelWithDebInfo` or `colcon build --base-paths slam/ros2_wrapping -DCMAKE_BUILD_TYPE=Release` (to turn on optimizations, highly recommended when using Eigen). It will automatically build *LidarSlam* lib with ROS2 packages.
+Clone this git repo directly into your workspace directory, and run `colcon build --base-paths slam/ros2_wrapping` or `colcon build --base-paths slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release` (to turn on optimizations, highly recommended when using Eigen). It will automatically build *LidarSlam* lib with ROS2 packages.
 
-**NOTE** : The superbuild can also be used here setting the **SUPERBUILD_INSTALL_DIR** variable.
+**NOTE** : Boost, g2o and PCL dependencies can be resolved wih ROS packages.
 
 **WARNING** : Be sure to use the same PCL library dependency for ROS basic tools and slam library to avoid compilation errors and/or segfaults.
+
+#### With system dependencies
+Run `colcon build --base-paths ./slam/ros2_wrapping` or `colcon build --base-paths ./slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release` (to turn on optimizations, highly recommended when using Eigen). It will automatically build *LidarSlam* lib before ROS packages.
+
+#### With local dependencies
+As with Core SLAM lib, you can use local dependencies for Slam lib by passing them as cmake arguments.
+
+Example for Ceres and g2o :
+ ```bash
+ colcon build --base-paths ./slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DCeres_DIR=path/to/CeresConfig.cmake -Dg2o_DIR=path/to/g2oConfig.cmake
+ ```
+
+#### With Superbuild
+The [superbuild](https://gitlab.kitware.com/keu-computervision/slam-superbuild/) can also download and install the required dependencies.
+
+**WARNING** It is not possible to use PCL from the superbuild (this would create runtime issues with system version).
+
+**WARNING** The superbuild must be installed outside of ros2 workspace.
+
+Example :
+ ```bash
+ # Clone project
+ git clone https://gitlab.kitware.com/keu-computervision/slam.git ros2_ws/src/slam --recursive
+ # Build Superbuild
+ mkdir SB-build && cd SB-build
+ cmake ../ros2_ws/src/slam/slam-superbuild -GNinja -DCMAKE_BUILD_TYPE=Release -DINSTALL_PCL=OFF
+ cmake --build . -j
+ # Build Slam ROS package
+ cd ../ros2_ws
+ colcon build --base-paths ./slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install
+```
 
 ### Live usage
 
