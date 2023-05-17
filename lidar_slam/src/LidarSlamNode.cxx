@@ -92,6 +92,7 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
 
   // Use tags data for local optimization.
   this->get_parameter_or<bool>("external_sensors.landmark_detector.use_tags", this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR], false);
+  this->LidarSlam.SetPGOConstraintLANDMARK(this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR]);
 
   // Use camera rgb images in local optimization.
   this->get_parameter_or<bool>("external_sensors.camera.use_camera", this->UseExtSensor[LidarSlam::CAMERA], false);
