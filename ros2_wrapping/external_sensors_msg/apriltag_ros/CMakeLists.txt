@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(apriltag_ros VERSION 1.4)
+project(apriltag_ros VERSION 2.0)
 
 # Compile as C++14, supported in ROS Kinetic and newer
 set(CMAKE_CXX_STANDARD 14)
