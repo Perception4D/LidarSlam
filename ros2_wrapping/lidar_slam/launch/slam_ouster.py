@@ -145,20 +145,26 @@ def generate_launch_description():
   # Moving base coordinates systems description                                         tf_FROM_to_TO
   tf_base_to_os_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_lidar",
     #           X    Y    Z    rZ   rY   rX      FROM        TO 
-    arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'laser_sensor_frame'],
+    arguments=["--x", "0", "--y", "0", "--z", "0",
+               "--roll", "0", "--pitch", "0", "--yaw", "0", 
+               "--frame-id", "base_link", "--child-frame-id", "laser_sensor_frame"],
   )
 
   # Moving base coordinates systems description                                     tf_FROM_to_TO
   gps_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_gps",
     #           X    Y    Z    rZ   rY   rX      FROM      TO
-    arguments=["0", "0", "0", "0", "0", "0", "base_link", "gps"]
+    arguments=["--x", "0", "--y", "0", "--z", "0",
+               "--roll", "0", "--pitch", "0", "--yaw", "0", 
+               "--frame-id", "base_link", "--child-frame-id", "gps"],
   )
 
   # Default transformation for Odom frame
   odom_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_odom_to_base",
     #           X    Y    Z    rZ   rY   rX      FROM      TO
-    arguments=["0", "0", "0", "0", "0", "0", "odom", "base_link"]
-  )
+    arguments=["--x", "0", "--y", "0", "--z", "0",
+               "--roll", "0", "--pitch", "0", "--yaw", "0", 
+               "--frame-id", "odom", "--child-frame-id", "base_link"],
+    )
 
   ld.add_action(rviz_node)
   ld.add_action(ouster_conversion_node)
