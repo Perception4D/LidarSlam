@@ -228,10 +228,10 @@ Ensure all *LidarSlam* dependencies are respected. Specific ROS packages depende
 
 For Velodyne usage, please note that the ROS Velodyne driver with minimum version 1.6 is needed.
 Be careful, this ROS Velodyne driver 1.6 is not backward-compatible with previous versions.
-If you're running on Ubuntu 20 / ROS Noetic, you can install the new Velodyne driver using the command `sudo apt install ros-humble-velodyne ros-humble-velodyne-pcl`.
+You can install the new Velodyne driver using the command `sudo apt install ros-humble-velodyne ros-humble-velodyne-pcl`.
 If running on previous versions of Ubuntu/ROS (18/Melodic and below), you need to compile this driver from source : just clone the [git repo](https://github.com/ros-drivers/velodyne) in your ros2_wrapping sources, it will be automatically built with next  `colcon build --base-paths slam/ros2_wrapping`.
 
-For Ouster usage, the driver can be found in this [git repo](https://github.com/ouster-lidar/ouster_example)
+For Ouster usage, the driver can be found in this [git repo](https://github.com/ouster-lidar/ouster-ros/tree/ros2), clone the repo in ros2_wrapping directory and use colcon to build with the package
 
 ### Installation
 

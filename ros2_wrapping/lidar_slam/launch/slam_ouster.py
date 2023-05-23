@@ -4,10 +4,10 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, ExecuteProcess
-from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription 
+from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
 from launch.conditions import IfCondition, UnlessCondition
-from launch.substitutions import TextSubstitution, LaunchConfiguration
+from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
 
@@ -34,7 +34,6 @@ def generate_launch_description():
     DeclareLaunchArgument("imu_port", default_value="7503", description="Port to which the sensor should send imu data"),
     DeclareLaunchArgument("lidar_mode", default_value="1024x10", description="Resolution modes for the LiDAR"),
     DeclareLaunchArgument("metadata_in", default_value=os.path.join(lidar_slam_share_path, 'params', 'metadata_OS1_64_1024x10.json'), description="Configuration file for Ouster data to replay"),
-    DeclareLaunchArgument("lidar_mode", default_value="1024x10", description="Lidar mode : 1024x10, 2048x10, 1024x20, 2048x20"),
     DeclareLaunchArgument("eth_device", default_value="lo", description="Ethernet interfaces used for replaying data"),
     # /!\ rpm and timestamp_first_packet are also used to generate approximate point-wise timestamps as 'time' field is not usable. -->
     DeclareLaunchArgument("rpm", default_value="600.", description="Ouster sensor spinning speed."),
@@ -54,37 +53,38 @@ def generate_launch_description():
   #####################
   ### Ouster driver ###
   #####################
-  ouster_driver_path = get_package_share_directory("ros2_ouster")
+  ouster_driver_path = get_package_share_directory("ouster_ros")
 
   #for replay
   group_ouster = GroupAction(
     actions=[
+      # TODO Replay mode after live mode works
+      #! TEST IT
       # Replay
+      # IncludeLaunchDescription(
+      #   PythonLaunchDescriptionSource([os.path.join(ouster_driver_path, "launch"), "/replay.launch.xml"]),
+      #   launch_arguments={
+      #     'viz' : False,
+      #     # 'metadata': LaunchConfiguration("metadata_in"),
+      #   }.items(),
+      #   condition=IfCondition(LaunchConfiguration("replay")),
+      # ),
+
       IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(ouster_driver_path, "launch"), "/tins_driver_launch.py"]),
+        XMLLaunchDescriptionSource([os.path.join(ouster_driver_path, "launch", "sensor.launch.xml")]),
         launch_arguments={
-          'params_file': os.path.join(lidar_slam_share_path, 'params/ouster_tins_driver_config.yaml'),
-          'metadata_filepath': LaunchConfiguration("metadata_in"),
-        }.items(),
-        condition=IfCondition(LaunchConfiguration("replay")),
-      ),
-      # Live
-      Node(package='ros2_ouster', executable='ouster_driver', name='ouster_driver', output='screen', emulate_tty=True,
-        parameters=[{
-          "lidar_ip": LaunchConfiguration("sensor_hostname"),
-          "computer_ip": LaunchConfiguration("udp_dest"),
-          "lidar_mode": LaunchConfiguration("lidar_mode"),
-          "imu_port": LaunchConfiguration("imu_port"),
-          "lidar_port": LaunchConfiguration("lidar_port"),
-          "sensor_frame": "laser_sensor_frame",
-          "laser_frame": "laser_data_frame",
-          "imu_frame": "imu_data_frame",
-          "use_system_default_qos": False,
-          "timestamp_mode": "TIME_FROM_INTERNAL_OSC",
-          "proc_mask": "IMG|PCL|IMU|SCAN",
-        }],
-        arguments=['--ros-args', '--log-level', 'INFO'],
-        namespace='/',
+          "sensor_hostname" : LaunchConfiguration("sensor_hostname"),
+          "udp_dest"        : LaunchConfiguration("udp_dest"),
+          "lidar_port"      : LaunchConfiguration("lidar_port"),
+          "imu_port"        : LaunchConfiguration("imu_port"),
+          "lidar_mode"      : LaunchConfiguration("lidar_mode"),
+          "timestamp_mode"  : "TIME_FROM_INTERNAL_OSC",
+          "metadata"        : LaunchConfiguration("metadata_in"),
+          "sensor_frame"    : "laser_sensor_frame",
+          "laser_frame"     : "laser_data_frame",
+          "imu_frame"       : "imu_data_frame",
+          "viz"             : "False",
+      }.items(),
         condition=UnlessCondition(LaunchConfiguration("replay")),
       ),
     ],
@@ -144,7 +144,6 @@ def generate_launch_description():
 
   # Moving base coordinates systems description                                         tf_FROM_to_TO
   tf_base_to_os_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_lidar",
-    #           X    Y    Z    rZ   rY   rX      FROM        TO 
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0", 
                "--frame-id", "base_link", "--child-frame-id", "laser_sensor_frame"],
@@ -152,7 +151,6 @@ def generate_launch_description():
 
   # Moving base coordinates systems description                                     tf_FROM_to_TO
   gps_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_gps",
-    #           X    Y    Z    rZ   rY   rX      FROM      TO
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0", 
                "--frame-id", "base_link", "--child-frame-id", "gps"],
@@ -160,7 +158,6 @@ def generate_launch_description():
 
   # Default transformation for Odom frame
   odom_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_odom_to_base",
-    #           X    Y    Z    rZ   rY   rX      FROM      TO
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0", 
                "--frame-id", "odom", "--child-frame-id", "base_link"],

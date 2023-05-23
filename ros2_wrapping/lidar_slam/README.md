@@ -53,7 +53,12 @@ ros2 bag play --clock <my_bag_file>  # in 2nd shell
 ```
 - When using it in real live conditions, use :
 ```bash
-ros2 launch lidar_slam slam_ouster.launch replay:=false
+# Find ethernet interface of Ouster Lidar
+ip a
+# Give an ip address to Ouster Lidar interface
+sudo route add ipv4_addr interf_eth
+# Lauch slam with the ouster ip
+ros2 launch lidar_slam slam_ouster.launch os_driver=true replay:=false sensor_hostname:="ipv4_addr"
 ```
 
 These launch files will start :
