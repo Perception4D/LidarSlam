@@ -19,6 +19,7 @@
 #include "OusterToLidarNode.h"
 #include "Utilities.h"
 #include <pcl_conversions/pcl_conversions.h>
+#include "rmw/qos_profiles.h"
 
 #define BOLD_GREEN(s) "\033[1;32m" << s << "\033[0m"
 
@@ -41,9 +42,13 @@ OusterToLidarNode::OusterToLidarNode(std::string node_name, const rclcpp::NodeOp
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
-  // Init ROS subscriber
-  //TODO os_cloud_node/points has been changed
-  this->Listener = this->create_subscription<Pcl2_msg>("/points", 1,
+  // Create custom QoS
+  rclcpp::QoS custom_qos_profile(1); // History mode : only keep last
+  // Put reliability to the same mode than Ouster Driver
+  custom_qos_profile.reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
+
+  // Init ROS subscrib
+  this->Listener = this->create_subscription<Pcl2_msg>("/ouster/points", custom_qos_profile,
                                         std::bind(&OusterToLidarNode::Callback, this, std::placeholders::_1));
 
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("Ouster data converter is ready !"));
@@ -58,7 +63,7 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   // If input cloud is empty, ignore it
   if (cloudO.empty())
   {
-    RCLCPP_ERROR_STREAM(this->get_logger(), "Input Velodyne pointcloud is empty : frame ignored.");
+    RCLCPP_ERROR_STREAM(this->get_logger(), "Input Ouster pointcloud is empty : frame ignored.");
     return;
   }
 
