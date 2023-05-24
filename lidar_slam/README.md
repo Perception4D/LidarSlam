@@ -48,7 +48,7 @@ ros2 launch lidar_slam slam_velodyne.launch use_sim_time:=false
 With ouster launch file:
 - To start SLAM when replaying a ouster rosbag file, run :
 ```bash
-ros2 launch lidar_slam slam_ouster.launch   # in 1st shell
+ros2 launch lidar_slam slam_ouster.launch replay:=true os_driver:=true # in 1st shell
 ros2 bag play --clock <my_bag_file>  # in 2nd shell
 ```
 - When using it in real live conditions, use :

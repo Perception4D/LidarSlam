@@ -33,7 +33,8 @@ def generate_launch_description():
     DeclareLaunchArgument("lidar_port", default_value="7502", description="Port to which the sensor should send lidar data"),
     DeclareLaunchArgument("imu_port", default_value="7503", description="Port to which the sensor should send imu data"),
     DeclareLaunchArgument("lidar_mode", default_value="1024x10", description="Resolution modes for the LiDAR"),
-    DeclareLaunchArgument("metadata_in", default_value=os.path.join(lidar_slam_share_path, 'params', 'metadata_OS1_64_1024x10.json'), description="Configuration file for Ouster data to replay"),
+    DeclareLaunchArgument("metadata_in", default_value="", description="Optionnal configuration for replay if no topic /ouster/metadata in the bag"),
+    DeclareLaunchArgument("metadata_out", default_value=os.path.join(lidar_slam_share_path, 'params', 'metadata_OS1_64_1024x10.json'), description="Optionnal path to create Ouster metadata file"),
     DeclareLaunchArgument("eth_device", default_value="lo", description="Ethernet interfaces used for replaying data"),
     # /!\ rpm and timestamp_first_packet are also used to generate approximate point-wise timestamps as 'time' field is not usable. -->
     DeclareLaunchArgument("rpm", default_value="600.", description="Ouster sensor spinning speed."),
@@ -55,21 +56,23 @@ def generate_launch_description():
   #####################
   ouster_driver_path = get_package_share_directory("ouster_ros")
 
-  #for replay
   group_ouster = GroupAction(
     actions=[
-      # TODO Replay mode after live mode works
-      #! TEST IT
       # Replay
-      # IncludeLaunchDescription(
-      #   PythonLaunchDescriptionSource([os.path.join(ouster_driver_path, "launch"), "/replay.launch.xml"]),
-      #   launch_arguments={
-      #     'viz' : False,
-      #     # 'metadata': LaunchConfiguration("metadata_in"),
-      #   }.items(),
-      #   condition=IfCondition(LaunchConfiguration("replay")),
-      # ),
-
+      IncludeLaunchDescription(
+        XMLLaunchDescriptionSource([os.path.join(ouster_driver_path, "launch", "replay.launch.xml")]),
+        launch_arguments={
+          "timestamp_mode"  : "TIME_FROM_INTERNAL_OSC",
+          "bag_file"        : "b",
+          "metadata"        : LaunchConfiguration("metadata_in"),
+          "sensor_frame"    : "laser_sensor_frame",
+          "laser_frame"     : "laser_data_frame",
+          "imu_frame"       : "imu_data_frame",
+          "viz"             : "False",
+      }.items(),
+        condition=IfCondition(LaunchConfiguration("replay")),
+      ),
+      # Live
       IncludeLaunchDescription(
         XMLLaunchDescriptionSource([os.path.join(ouster_driver_path, "launch", "sensor.launch.xml")]),
         launch_arguments={
@@ -79,7 +82,7 @@ def generate_launch_description():
           "imu_port"        : LaunchConfiguration("imu_port"),
           "lidar_mode"      : LaunchConfiguration("lidar_mode"),
           "timestamp_mode"  : "TIME_FROM_INTERNAL_OSC",
-          "metadata"        : LaunchConfiguration("metadata_in"),
+          "metadata"        : LaunchConfiguration("metadata_out"),
           "sensor_frame"    : "laser_sensor_frame",
           "laser_frame"     : "laser_data_frame",
           "imu_frame"       : "imu_data_frame",
