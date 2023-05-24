@@ -84,7 +84,7 @@ def generate_launch_description():
     actions=[
       # Start driver node
       Node(package='velodyne_driver', executable='velodyne_driver_node', name='velodyne_driver_node', output='both',
-        parameters=[params_velod_driver_path]),
+        parameters=[params_velod_driv]),
       # Start convertion node
       Node(package='velodyne_pointcloud', executable='velodyne_convert_node', output='both', name='velodyne_convert_node',
         parameters=[params_velod_pcl],)
