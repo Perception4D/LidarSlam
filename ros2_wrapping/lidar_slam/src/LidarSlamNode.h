@@ -224,6 +224,7 @@ protected:
   // SLAM stuff
   LidarSlam::Slam LidarSlam;
   std::vector<CloudS::Ptr> Frames;
+  bool SlamEnabled = true;
 
   // ROS subscribers and publishers
   std::vector<rclcpp::Subscription<Pcl2_msg>::SharedPtr> CloudSubs;

@@ -223,6 +223,9 @@ LidarSlamNode::~LidarSlamNode()
 //------------------------------------------------------------------------------
 void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
 {
+  if (!this->SlamEnabled)
+    return;
+
   CloudS::Ptr cloudS_ptr = std::make_shared<CloudS>();
 
   // Convert message to cloudS pointer
@@ -278,6 +281,9 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
 //------------------------------------------------------------------------------
 void LidarSlamNode::SecondaryScanCallback(const Pcl2_msg& pcl_msg)
 {
+  if (!this->SlamEnabled)
+    return;
+
   CloudS::Ptr cloudS_ptr = std::make_shared<CloudS>();
 
   pcl::fromROSMsg(pcl_msg, *cloudS_ptr);
@@ -299,6 +305,9 @@ void LidarSlamNode::SecondaryScanCallback(const Pcl2_msg& pcl_msg)
 //------------------------------------------------------------------------------
 void LidarSlamNode::ImageCallback(const sensor_msgs::msg::Image& imageMsg)
 {
+  if (!this->SlamEnabled)
+    return;
+
   #ifdef USE_CV_BRIDGE
   if (!this->UseExtSensor[LidarSlam::CAMERA])
     return;
@@ -337,6 +346,9 @@ void LidarSlamNode::ImageCallback(const sensor_msgs::msg::Image& imageMsg)
 //------------------------------------------------------------------------------
 void LidarSlamNode::CameraInfoCallback(const sensor_msgs::msg::CameraInfo& calibMsg)
 {
+  if (!this->SlamEnabled)
+    return;
+
   #ifdef USE_CV_BRIDGE
   // The intrinsic calibration must not changed so we can only use
   // the camera info until the camera is ready to be used
@@ -356,6 +368,9 @@ void LidarSlamNode::CameraInfoCallback(const sensor_msgs::msg::CameraInfo& calib
 //------------------------------------------------------------------------------
 void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
 {
+  if (!this->SlamEnabled)
+    return;
+
     if (!this->UseExtSensor[LidarSlam::GPS])
       return;
 
@@ -413,8 +428,12 @@ int LidarSlamNode::BuildId(const std::vector<int>& ids)
 //------------------------------------------------------------------------------
 void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray& tagsInfo)
 {
+  if (!this->SlamEnabled)
+    return;
+
   if (!this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR])
     return;
+
   for (auto& tagInfo : tagsInfo.detections)
   {
     // Transform to apply to points represented in detector frame to express them in base frame
@@ -676,6 +695,18 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       this->LidarSlam.Reset(true);
       this->SetSlamInitialState();
       break;
+
+     // Enable/Disable the SLAM process
+      case lidar_slam::msg::SlamCommand::SWITCH_ON_OFF:
+      {
+        if (this->SlamEnabled)
+          RCLCPP_WARN_STREAM(this->get_logger(), "Disabling the SLAM process");
+        else
+          RCLCPP_WARN_STREAM(this->get_logger(), "Enabling again the SLAM process");
+
+        this->SlamEnabled = !this->SlamEnabled;
+        break;
+      }
 
     // Save SLAM keypoints maps to PCD files
     case lidar_slam::msg::SlamCommand::SAVE_KEYPOINTS_MAPS:
@@ -1102,18 +1133,24 @@ void LidarSlamNode::SetSlamParameters()
   std::vector<double> acc;
   if (this->get_parameter("slam.confidence.motion_limits.acceleration", acc) && acc.size() == 2)
   {
-    //convert to float for Eigen
-    std::vector<float> accf{(float)acc[0], (float)acc[1]};
-    this->LidarSlam.SetAccelerationLimits(Eigen::Map<const Eigen::Array2f>(accf.data()));
+    // Convertion needed because infinity is a double in ROS
+    Eigen::Array2f acc_array((float)acc[0], (float)acc[1]);
+    this->LidarSlam.SetAccelerationLimits(acc_array);
   }
   std::vector<double> vel;
   if (this->get_parameter("slam.confidence.motion_limits.velocity", vel) && vel.size() == 2)
   {
-    //convert to float for Eigen
-    std::vector<float> velf{(float)vel[0], (float)vel[1]};
-    this->LidarSlam.SetVelocityLimits(Eigen::Map<const Eigen::Array2f>(velf.data()));
-  } 
-  SetSlamParam(float, "slam.confidence.motion_limits.time_window_duration", TimeWindowDuration)
+    // Convertion needed because infinity is a double in ROS
+    Eigen::Array2f vel_array((float)vel[0], (float)vel[1]);
+    this->LidarSlam.SetVelocityLimits(vel_array);
+  }
+  std::vector<double> pos;
+  if (this->get_parameter("slam.confidence.motion_limits.pose", pos) && pos.size() == 2)
+  {
+    // Convertion needed because infinity is a double in ROS
+    Eigen::Array2f pos_array((float)pos[0], (float)pos[1]);
+    this->LidarSlam.SetPoseLimits(pos_array);
+  }
 
   SetSlamParam(int, "slam.confidence.window", ConfidenceWindow)
   SetSlamParam(float, "slam.confidence.overlap.gap_threshold", OverlapDerivativeThreshold)
