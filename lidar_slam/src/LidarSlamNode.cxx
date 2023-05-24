@@ -267,15 +267,43 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
   // Run SLAM : register new frame and update localization and map.
   this->LidarSlam.AddFrames(this->Frames);
 
-  // Check if SLAM failed
-  if (this->LidarSlam.HasFailed())
-    RCLCPP_ERROR_STREAM(this->get_logger(), "SLAM failed");
-
-
-  this->Frames.clear();
+  // TMP
+  // Check if SLAM has failed
+  if (this->LidarSlam.IsRecovery())
+  {
+    // TMP : in the future, the user should have a look
+    // at the result to validate recovery
+    // Check if the SLAM can go on and pose has to be displayed
+    if (this->LidarSlam.GetOverlapEstimation() > 0.2f &&
+        this->LidarSlam.GetPositionErrorStd()  < 0.1f)
+    {
+      RCLCPP_WARN_STREAM(this->get_logger(), "Getting out of recovery mode");
+      // Frame is relocalized, reset params
+      this->LidarSlam.EndRecovery();
+    }
+    else
+      RCLCPP_WARN_STREAM(this->get_logger(), "Still waiting for recovery");
+  }
+  else if (this->LidarSlam.HasFailed())
+  {
+    RCLCPP_WARN_STREAM(this->get_logger(),
+                    "SLAM has failed : entering recovery mode :\n"
+                    << "\t -Maps will not be updated\n"
+                    << "\t -Egomotion and undistortion are disabled\n"
+                    << "\t -The number of ICP iterations is increased\n"
+                    << "\t -The maximum distance between a frame point and a map target point is increased");
+    // Enable recovery mode :
+    // Last frames are removed
+    // Maps are not updated
+    // Param are tuned to handle bigger motions
+    // Warning : real time is not ensured
+    this->LidarSlam.StartRecovery(this->RecoveryTime);
+  }
 
   // Publish SLAM output as requested by user
   this->PublishOutput();
+
+  this->Frames.clear();
 }
 
 //------------------------------------------------------------------------------
@@ -679,12 +707,16 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
 
     // Enable the agregation of keypoints to a fixed initial map
     case lidar_slam::msg::SlamCommand::ENABLE_SLAM_MAP_EXPANSION:
+      if (this->LidarSlam.IsRecovery())
+        RCLCPP_ERROR_STREAM(this->get_logger(), "Cannot unable map expansion in recovery mode!");
       this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::ADD_KPTS_TO_FIXED_MAP);
       RCLCPP_WARN(this->get_logger(), "Enabling SLAM maps expansion with new keypoints.");
       break;
 
     // Enable the update of the map with new keypoints
     case lidar_slam::msg::SlamCommand::ENABLE_SLAM_MAP_UPDATE:
+      if (this->LidarSlam.IsRecovery())
+        RCLCPP_ERROR_STREAM(this->get_logger(), "Cannot unable map update in recovery mode!");
       this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::UPDATE);
       RCLCPP_WARN(this->get_logger(), "Enabling SLAM maps update with new keypoints.");
       break;
@@ -932,7 +964,7 @@ void LidarSlamNode::PublishOutput()
     confidenceMsg.nb_matches = this->LidarSlam.GetTotalMatchedKeypoints();
     confidenceMsg.comply_motion_limits = this->LidarSlam.GetComplyMotionLimits();
     confidenceMsg.std_position_error = this->LidarSlam.GetPositionErrorStd();
-    confidenceMsg.failure = this->LidarSlam.HasFailed();
+    confidenceMsg.failure = this->LidarSlam.HasFailed() || this->LidarSlam.IsRecovery();
     publishWithCast(this->Publishers[CONFIDENCE], lidar_slam::msg::Confidence, confidenceMsg);
   }
 }
@@ -1155,6 +1187,8 @@ void LidarSlamNode::SetSlamParameters()
   SetSlamParam(int, "slam.confidence.window", ConfidenceWindow)
   SetSlamParam(float, "slam.confidence.overlap.gap_threshold", OverlapDerivativeThreshold)
   SetSlamParam(float, "slam.confidence.position_error.threshold", PositionErrorThreshold)
+  this->RecoveryTime = this->get_parameter_or("slam/confidence/failure_detector/recovery_time", this->RecoveryTime);
+  SetSlamParam(bool,  "slam/confidence/failure_detector/enable", FailureDetectionEnabled)
 
   // Keyframes
   SetSlamParam(double, "slam.keyframes.distance_threshold", KfDistanceThreshold)

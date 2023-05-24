@@ -269,6 +269,10 @@ protected:
   // Offset to apply to external sensors to get lidar time
   float SensorTimeOffset = 0.;
 
+  // Failure detector
+  // In case of failure, duration (in seconds) to come back in time to previous state
+  float RecoveryTime = 1.f;
+
   // Landmarks
   rclcpp::Subscription<apriltag_ros::msg::AprilTagDetectionArray>::SharedPtr LandmarkSub;
   bool PublishTags = false;
