@@ -26,6 +26,7 @@
 #include <rclcpp/time.hpp>
 #include <tf2/convert.h>
 #include <chrono>
+#include <Eigen/Geometry>
 
 namespace Utils
 {
@@ -122,7 +123,7 @@ bool Tf2LookupTransform(Eigen::Isometry3d& transform,
   }
   catch (tf2::TransformException& ex)
   {
-    PRINT_ERROR(ex.what());
+    std::cerr << ex.what() << std::endl;
     return false;
   }
   const geometry_msgs::msg::Transform& t = tfStamped.transform;
