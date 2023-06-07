@@ -30,6 +30,8 @@
   <depend>pcl_conversions</depend>
   <depend>sensor_msgs</depend>
 
+  <exec_depend>libpcl-common</exec_depend>
+  <exec_depend>libpcl-io</exec_depend>
   <exec_depend>rosidl_default_runtime</exec_depend>.
 
   <!-- The export tag contains other, unspecified, tags -->

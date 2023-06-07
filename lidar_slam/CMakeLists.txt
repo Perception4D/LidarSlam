@@ -8,6 +8,11 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
+# Add binobj to increase address capacity on Windows
+if (WIN32)
+  add_compile_options(/bigobj)
+endif()
+
 ##################
 ## Dependencies ##
 ##################
@@ -102,7 +107,7 @@ else()
   message("ROS wrapping : cv_bridge was not found, camera interface cannot be used")
 endif()
 
-ament_target_dependencies(lidar_slam_node
+set(lidar_slam_dependencies
   rclcpp
   tf2_ros
   pcl_conversions
@@ -112,6 +117,10 @@ ament_target_dependencies(lidar_slam_node
   sensor_msgs
   apriltag_ros
   ${optional_DEP}
+)
+
+ament_target_dependencies(lidar_slam_node
+  ${lidar_slam_dependencies}
 )
 
 target_link_libraries(lidar_slam_node
@@ -145,4 +154,5 @@ install(DIRECTORY launch params
 
 # Installs the package.xml
 # Installs config (and possibly target) files for CMake so that it can be found by other packages
+ament_export_dependencies(${lidar_slam_dependencies})
 ament_package()

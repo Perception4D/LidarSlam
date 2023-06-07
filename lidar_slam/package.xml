@@ -5,7 +5,7 @@
   <description>ROS wrapping of Kitware LiDAR SLAM algorithm.</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
-  <maintainer email="julia.sanchez@kitware.com">Julia Sanchez</maintainer>
+  <maintainer email="arthur.bourbousson@kitware.com">Arthur Bourbousson</maintainer>
 
   <!-- One license tag required, multiple allowed, one license per tag -->
   <!-- Commonly used license strings: -->
@@ -26,6 +26,8 @@
   <depend>apriltag_ros</depend>
   <depend>cv_bridge</depend>
 
+  <exec_depend>libpcl-common</exec_depend>
+  <exec_depend>libpcl-io</exec_depend>
   <exec_depend>message_runtime</exec_depend>
   <exec_depend>lidar_conversions</exec_depend>
   <exec_depend>gps_conversions</exec_depend>
