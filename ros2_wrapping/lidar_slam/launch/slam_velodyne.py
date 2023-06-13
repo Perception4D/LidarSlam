@@ -51,46 +51,48 @@ def generate_launch_description():
   ## Velodyne ##
   ##############
 
-  # Manualy override velodyne_driver_node parameters
-  params_velod_driver_path = os.path.join(get_package_share_directory('velodyne_driver'), 'config', 'VLP16-velodyne_driver_node-params.yaml')
-  with open(params_velod_driver_path, 'r') as f:
-    params_velod_driv = yaml.safe_load(f)['velodyne_driver_node']['ros__parameters']
+  #! For now velodyne packages are not ported on Windows 10
+  if os.name != 'nt':
+    # Manualy override velodyne_driver_node parameters
+    params_velod_driver_path = os.path.join(get_package_share_directory('velodyne_driver'), 'config', 'VLP16-velodyne_driver_node-params.yaml')
+    with open(params_velod_driver_path, 'r') as f:
+      params_velod_driv = yaml.safe_load(f)['velodyne_driver_node']['ros__parameters']
 
-  params_velod_driv['device_ip']    =  LaunchConfiguration('device_ip')
-  params_velod_driv["gps_time"]     = False
-  params_velod_driv["read_once"]    = True
-  params_velod_driv["read_fast"]    = False
-  params_velod_driv["repeat_delay"] = 0.0
-  params_velod_driv["frame_id"]     = "velodyne"
-  params_velod_driv["model"]        = "VLP16"
-  params_velod_driv["rpm"]          = LaunchConfiguration('rpm')
-  params_velod_driv["pcap"]         = LaunchConfiguration('pcap')
-  params_velod_driv["port"]         = LaunchConfiguration('port')
+    params_velod_driv['device_ip']    =  LaunchConfiguration('device_ip')
+    params_velod_driv["gps_time"]     = False
+    params_velod_driv["read_once"]    = True
+    params_velod_driv["read_fast"]    = False
+    params_velod_driv["repeat_delay"] = 0.0
+    params_velod_driv["frame_id"]     = "velodyne"
+    params_velod_driv["model"]        = "VLP16"
+    params_velod_driv["rpm"]          = LaunchConfiguration('rpm')
+    params_velod_driv["pcap"]         = LaunchConfiguration('pcap')
+    params_velod_driv["port"]         = LaunchConfiguration('port')
 
-  # Manualy override velodyne_convert_node parameters 
-  velodyne_pointcloud_share_path = get_package_share_directory('velodyne_pointcloud')
-  params_velod_pcl_path = os.path.join(velodyne_pointcloud_share_path, 'config', 'VLP16-velodyne_convert_node-params.yaml')
-  with open(params_velod_pcl_path, 'r') as f:
-      params_velod_pcl = yaml.safe_load(f)['velodyne_convert_node']['ros__parameters']
-  
-  params_velod_pcl['calibration']    = os.path.join(velodyne_pointcloud_share_path, 'params', 'VLP16db.yaml')
-  params_velod_pcl["min_range"]      = 0.4
-  params_velod_pcl["max_range"]      = 130.0
-  params_velod_pcl["organize_cloud"] = False
-  params_velod_pcl["target_frame"]   = ""
-  params_velod_pcl["fixed_frame"]    = ""
+    # Manualy override velodyne_convert_node parameters 
+    velodyne_pointcloud_share_path = get_package_share_directory('velodyne_pointcloud')
+    params_velod_pcl_path = os.path.join(velodyne_pointcloud_share_path, 'config', 'VLP16-velodyne_convert_node-params.yaml')
+    with open(params_velod_pcl_path, 'r') as f:
+        params_velod_pcl = yaml.safe_load(f)['velodyne_convert_node']['ros__parameters']
+    
+    params_velod_pcl['calibration']    = os.path.join(velodyne_pointcloud_share_path, 'params', 'VLP16db.yaml')
+    params_velod_pcl["min_range"]      = 0.4
+    params_velod_pcl["max_range"]      = 130.0
+    params_velod_pcl["organize_cloud"] = False
+    params_velod_pcl["target_frame"]   = ""
+    params_velod_pcl["fixed_frame"]    = ""
 
-  velodyne_group = GroupAction(
-    actions=[
-      # Start driver node
-      Node(package='velodyne_driver', executable='velodyne_driver_node', name='velodyne_driver_node', output='both',
-        parameters=[params_velod_driv]),
-      # Start convertion node
-      Node(package='velodyne_pointcloud', executable='velodyne_convert_node', output='both', name='velodyne_convert_node',
-        parameters=[params_velod_pcl],)
-    ],
-    condition = IfCondition(LaunchConfiguration("vlp16_driver"))
-  )
+    velodyne_group = GroupAction(
+      actions=[
+        # Start driver node
+        Node(package='velodyne_driver', executable='velodyne_driver_node', name='velodyne_driver_node', output='both',
+          parameters=[params_velod_driv]),
+        # Start convertion node
+        Node(package='velodyne_pointcloud', executable='velodyne_convert_node', output='both', name='velodyne_convert_node',
+          parameters=[params_velod_pcl],)
+      ],
+      condition = IfCondition(LaunchConfiguration("vlp16_driver"))
+    )
 
   ##########
   ## Slam ##
@@ -175,7 +177,8 @@ def generate_launch_description():
                "--frame-id", "odom", "--child-frame-id", "base_link"],
   )
 
-  ld.add_action(velodyne_group)
+  if os.name != "nt" :
+    ld.add_action(velodyne_group)
   ld.add_action(velodyne_conversion_node)
   ld.add_action(slam_outdoor_node)
   ld.add_action(slam_indoor_node)
