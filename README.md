@@ -16,6 +16,9 @@
   - [Dependencies](#dependencies-2)
   - [Installation](#installation-2)
   - [Usage](#usage-1)
+- [ROS2 wrapping on Windows 10](##ros2-wrapping-on-windows-10)
+  - [Dependencies](#install-dependencies)
+  - [Installation](#install-slam-package)
 - [ParaView wrapping](#paraview-wrapping)
   - [Dependencies](#dependencies-3)
   - [Installation](#installation-3)
@@ -269,6 +272,7 @@ Example :
  cmake --build . -j
  # Build Slam ROS package
  cd ../ros2_ws
+ call path\to\ros2_humble\local_setup.bat
  colcon build --base-paths ./slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install
 ```
 
@@ -287,6 +291,57 @@ ros2 launch lidar_slam slam_ouster.launch replay:=false gps:=true   # if GPS/SLA
 ```
 
 See [ros2_wrapping/lidar_slam/README.md](ros2_wrapping/lidar_slam/README.md) for more details.
+
+## ROS2 wrapping on Windows 10
+
+**WARNING** : ROS2 is supported on Windows 10 but many packages are not ported and the installation can be tricky.
+
+**NOTE** : Always use administrator x64_x86 Cross Tools Command Prompt for VS 2019
+
+### Install dependencies
+
+#### Install ROS2 and slam dependencies
+Install ROS2 humble version by following [official instructions](https://docs.ros.org/en/humble/Installation/Windows-Install-Binary.html)
+
+Install slam dependencies with the [SLAM superbuild](https://gitlab.kitware.com/keu-computervision/slam-superbuild) on Release mode. You can use MSVC or Ninja as generator.
+The instructions can be found in the section [above](#with-superbuild).
+
+To use dependencies installed on the superbuild, you need to set the PATH env
+```
+set PATH=path\to\Slam_SB\install\bin;%PATH%
+```
+
+#### Install pcl-conversions
+Create a workspace for pcl-conversions package
+Be sure to have PCL in the PATH env
+
+```bash
+mkdir ws_pcl/src && cd ws_pcl\src
+git clone https://github.com/ros-perception/perception_pcl.git -b ros2
+git clone https://github.com/ros-perception/pcl_msgs.git -b ros2 
+cd ..
+call path\to\ros2_humble\local_setup.bat
+colcon build --merge-install --packages-up-to pcl_conversions
+```
+To use pcl-conversions package, you need to source your command prompt 
+```bash
+call path\to\ws_pcl\install\setup.bat
+```
+
+### Install SLAM package
+Be sure to have the superbuild in the PATH and pcl_conversions sourced
+```bash
+mkdir ws_ros2
+dir ws_ros2
+git clone https://gitlab.kitware.com/keu-computervision/slam -b feat/ROS2
+call path\to\ros2_humble\local_setup.bat
+colcon build --base-paths=slam\ros2_wrapping  --merge-install --cmake-args  -DCMAKE_BUILD_TYPE=Release -DENABLE_OpenCV=OFF
+```
+source the SLAM
+```
+call install/setup.bat
+```
+The SLAM is ready to use. Please make sure that the superbuild bin path is in the PATH var and pcl_conversions is sourced.
 
 ## ParaView wrapping
 
