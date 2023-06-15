@@ -206,6 +206,9 @@ public:
   // Check if there is a loop closure implying current frame
   void DetectLoop();
 
+  // Add the detected loop indices into slam
+  void AddLoopDetection();
+
   vtkCustomGetMacro(G2oFileName, std::string)
   vtkCustomSetMacro(G2oFileName, std::string)
 

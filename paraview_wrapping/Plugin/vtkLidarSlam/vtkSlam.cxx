@@ -205,6 +205,22 @@ void vtkSlam::DetectLoop()
     return;
 
   this->SetLoopDetected(this->SlamAlgo->DetectLoopClosureIndices(this->LoopIdx));
+  // Store detected loop closure indices
+  // Note: For now, detected loop indices are stored as long as LoopDetected is ture.
+  // A popUp window, which requires users to confirm the loop, is going to be added.
+  this->AddLoopDetection();
+
+  // Refresh view
+  this->ParametersModificationTime.Modified();
+}
+
+//-----------------------------------------------------------------------------
+void vtkSlam::AddLoopDetection()
+{
+  if (this->LoopDetected)
+    this->SlamAlgo->AddLoopClosureIndices(this->LoopIdx);
+
+  this->SetLoopDetected(false);
 
   // Refresh view
   this->ParametersModificationTime.Modified();
