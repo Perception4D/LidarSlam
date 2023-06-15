@@ -740,6 +740,9 @@ public:
   // Detect a loop for the current frame
   bool DetectLoopClosureIndices(LoopClosure::LoopIndices& loop);
 
+  // Add indices of a loop into vector LoopDetections
+  void AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFrame = false);
+
   GetStructParamsMacro(Loop, Detector, LoopClosureDetector)
   SetStructParamsMacro(Loop, Detector, LoopClosureDetector)
 
