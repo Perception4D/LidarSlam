@@ -1906,20 +1906,6 @@
         </Documentation>
       </IntVectorProperty>
 
-      <IntVectorProperty name="Query frame index"
-                         command="SetLoopQueryIdx"
-                         number_of_elements="1"
-                         default_values="0"
-                         panel_visibility="advanced">
-        <Documentation>
-          Enter manually the query frame index of the loop closure.
-          The query frame index represents a recent frame who meets a loop.
-        </Documentation>
-        <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="1" />
-        </Hints>
-      </IntVectorProperty>
-
       <DoubleVectorProperty name="Query map start range"
                             command="SetLoopQueryMapStartRange"
                             number_of_elements="1"
@@ -2000,20 +1986,6 @@
         </Hints>
       </DoubleVectorProperty>
 
-      <IntVectorProperty name="Revisited frame index"
-                         command="SetLoopRevisitedIdx"
-                         number_of_elements="1"
-                         default_values="0"
-                         panel_visibility="advanced">
-        <Documentation>
-          Enter manually the revisited frame index of the loop closure.
-          The revisited frame index represents a previous frame which a recent frame considers that there is a loop closure.
-        </Documentation>
-        <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="1" />
-        </Hints>
-      </IntVectorProperty>
-
       <DoubleVectorProperty name="Revisited map start range"
                             command="SetLoopRevisitedMapStartRange"
                             number_of_elements="1"
@@ -2066,14 +2038,12 @@
 
       <PropertyGroup label="Loop closure parameters">
         <Property name="Loop closure detector" />
-        <Property name="Query frame index" />
         <Property name="Query map start range" />
         <Property name="Query map end range" />
         <Property name="Loop gap length" />
         <Property name="Loop evaluation threshold" />
         <Property name="Subsample revisited maps" />
         <Property name="Loop sample step" />
-        <Property name="Revisited frame index" />
         <Property name="Revisited map start range" />
         <Property name="Revisited map end range" />
         <Property name="Advanced settings" />

@@ -1981,51 +1981,6 @@ void vtkSlam::SetLoopDetector(int detector)
 }
 
 //-----------------------------------------------------------------------------
-void vtkSlam::SetLoopQueryIdx(unsigned int loopClosureQueryIdx)
-{
-  // Check the input frame index can be found in Logstates
-  // If the input query frame index is not in Logstates, replace it by the last frame index stored in Logstates
-  const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
-  if (lidarStates.empty())
-    return;
-  if (loopClosureQueryIdx < lidarStates.front().Index || loopClosureQueryIdx > lidarStates.back().Index )
-  {
-    vtkWarningMacro(<< "The input query frame index is not valid. Please enter a frame index between ["
-                    << lidarStates.front().Index << ", " << lidarStates.back().Index << "].\n"
-                    << "Otherwise, the query frame index will be replaced by the last stored frame #"
-                    << lidarStates.back().Index);
-    loopClosureQueryIdx = lidarStates.back().Index;
-  }
-  vtkDebugMacro("Setting LoopClosureQueryFrameIdx to " << loopClosureQueryIdx);
-  if (this->SlamAlgo->GetLoopQueryIdx() != loopClosureQueryIdx)
-  {
-    this->SlamAlgo->SetLoopQueryIdx(loopClosureQueryIdx);
-    this->ParametersModificationTime.Modified();
-  }
-}
-
-//-----------------------------------------------------------------------------
-void vtkSlam::SetLoopRevisitedIdx(unsigned int loopClosureRevisitedIdx)
-{
-  // Check the input frame index can be found in Logstates
-  const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
-  if (lidarStates.empty())
-    return;
-  if (loopClosureRevisitedIdx < lidarStates.front().Index || loopClosureRevisitedIdx > lidarStates.back().Index )
-  {
-    vtkWarningMacro(<< "The input query frame index is not valid. Please enter a frame index between ["
-                    << lidarStates.front().Index << ", " << lidarStates.back().Index << "].");
-    return;
-  }
-  vtkDebugMacro("Setting LoopClosureRevisitedFrameIdx to " << loopClosureRevisitedIdx);
-  if (this->SlamAlgo->GetLoopRevisitedIdx() != loopClosureRevisitedIdx)
-  {
-    this->SlamAlgo->SetLoopRevisitedIdx(loopClosureRevisitedIdx);
-    this->ParametersModificationTime.Modified();
-  }
-}
-
-//-----------------------------------------------------------------------------
 void vtkSlam::SetPlanarTrajectory(bool planarTraj)
 {
   if (planarTraj != this->PlanarTrajectory)

@@ -746,22 +746,25 @@ bool Slam::OptimizeGraph()
   // Look for loop closure constraints
   if (this->UsePGOConstraints[LOOP_CLOSURE])
   {
-    // Detect loop closure
-    auto itRevisitedState = this->LogStates.begin();
-    auto itQueryState = itRevisitedState;
-    if (this->DetectLoopClosureIndices(itQueryState, itRevisitedState))
+    if(!this->LoopDetections.empty())
     {
-      // Compute a loopClosureTransform from the revisited frame to the query frame
-      // by registering the keypoints of the query frame onto the keypoints of the revisited frame
-      Eigen::Isometry3d loopClosureTransform;
-      Eigen::Matrix6d loopClosureCovariance;
-      if (this->LoopClosureRegistration(itQueryState, itRevisitedState,
-                                        loopClosureTransform, loopClosureCovariance))
+      // Check all pairs of loop indices saved in the LoopDetections vector
+      for (auto& loop : this->LoopDetections)
       {
-        // Add loop closure constraint into pose graph
-        graphManager.AddLoopClosureConstraint(this->LoopParams.QueryIdx, this->LoopParams.RevisitedIdx,
-                                              loopClosureTransform, loopClosureCovariance);
-        externalConstraint = true;
+        auto itQueryState     = this->GetKeyStateIterator(loop.QueryIdx);
+        auto itRevisitedState = this->GetKeyStateIterator(loop.RevisitedIdx);
+        // Compute a loopClosureTransform from the revisited frame to the query frame
+        // by registering the keypoints of the query frame onto the keypoints of the revisited frame
+        Eigen::Isometry3d loopClosureTransform;
+        Eigen::Matrix6d loopClosureCovariance;
+        if (this->LoopClosureRegistration(itQueryState, itRevisitedState,
+                                          loopClosureTransform, loopClosureCovariance))
+        {
+          // Add loop closure constraint into pose graph
+          graphManager.AddLoopClosureConstraint(loop.QueryIdx, loop.RevisitedIdx,
+                                                loopClosureTransform, loopClosureCovariance);
+          externalConstraint = true;
+        }
       }
     }
     else
@@ -891,6 +894,9 @@ bool Slam::OptimizeGraph()
   if (this->UsePGOConstraints[PGO_EXT_POSE] && this->PoseHasData())
     // Update offset of referential frames with new de-skewed trajectory
     this->PoseManager->UpdateOffset(this->LogStates);
+  // Reset LoopDetections vector after PGO
+  if (this->UsePGOConstraints[LOOP_CLOSURE] && !this->LoopDetections.empty())
+    this->LoopDetections.clear();
   // Update the maps from the beginning using the new trajectory
   // Points older than the first logged state remain untouched
   this->UpdateMaps();

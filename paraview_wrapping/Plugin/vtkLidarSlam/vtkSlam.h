@@ -229,12 +229,6 @@ public:
   virtual int  GetLoopDetector();
   virtual void SetLoopDetector(int detector);
 
-  vtkCustomGetMacro(LoopQueryIdx, unsigned int)
-  virtual void SetLoopQueryIdx(unsigned int loopClosureQueryIdx);
-
-  vtkCustomGetMacro(LoopRevisitedIdx, unsigned int)
-  virtual void SetLoopRevisitedIdx(unsigned int loopClosureRevisitedIdx);
-
   vtkCustomGetMacro(LoopQueryMapStartRange, double)
   vtkCustomSetMacro(LoopQueryMapStartRange, double)
 
