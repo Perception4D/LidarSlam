@@ -229,6 +229,8 @@ public:
   virtual int  GetLoopDetector();
   virtual void SetLoopDetector(int detector);
 
+  void LoadLoopDetectionIndices(const std::string& fileName);
+
   vtkCustomGetMacro(LoopQueryMapStartRange, double)
   vtkCustomSetMacro(LoopQueryMapStartRange, double)
 

@@ -1885,6 +1885,23 @@
 
       <!-- ============================ Loop Closure ============================ -->
 
+      <StringVectorProperty name="Load loop indices"
+                            command="LoadLoopDetectionIndices"
+                            number_of_elements="1"
+                            animateable="0"
+                            panel_visibility="advanced">
+        <FileListDomain name="files"/>
+        <Hints>
+          <FileChooser extensions="csv" file_description="csv file format" />
+        </Hints>
+        <Documentation>
+          The path of the external loop closure indices file.
+          This CSV file must have 2 columns:
+          *queryIdx*: query frame indices
+          *revisitedIdx*: revisited frame indices
+        </Documentation>
+      </StringVectorProperty>
+
       <IntVectorProperty name="Loop closure detector"
                          command="SetLoopDetector"
                          number_of_elements="1"
@@ -2034,6 +2051,7 @@
       </IntVectorProperty>
 
       <PropertyGroup label="Loop closure parameters">
+        <Property name="Load loop indices" />
         <Property name="Loop closure detector" />
         <Property name="Query map start range" />
         <Property name="Query map end range" />

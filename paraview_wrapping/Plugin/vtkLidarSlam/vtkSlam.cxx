@@ -1983,6 +1983,42 @@ void vtkSlam::SetLoopDetector(int detector)
 }
 
 //-----------------------------------------------------------------------------
+void vtkSlam::LoadLoopDetectionIndices(const std::string& fileName)
+{
+  std::string delimiter = " ;,";
+  vtkSmartPointer<vtkDelimitedTextReader> reader = Utils::CreateCSVLoader(fileName, delimiter);
+  if (!reader)
+     return;
+  vtkTable* csvTable = reader->GetOutput();
+
+  // Check if loop closure information exists
+  if (!Utils::CheckTableFields(csvTable, {"queryIdx", "revisitedIdx"}))
+  {
+    vtkWarningMacro(<<"No loop closure information in the file. Load loop closure indices failed.");
+    return;
+  }
+
+  auto arrayQueryIdx     = csvTable->GetRowData()->GetArray("queryIdx"    );
+  auto arrayRevisitedIdx = csvTable->GetRowData()->GetArray("revisitedIdx");
+  vtkIdType numLoops     = arrayQueryIdx->GetNumberOfTuples();
+  if (numLoops == 0)
+  {
+    vtkWarningMacro(<<"No valid data in the loop closure indices file. Load loop closure indices failed.");
+    return;
+  }
+
+  // Process query frame indices and revisited frame indices
+  for (vtkIdType i = 0; i < numLoops; ++i)
+  {
+    LidarSlam::LoopClosure::LoopIndices loop(arrayQueryIdx->GetTuple1(i), arrayRevisitedIdx->GetTuple1(i), -1);
+    this->SlamAlgo->AddLoopClosureIndices(loop, true);
+  }
+
+  // Refresh view
+  this->ParametersModificationTime.Modified();
+}
+
+//-----------------------------------------------------------------------------
 void vtkSlam::SetPlanarTrajectory(bool planarTraj)
 {
   if (planarTraj != this->PlanarTrajectory)
