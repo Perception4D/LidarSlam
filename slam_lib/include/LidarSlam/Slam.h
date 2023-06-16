@@ -736,6 +736,10 @@ public:
   // ---------------------------------------------------------------------------
   //   Loop Closure parameters
   // ---------------------------------------------------------------------------
+
+  // Detect a loop for the current frame
+  bool DetectLoopClosureIndices(LoopClosure::LoopIndices& loop);
+
   GetStructParamsMacro(Loop, Detector, LoopClosureDetector)
   SetStructParamsMacro(Loop, Detector, LoopClosureDetector)
 
@@ -1302,10 +1306,6 @@ private:
   // ---------------------------------------------------------------------------
   //   Loop Closure usage
   // ---------------------------------------------------------------------------
-
-  // If use manual detection, check whether the inputs of loop closure frame indices are stored in the LogStates
-  // if use teaserpp detector, detect automatically a revisited frame index for the current frame by using teaserpp registration
-  bool DetectLoopClosureIndices(std::list<LidarState>::iterator& itQueryState, std::list<LidarState>::iterator& itRevisitedState);
 
   // Get the iterator of LogStates for an input frame index
   // It is possible that the input frame index does not correspond to a keyframe

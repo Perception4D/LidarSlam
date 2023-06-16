@@ -229,11 +229,8 @@ enum class LoopClosureDetector
   //! No detection is performed
   NONE = 0,
 
-  //! Manual detection
-  MANUAL = 1,
-
   //! Automatic detector by teaserpp registration
-  TEASERPP = 2
+  TEASERPP = 1
 };
 
 } // end of LidarSlam namespace

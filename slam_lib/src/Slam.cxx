@@ -1838,7 +1838,7 @@ std::vector<LidarState> Slam::GetLastStates(double freq)
 //==============================================================================
 
 //-----------------------------------------------------------------------------
-bool Slam::DetectLoopClosureIndices(std::list<LidarState>::iterator& itQueryState, std::list<LidarState>::iterator& itRevisitedState)
+bool Slam::DetectLoopClosureIndices(LoopClosure::LoopIndices& loop)
 {
   PRINT_VERBOSE(2, "========== Loop closure : Detection ==========");
   bool detectionValid = false;
@@ -1849,33 +1849,22 @@ bool Slam::DetectLoopClosureIndices(std::list<LidarState>::iterator& itQueryStat
       PRINT_WARNING("Loop closure detection is disabled!");
       return false;
     }
-    case LoopClosureDetector::MANUAL:
-    {
-      // If the detector is manual, check whether or not the input frames are stored in the LogStates
-      // When LogOnlyKeyFrames is enabled, only keyframes are stored in the LogStates.
-      // It is possible that the inputs frame indices are not keyframes.
-      // In this case, replace the input frame index by its neighbor keyframe
-      itQueryState     = this->GetKeyStateIterator(this->LoopParams.QueryIdx);
-      itRevisitedState = this->GetKeyStateIterator(this->LoopParams.RevisitedIdx);
-      PRINT_VERBOSE(3, "Loop closure is detected by external information. The relevant frame indices are:\n"
-                    << " Query frame #" << this->LoopParams.QueryIdx << " Revisited frame #" << this->LoopParams.RevisitedIdx);
-      detectionValid = true;
-      break;
-    }
     case LoopClosureDetector::TEASERPP:
     {
       // Automatic detection of loop closure by teaserpp registration
       // It detects automatically a revisited frame idx for the current frame
-      itQueryState = std::prev(this->LogStates.end());
-      itRevisitedState = this->LogStates.begin();
+      auto itQueryState = std::prev(this->LogStates.end());
+      auto itRevisitedState = this->LogStates.begin();
       detectionValid = this->DetectLoopWithTeaser(itQueryState, itRevisitedState);
       if (detectionValid)
       {
-        this->LoopParams.QueryIdx = itQueryState->Index;
-        this->LoopParams.RevisitedIdx = itRevisitedState->Index;
+        loop.QueryIdx = itQueryState->Index;
+        loop.RevisitedIdx = itRevisitedState->Index;
+        loop.Time = itQueryState->Time;
       }
       break;
     }
+    // To do: add other loop closure detector
   }
 
   return detectionValid;
