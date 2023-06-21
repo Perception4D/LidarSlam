@@ -35,6 +35,9 @@ find_package(cv_bridge)
 ## Build ##
 ###########
 
+# To find shared libraries used by the project at runtime
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 # If lib_name has been installed with the superbuild, set lib_name_DIR to install_path
 function(SET_SB_LIB lib_name lib_install_path)
   if (EXISTS ${lib_install_path})

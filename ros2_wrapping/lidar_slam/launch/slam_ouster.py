@@ -21,13 +21,12 @@ def generate_launch_description():
     DeclareLaunchArgument("replay", default_value="true", description="Whether to process live or replayed data"),
     DeclareLaunchArgument("outdoor", default_value="true", description="Decide which set of parameters to use"),
     DeclareLaunchArgument("rviz", default_value="true", description="Visualize results with RViz."),
-    # Possibility to use VLP32 with appropriate launch files
-    # Check github repo : https://github.com/ros-drivers/velodyne/tree/ros2
     DeclareLaunchArgument("os_driver", default_value="false", description="If true, activate os_node."),
     DeclareLaunchArgument("tags_topic", default_value="tag_detections", description="Topic from which to get the tag measurements"),
     DeclareLaunchArgument("camera_topic", default_value="camera", description="topic from which to get the rgb camera data"),
     DeclareLaunchArgument("camera_info_topic", default_value="camera_info", description="topic from which to get the rgb camera info"),
     #  Ouster driver parameters
+    # Those arguments correspond to driver parameters of https://github.com/ouster-lidar/ouster-ros/tree/ros2
     DeclareLaunchArgument("sensor_hostname", default_value="10.5.5.96", description="Hostname or IP in dotted decimal form of the sensor"),
     DeclareLaunchArgument("udp_dest", default_value="", description="Hostname or IP where the sensor will send data packets"),
     DeclareLaunchArgument("lidar_port", default_value="7502", description="Port to which the sensor should send lidar data"),
