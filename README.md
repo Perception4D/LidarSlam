@@ -210,7 +210,8 @@ See [ros_wrapping/lidar_slam/README.md](ros_wrapping/lidar_slam/README.md) for m
 
 ## ROS2 wrapping
 
-The ROS wrapping has been tested on Linux only.
+The ROS2 wrapping has been tested on Linux and a branch on Windows 10 is currently being tested.
+This wrapping required at least an Humble version of ROS2.
 
 ### Dependencies
 
@@ -229,13 +230,12 @@ Ensure all *LidarSlam* dependencies are respected. Specific ROS packages depende
 For Velodyne usage, please note that the ROS Velodyne driver with minimum version 1.6 is needed.
 Be careful, this ROS Velodyne driver 1.6 is not backward-compatible with previous versions.
 You can install the new Velodyne driver using the command `sudo apt install ros-humble-velodyne ros-humble-velodyne-pcl`.
-If running on previous versions of Ubuntu/ROS (18/Melodic and below), you need to compile this driver from source : just clone the [git repo](https://github.com/ros-drivers/velodyne) in your ros2_wrapping sources, it will be automatically built with next  `colcon build --base-paths slam/ros2_wrapping`.
 
-For Ouster usage, the driver can be found in this [git repo](https://github.com/ouster-lidar/ouster-ros/tree/ros2), clone the repo in ros2_wrapping directory and use colcon to build with the package
+For Ouster usage, the driver can be found in this [git repo](https://github.com/ouster-lidar/ouster-ros/tree/ros2). We recommand to build it on another workspace but you can also clone it under the ros2_wrapping folder and build it at the same time than the SLAM.
 
 ### Installation
 
-Clone this git repo directly into your workspace directory, and run `colcon build --base-paths slam/ros2_wrapping` or `colcon build --base-paths slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release` (to turn on optimizations, highly recommended when using Eigen). It will automatically build *LidarSlam* lib with ROS2 packages.
+Clone this git repo directly into your workspace directory, and run `colcon build --base-paths slam/ros2_wrapping` or `colcon build --base-paths slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release` (to turn on optimizations, highly recommended when using Eigen). It will automatically build *LidarSlam* lib with ROS2 packages. base_paths must point to the relative path of the ros2_wrapping folder.
 
 **NOTE** : Boost, g2o and PCL dependencies can be resolved wih ROS packages.
 
@@ -254,8 +254,9 @@ Example for Ceres and g2o :
 
 #### With Superbuild
 The [superbuild](https://gitlab.kitware.com/keu-computervision/slam-superbuild/) can also download and install the required dependencies.
+You can use it by adding the cmake variable SUPERBUILD_INSTALL_DIR equal to the absolute path of the install folder inside Superbuild build folder (example below)
 
-**WARNING** It is not possible to use PCL from the superbuild (this would create runtime issues with system version).
+**WARNING** It is not recommanded to use PCL from the superbuild : this could create runtime issues with the ROS PCL version.
 
 **WARNING** The superbuild must be installed outside of ros2 workspace.
 
@@ -282,8 +283,8 @@ ros2 lidar_slam slam_velodyne.py use_sim_time:=false gps:=true   # if GPS/SLAM c
 
 For Ouster :
 ```bash
-ros2 launch lidar_slam slam_ouster.launch replay:=false
-ros2 launch lidar_slam slam_ouster.launch replay:=false gps:=true   # if GPS/SLAM calibration has to be run
+ros2 launch lidar_slam slam_ouster.py replay:=false
+ros2 launch lidar_slam slam_ouster.py replay:=false gps:=true   # if GPS/SLAM calibration has to be run
 ```
 
 See [ros2_wrapping/lidar_slam/README.md](ros2_wrapping/lidar_slam/README.md) for more details.
