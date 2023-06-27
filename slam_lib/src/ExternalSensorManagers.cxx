@@ -519,6 +519,85 @@ bool GpsManager::ComputeConstraint(double lidarTime)
 }
 
 // ---------------------------------------------------------------------------
+bool GpsManager::ComputeCalibration(const std::list<LidarState>& states)
+{
+  if (states.size() <= 2)
+  {
+    PRINT_WARNING("Cannot estimate the calibration for ext poses: not enough logged states");
+    return false;
+  }
+
+  // Get equivalent trajectory in pose measurements
+  std::vector<GpsMeasurement> gpsMeasurements;
+  int startIdxPose = this->ComputeSynchronizedMeasures(states, gpsMeasurements);
+  if (startIdxPose == int(states.size()))
+  {
+    PRINT_WARNING("Cannot estimate the calibration for GPS: no equivalent trajectory");
+    return false;
+  }
+
+  auto itStart = states.begin();
+  std::advance(itStart, startIdxPose);
+
+  // Store the reference frames
+  Eigen::Isometry3d refSLAMInv = itStart->Isometry.inverse();
+  Eigen::Vector3d refGps = gpsMeasurements[startIdxPose].Position;
+
+  // Create solver
+  // Note: to use shared pointers the ownership must be let to cost/loss functions
+  ceres::Problem::Options options;
+  options.loss_function_ownership = ceres::Ownership::DO_NOT_TAKE_OWNERSHIP;
+  options.cost_function_ownership = ceres::Ownership::DO_NOT_TAKE_OWNERSHIP;
+  ceres::Problem problem(options);
+
+  // Create residual storing structure
+  std::vector<CeresTools::Residual> residuals;
+  residuals.reserve(states.size()); // reserve max size
+
+  Eigen::Vector7d calibXYZQuat = Utils::IsometryToXYZQuat(this->Calibration);
+  int idxPose = startIdxPose;
+  for (auto it = itStart; it != states.end(); ++it, ++idxPose)
+  {
+    GpsMeasurement& synchMeas = gpsMeasurements[idxPose];
+    if (std::abs(synchMeas.Time - it->Time) > 1e-6)
+      continue;
+
+    // Create and store new residual for next optimization
+    residuals.emplace_back(CeresTools::Residual());
+    CeresTools::Residual& res = residuals.back();
+    res.Cost = CeresCostFunctions::CalibGpsResidual::Create(refSLAMInv * it->Isometry,
+                                                            synchMeas.Position - refGps);
+    auto* robustifier = new ceres::TukeyLoss(this->SaturationDistance);
+    #if (CERES_VERSION_MAJOR < 2)
+      res.Robustifier.reset(new ceres::ScaledLoss(robustifier, 2.0, ceres::TAKE_OWNERSHIP)); // ownership because of shared pointer use
+    // If Ceres version >= 2.0.0, the Tukey loss is corrected.
+    #else
+      res.Robustifier.reset(new ceres::ScaledLoss(robustifier, 1.0, ceres::TAKE_OWNERSHIP)); // ownership because of shared pointer use
+    #endif
+
+    // Add residual to cost function
+    problem.AddResidualBlock(res.Cost.get(), res.Robustifier.get(), calibXYZQuat.data());
+  }
+
+  // LM solver options
+  ceres::Solver::Options LMoptions;
+  LMoptions.linear_solver_type = ceres::DENSE_QR;
+  LMoptions.max_num_iterations = 500;
+  LMoptions.num_threads = 4;
+
+  // Run optimization
+  ceres::Solver::Summary summary;
+  ceres::Solve(LMoptions, &problem, &summary);
+  this->Calibration = Utils::XYZQuatToIsometry(calibXYZQuat);
+  if (this->Verbose)
+    PRINT_INFO(summary.BriefReport());
+  if (this->Verbose)
+    PRINT_INFO("External pose calibration estimated to : \n" << this->Calibration.matrix());
+
+  return true;
+}
+
+// ---------------------------------------------------------------------------
 // 3D POSE
 // ---------------------------------------------------------------------------
 
@@ -776,8 +855,8 @@ bool PoseManager::ComputeCalibration(const std::list<LidarState>& states, bool r
     // Create and store new residual for next optimization
     residuals.emplace_back(CeresTools::Residual());
     CeresTools::Residual& res = residuals.back();
-    res.Cost = CeresCostFunctions::CalibResidual::Create(refPoseManagerInv * synchMeas.Pose,
-                                                         refSLAMInv        * it->Isometry);
+    res.Cost = CeresCostFunctions::CalibPosesResidual::Create(refPoseManagerInv * synchMeas.Pose,
+                                                              refSLAMInv        * it->Isometry);
     auto* robustifier = new ceres::TukeyLoss(this->SaturationDistance);
     #if (CERES_VERSION_MAJOR < 2)
       res.Robustifier.reset(new ceres::ScaledLoss(robustifier, 2.0, ceres::TAKE_OWNERSHIP)); // ownership because of shared pointer use

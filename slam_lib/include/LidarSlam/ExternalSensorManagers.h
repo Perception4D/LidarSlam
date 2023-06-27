@@ -630,6 +630,8 @@ public:
 
   bool CanBeUsedLocally() const {return false;}
 
+  bool ComputeCalibration(const std::list<LidarState>& states);
+
 private:
   // Offset transform to link GPS global frame and Lidar SLAM global frame
   // GPS referential to base referential
