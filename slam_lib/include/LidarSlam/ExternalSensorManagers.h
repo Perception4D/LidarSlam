@@ -247,6 +247,33 @@ public:
   // 'trackTime' allows to keep a time track and to speed up multiple searches
   // when following chronological order
   virtual bool ComputeSynchronizedMeasure(double lidarTime, T& synchMeas, bool trackTime = true) = 0;
+
+  // Compute a synchronized measure for each state of the states input list
+  // If no synchronized measure is found, the measure is remained as default
+  // This function outputs the first state index that has a synchronized measure associated
+  virtual int ComputeSynchronizedMeasures(const std::list<LidarState>& states, std::vector<T>& measures)
+  {
+    // Create temporary buffer
+    T synchMeas; // Virtual measure with synchronized timestamp and calibration applied
+    // Compute the first index for which a synchronized pose was found
+    unsigned int startIdxPose = 0;
+    auto it = states.begin();
+    // Find the first state for which there is a synchronized measure
+    while (it != states.end() && !this->ComputeSynchronizedMeasure(it->Time, synchMeas))
+      ++startIdxPose;
+
+    // Fill the measures vector with synchronized measurements
+    measures.resize(states.size());
+    for (int idxPose = startIdxPose; it != states.end(); ++it, ++idxPose)
+    {
+      // Compute synchronized measures representing sensor frame
+      if (this->ComputeSynchronizedMeasure(it->Time, synchMeas))
+        measures[idxPose] = synchMeas;
+    }
+
+    return startIdxPose;
+  }
+
   // Compute the constraint associated to the measurement
   virtual bool ComputeConstraint(double lidarTime) = 0;
 
