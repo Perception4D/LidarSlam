@@ -38,12 +38,16 @@ include_directories(
 # Velodyne Lidar
 add_executable(velodyne_conversion_node src/VelodyneToLidarNode.cxx)
 
-#link dependencies to target
-ament_target_dependencies(velodyne_conversion_node
+set (conversion_dependencies
   rclcpp
   pcl_ros
   pcl_conversions
   sensor_msgs
+)
+
+#link dependencies to target
+ament_target_dependencies(velodyne_conversion_node
+  ${conversion_dependencies}
 )
 
 
@@ -52,10 +56,7 @@ add_executable(ouster_conversion_node src/OusterToLidarNode.cxx)
 
 #link dependencies to target
 ament_target_dependencies(ouster_conversion_node
-  rclcpp
-  pcl_ros
-  pcl_conversions
-  sensor_msgs
+  ${conversion_dependencies}
 )
 
 # Robosense RSLidar
@@ -63,10 +64,7 @@ add_executable(robosense_conversion_node src/RobosenseToLidarNode.cxx)
 
 #link dependencies to target
 ament_target_dependencies(robosense_conversion_node
-  rclcpp
-  pcl_ros
-  pcl_conversions
-  sensor_msgs
+  ${conversion_dependencies}
 )
 
 #############
@@ -76,4 +74,5 @@ ament_target_dependencies(robosense_conversion_node
 install(TARGETS velodyne_conversion_node ouster_conversion_node robosense_conversion_node
         RUNTIME DESTINATION lib/${PROJECT_NAME})
 
+ament_export_dependencies(${conversion_dependencies})
 ament_package()
