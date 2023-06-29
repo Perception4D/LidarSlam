@@ -1482,8 +1482,8 @@ void LidarSlamNode::BroadcastGpsOffset()
   Eigen::Isometry3d offset = this->LidarSlam.GetGpsOffset().inverse();
   geometry_msgs::TransformStamped tfStamped;
   tfStamped.header.stamp = this->GpsLastTime;
-  tfStamped.header.frame_id = this->GpsFrameId;
-  tfStamped.child_frame_id = this->OdometryFrameId;
+  tfStamped.header.frame_id = this->OdometryFrameId;
+  tfStamped.child_frame_id = this->GpsFrameId;
   tfStamped.transform = Utils::IsometryToTfMsg(offset);
   this->StaticTfBroadcaster.sendTransform(tfStamped);
 }
