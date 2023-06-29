@@ -444,9 +444,9 @@ void LidarSlamNode::GpsCallback(const nav_msgs::Odometry& gpsMsg)
   if (!this->UseExtSensor[LidarSlam::GPS])
     return;
 
-  // Transform to apply to points represented in GPS frame to express them in base frame
+  // Calibration
   Eigen::Isometry3d baseToGps;
-  if (Utils::Tf2LookupTransform(baseToGps, this->TfBuffer, this->TrackingFrameId, gpsMsg.header.frame_id, gpsMsg.header.stamp))
+  if (Utils::Tf2LookupTransform(baseToGps, this->TfBuffer, this->TrackingFrameId, "gps", gpsMsg.header.stamp))
   {
     ROS_INFO_STREAM("Adding GPS info");
     // Get gps pose
