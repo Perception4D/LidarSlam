@@ -16,7 +16,11 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(pcl_ros REQUIRED)
+if (NOT WIN32)
+  # pcl_ros is not supported on Windows and not needed
+  find_package(pcl_ros REQUIRED)
+  set(pcl_ros_target pcl_ros)
+endif()
 find_package(pcl_conversions REQUIRED)
 find_package(sensor_msgs REQUIRED)
 
@@ -40,7 +44,7 @@ add_executable(velodyne_conversion_node src/VelodyneToLidarNode.cxx)
 
 set (conversion_dependencies
   rclcpp
-  pcl_ros
+  ${pcl_ros_target}
   pcl_conversions
   sensor_msgs
 )
