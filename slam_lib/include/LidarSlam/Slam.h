@@ -662,11 +662,6 @@ public:
 
   bool GpsHasData() const {return this->GpsManager && this->GpsManager->HasData();}
 
-  // Transform the whole trajectory (including current pose) to GPS reference frame (e.g. UTM)
-  // Warning : in trajectory, the position is remained odometric i.e. only the orientation
-  // is adapted for precision purposes but the offset position is stored in GPS manager
-  bool CalibrateWithGps();
-
   // Pose
   double GetPoseWeight() const;
   void SetPoseWeight(double weight);

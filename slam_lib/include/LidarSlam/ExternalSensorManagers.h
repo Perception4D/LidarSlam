@@ -615,6 +615,9 @@ public:
   GetSensorMacro(Offset, Eigen::Isometry3d)
   SetSensorMacro(Offset, const Eigen::Isometry3d&)
 
+  // Helper to refine the actual offset with new estimation
+  void RefineOffset(Eigen::Isometry3d offset) {this->Offset = offset * this->Offset;}
+
   // Compute the interpolated measure (GPS position in GPS referential) to be synchronized with SLAM output at lidarTime
   bool ComputeSynchronizedMeasure(double lidarTime, GpsMeasurement& synchMeas, bool trackTime = true) override;
 
@@ -629,8 +632,10 @@ public:
   bool ComputeCalibration(const std::list<LidarState>& states);
 
 private:
-  // Offset transform to link GPS global frame and Lidar SLAM global frame
-  // GPS referential to base referential
+  // Offset transform to link GPS reference frame
+  // to Lidar SLAM reference frame
+  // odom * offset = TrefGPS
+  // basePose * calibGps = offset * gpsPose
   Eigen::Isometry3d Offset = Eigen::Isometry3d::Identity();
 };
 

@@ -810,6 +810,27 @@ bool Slam::OptimizeGraph()
   // Look for GPS constraints
   if (this->UsePGOConstraints[PGO_GPS] && this->GpsHasData())
   {
+    // For the first optimization, we may not know the offset
+    // between GPS reference frame (utm/enu/map) and Lidar SLAM reference frame (odom)
+    // So we need to reduce it so initial errors can be contained in covariances
+    // The first graph optimization iterations should mainly correct the orientations
+    if (this->GpsManager->GetOffset().matrix().isIdentity())
+    {
+      // Initialize GPS offset with first synchronized measurements
+      Eigen::Isometry3d offsetTrans = Eigen::Isometry3d::Identity();
+      for (auto& s : this->LogStates)
+      {
+        ExternalSensors::GpsMeasurement gpsSynchMeasure; // Virtual measure with synchronized timestamp and no offset applied
+        if (this->GpsManager->ComputeSynchronizedMeasure(s.Time, gpsSynchMeasure))
+        {
+          offsetTrans.translation() = (s.Isometry * this->GpsManager->GetCalibration()).translation() - gpsSynchMeasure.Position;
+          break;
+        }
+      }
+      this->GpsManager->SetOffset(offsetTrans);
+    }
+
+    // Add GPS constraints
     graphManager.AddExternalSensor(this->GpsManager->GetCalibration(), ExternalSensor::GPS);
     for (auto& s : this->LogStates)
     {
@@ -889,7 +910,28 @@ bool Slam::OptimizeGraph()
   IF_VERBOSE(3, Utils::Timer::StopAndDisplay("PGO : optimization"));
 
   IF_VERBOSE(3, Utils::Timer::Init("PGO : maps and trajectory update"));
+
+  // Update GPS offset using the first pose
+  // We are looking for the offset s.t. odom * offset = refGPS
+  //  -> offset = odom^-1 * refGPS (0)
+  // refGPS * T_GPS = GPS (T_GPS is the transform supplied by the GPS)
+  //  -> refGPS = GPS * T_GPS^-1
+  // odom * T_base * Calibration_GPS = GPS (T_base is the transform computed by the SLAM)
+  //  -> odom = GPS * Calibration_GPS^-1 * T_base^-1
+  // Replacing odom and refGPS in (0)
+  //  -> offset = T_base * Calibration_GPS * GPS^-1 * GPS * T_GPS^-1
+  //  -> offset = T_base * Calibration_GPS * T_GPS^-1 (1)
+  // We don't have a direct access to T_GPS (we only know the position), that is why the pose graph opt is used
+  // In (1) T_base is the SLAM pose before optimization
+  // and T_GPS is defined by : T_base_after_optimization * Calibration_GPS = offset_old * T_GPS
+  //  -> T_GPS = offset_old^-1 * T_base_after_optimization * Calibration_GPS
+  // All together in (1) : offset = T_base_before_optimization * T_base_after_optimization^-1 * offset_old
+  if (this->UsePGOConstraints[PGO_GPS] && this->GpsHasData())
+    this->GpsManager->RefineOffset(this->TworldInit * this->LogStates.front().Isometry.inverse());
+
   // Replace Lidar SLAM poses in odom frame
+  // Warning : the Gps offset refinement needs to be done before
+  // calling this function
   this->ResetTrajWithTworldInit();
   if (this->UsePGOConstraints[PGO_EXT_POSE] && this->PoseHasData())
     // Update offset of referential frames with new de-skewed trajectory
@@ -3193,60 +3235,6 @@ Eigen::Isometry3d Slam::GetGpsOffset()
     return Eigen::Isometry3d::Identity();
   }
   return this->GpsManager->GetOffset();
-}
-
-//-----------------------------------------------------------------------------
-bool Slam::CalibrateWithGps()
-{
-  if (!this->GpsHasData())
-  {
-    PRINT_ERROR("Cannot get GPS offset : GPS not enabled or GPS data not available")
-    return false;
-  }
-
-  // The search for a synchronized data is one-time so we
-  // don't want to keep track of time for next searches (see ComputeSynchronizedMeasure)
-  bool trackTime = false;
-
-  // Initialize GPS offset with first synchronized measurements
-  // The first graph optimizations will mainly correct the orientations
-  Eigen::Isometry3d offset = Eigen::Isometry3d::Identity();
-  for (auto& s : this->LogStates)
-  {
-    ExternalSensors::GpsMeasurement gpsSynchMeasure; // Virtual measure with synchronized timestamp and no offset applied
-    if (this->GpsManager->ComputeSynchronizedMeasure(s.Time, gpsSynchMeasure, trackTime))
-    {
-      offset.translation() = (s.Isometry * this->GpsManager->GetCalibration()).translation() - gpsSynchMeasure.Position;
-      break;
-    }
-  }
-  this->GpsManager->SetOffset(offset);
-
-  // Optimize the graph : add lidar states and link with fixed gps states
-  if (!this->OptimizeGraph())
-    return false;
-
-  // Reset poses in odom frame (first Lidar pose)
-  Eigen::Isometry3d firstInverse = this->LogStates.front().Isometry.inverse();
-  for (auto& s : this->LogStates)
-  {
-    // Rotate covariance
-    Eigen::Vector6d initPose = Utils::IsometryToXYZRPY(s.Isometry);
-    CeresTools::RotateCovariance(initPose, s.Covariance, firstInverse, true); // new = first^-1 * init
-    // Transform pose
-    s.Isometry = firstInverse * s.Isometry;
-  }
-
-  // Update the maps and the pose with the new trajectory
-  this->UpdateMaps();
-  // Notify discontinuity in trajectory (for ego-motion registration and IMU)
-  this->NotifyDiscontinuity();
-
-  // Set refined offset : first Lidar pose + initial offset
-  firstInverse.translation() += offset.translation();
-  this->GpsManager->SetOffset(firstInverse);
-
-  return true;
 }
 
 // Pose
