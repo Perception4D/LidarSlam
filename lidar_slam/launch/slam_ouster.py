@@ -53,45 +53,48 @@ def generate_launch_description():
   #####################
   ### Ouster driver ###
   #####################
-  ouster_driver_path = get_package_share_directory("ouster_ros")
 
-  group_ouster = GroupAction(
-    actions=[
-      # Replay
-      IncludeLaunchDescription(
-        XMLLaunchDescriptionSource([os.path.join(ouster_driver_path, "launch", "replay.launch.xml")]),
-        launch_arguments={
-          "timestamp_mode"  : "TIME_FROM_INTERNAL_OSC",
-          "bag_file"        : "b",
-          "metadata"        : LaunchConfiguration("metadata_in"),
-          "sensor_frame"    : "laser_sensor_frame",
-          "laser_frame"     : "laser_data_frame",
-          "imu_frame"       : "imu_data_frame",
-          "viz"             : "False",
-      }.items(),
-        condition=IfCondition(LaunchConfiguration("replay")),
-      ),
-      # Live
-      IncludeLaunchDescription(
-        XMLLaunchDescriptionSource([os.path.join(ouster_driver_path, "launch", "sensor.launch.xml")]),
-        launch_arguments={
-          "sensor_hostname" : LaunchConfiguration("sensor_hostname"),
-          "udp_dest"        : LaunchConfiguration("udp_dest"),
-          "lidar_port"      : LaunchConfiguration("lidar_port"),
-          "imu_port"        : LaunchConfiguration("imu_port"),
-          "lidar_mode"      : LaunchConfiguration("lidar_mode"),
-          "timestamp_mode"  : "TIME_FROM_INTERNAL_OSC",
-          "metadata"        : LaunchConfiguration("metadata_out"),
-          "sensor_frame"    : "laser_sensor_frame",
-          "laser_frame"     : "laser_data_frame",
-          "imu_frame"       : "imu_data_frame",
-          "viz"             : "False",
-      }.items(),
-        condition=UnlessCondition(LaunchConfiguration("replay")),
-      ),
-    ],
-    condition=IfCondition(LaunchConfiguration("os_driver"))
-  )
+  #! For now ouster packages are not ported on Windows 10
+  if os.name != 'nt':
+    ouster_driver_path = get_package_share_directory("ouster_ros")
+
+    group_ouster = GroupAction(
+      actions=[
+        # Replay
+        IncludeLaunchDescription(
+          XMLLaunchDescriptionSource([os.path.join(ouster_driver_path, "launch", "replay.launch.xml")]),
+          launch_arguments={
+            "timestamp_mode"  : "TIME_FROM_INTERNAL_OSC",
+            "bag_file"        : "b",
+            "metadata"        : LaunchConfiguration("metadata_in"),
+            "sensor_frame"    : "laser_sensor_frame",
+            "laser_frame"     : "laser_data_frame",
+            "imu_frame"       : "imu_data_frame",
+            "viz"             : "False",
+        }.items(),
+          condition=IfCondition(LaunchConfiguration("replay")),
+        ),
+        # Live
+        IncludeLaunchDescription(
+          XMLLaunchDescriptionSource([os.path.join(ouster_driver_path, "launch", "sensor.launch.xml")]),
+          launch_arguments={
+            "sensor_hostname" : LaunchConfiguration("sensor_hostname"),
+            "udp_dest"        : LaunchConfiguration("udp_dest"),
+            "lidar_port"      : LaunchConfiguration("lidar_port"),
+            "imu_port"        : LaunchConfiguration("imu_port"),
+            "lidar_mode"      : LaunchConfiguration("lidar_mode"),
+            "timestamp_mode"  : "TIME_FROM_INTERNAL_OSC",
+            "metadata"        : LaunchConfiguration("metadata_out"),
+            "sensor_frame"    : "laser_sensor_frame",
+            "laser_frame"     : "laser_data_frame",
+            "imu_frame"       : "imu_data_frame",
+            "viz"             : "False",
+        }.items(),
+          condition=UnlessCondition(LaunchConfiguration("replay")),
+        ),
+      ],
+      condition=IfCondition(LaunchConfiguration("os_driver"))
+    )
 
   ##########
   ## Slam ##
@@ -167,7 +170,8 @@ def generate_launch_description():
 
   ld.add_action(rviz_node)
   ld.add_action(ouster_conversion_node)
-  ld.add_action(group_ouster)
+  if os.name != 'nt':
+    ld.add_action(group_ouster)
   ld.add_action(slam_outdoor_node)
   ld.add_action(slam_indoor_node)
   ld.add_action(aggregation_node)
