@@ -1,0 +1,2 @@
+Please refrain from using this folder from the Git repository.
+It is an outdated wrapping for ROS1 used for the transition but if you want to use ROS1 wrapping, use the branch master.
