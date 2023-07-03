@@ -16,7 +16,7 @@
   - [Dependencies](#dependencies-2)
   - [Installation](#installation-2)
   - [Usage](#usage-1)
-- [ROS2 wrapping on Windows 10](##ros2-wrapping-on-windows-10)
+- [ROS2 wrapping on Windows 10](#ros2-wrapping-on-windows-10)
   - [Dependencies](#install-dependencies)
   - [Installation](#install-slam-package)
 - [ParaView wrapping](#paraview-wrapping)
