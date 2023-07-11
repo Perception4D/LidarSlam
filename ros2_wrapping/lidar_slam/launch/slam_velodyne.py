@@ -71,9 +71,9 @@ def generate_launch_description():
 
     # Manualy override velodyne_convert_node parameters 
     velodyne_pointcloud_share_path = get_package_share_directory('velodyne_pointcloud')
-    params_velod_pcl_path = os.path.join(velodyne_pointcloud_share_path, 'config', 'VLP16-velodyne_convert_node-params.yaml')
+    params_velod_pcl_path = os.path.join(velodyne_pointcloud_share_path, 'config', 'VLP16-velodyne_transform_node-params.yaml')
     with open(params_velod_pcl_path, 'r') as f:
-        params_velod_pcl = yaml.safe_load(f)['velodyne_convert_node']['ros__parameters']
+        params_velod_pcl = yaml.safe_load(f)['velodyne_transform_node']['ros__parameters']
     
     params_velod_pcl['calibration']    = os.path.join(velodyne_pointcloud_share_path, 'params', 'VLP16db.yaml')
     params_velod_pcl["min_range"]      = 0.4
@@ -88,7 +88,7 @@ def generate_launch_description():
         Node(package='velodyne_driver', executable='velodyne_driver_node', name='velodyne_driver_node', output='both',
           parameters=[params_velod_driv]),
         # Start convertion node
-        Node(package='velodyne_pointcloud', executable='velodyne_convert_node', output='both', name='velodyne_convert_node',
+        Node(package='velodyne_pointcloud', executable='velodyne_transform_node', output='both', name='velodyne_transform_node',
           parameters=[params_velod_pcl],)
       ],
       condition = IfCondition(LaunchConfiguration("vlp16_driver"))
