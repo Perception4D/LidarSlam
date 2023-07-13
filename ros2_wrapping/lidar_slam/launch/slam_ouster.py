@@ -6,6 +6,7 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription 
 from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration
 
@@ -25,16 +26,8 @@ def generate_launch_description():
     DeclareLaunchArgument("tags_topic", default_value="tag_detections", description="Topic from which to get the tag measurements"),
     DeclareLaunchArgument("camera_topic", default_value="camera", description="topic from which to get the rgb camera data"),
     DeclareLaunchArgument("camera_info_topic", default_value="camera_info", description="topic from which to get the rgb camera info"),
-    #  Ouster driver parameters
-    # Those arguments correspond to driver parameters of https://github.com/ouster-lidar/ouster-ros/tree/ros2
-    DeclareLaunchArgument("sensor_hostname", default_value="10.5.5.96", description="Hostname or IP in dotted decimal form of the sensor"),
-    DeclareLaunchArgument("udp_dest", default_value="", description="Hostname or IP where the sensor will send data packets"),
-    DeclareLaunchArgument("lidar_port", default_value="7502", description="Port to which the sensor should send lidar data"),
-    DeclareLaunchArgument("imu_port", default_value="7503", description="Port to which the sensor should send imu data"),
-    DeclareLaunchArgument("lidar_mode", default_value="1024x10", description="Resolution modes for the LiDAR"),
-    DeclareLaunchArgument("metadata_in", default_value="", description="Optionnal configuration for replay if no topic /ouster/metadata in the bag"),
-    DeclareLaunchArgument("metadata_out", default_value=os.path.join(lidar_slam_share_path, 'params', 'metadata_OS1_64_1024x10.json'), description="Optionnal path to create Ouster metadata file"),
-    DeclareLaunchArgument("eth_device", default_value="lo", description="Ethernet interfaces used for replaying data"),
+    DeclareLaunchArgument("driver_parameter_file", default_value=os.path.join(lidar_slam_share_path, 'params', "ouster_driver_parameters.yaml"),
+                          description="Path to the file containing Ouster driver parameters"),
     # /!\ rpm and timestamp_first_packet are also used to generate approximate point-wise timestamps as 'time' field is not usable. -->
     DeclareLaunchArgument("rpm", default_value="600.", description="Ouster sensor spinning speed."),
     DeclareLaunchArgument("timestamp_first_packet", default_value="false", description="If Ouster timestamping is based on the first or last packet of each scan."),
@@ -57,6 +50,7 @@ def generate_launch_description():
   #! For now ouster packages are not ported on Windows 10
   if os.name != 'nt':
     ouster_driver_path = get_package_share_directory("ouster_ros")
+    ouster_parameters = os.path.join(lidar_slam_share_path, 'params', "ouster_driver_parameters.yaml")
 
     group_ouster = GroupAction(
       actions=[
@@ -76,18 +70,9 @@ def generate_launch_description():
         ),
         # Live
         IncludeLaunchDescription(
-          XMLLaunchDescriptionSource([os.path.join(ouster_driver_path, "launch", "sensor.launch.xml")]),
+          PythonLaunchDescriptionSource([os.path.join(ouster_driver_path, "launch", "driver.launch.py")]),
           launch_arguments={
-            "sensor_hostname" : LaunchConfiguration("sensor_hostname"),
-            "udp_dest"        : LaunchConfiguration("udp_dest"),
-            "lidar_port"      : LaunchConfiguration("lidar_port"),
-            "imu_port"        : LaunchConfiguration("imu_port"),
-            "lidar_mode"      : LaunchConfiguration("lidar_mode"),
-            "timestamp_mode"  : "TIME_FROM_INTERNAL_OSC",
-            "metadata"        : LaunchConfiguration("metadata_out"),
-            "sensor_frame"    : "laser_sensor_frame",
-            "laser_frame"     : "laser_data_frame",
-            "imu_frame"       : "imu_data_frame",
+            "params_file"     : LaunchConfiguration("driver_parameter_file"),
             "viz"             : "False",
         }.items(),
           condition=UnlessCondition(LaunchConfiguration("replay")),
