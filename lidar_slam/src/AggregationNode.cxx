@@ -79,18 +79,18 @@ void AggregationNode::Callback(const Pcl2_msg& registeredCloudMsg)
 
   // Aggregated points from all frames
   this->DenseMap->Add(registeredCloud, false);
-  CloudS::Ptr aggregatedCloud = this->DenseMap->Get(true);
-  aggregatedCloud->header = registeredCloud->header;
+  this->Pointcloud = this->DenseMap->Get(true);
+  this->Pointcloud->header = registeredCloud->header;
 
   //convert aggregatedCloud to message
   Pcl2_msg aggregatedCloudMsg;
-  pcl::toROSMsg(*aggregatedCloud, aggregatedCloudMsg);
+  pcl::toROSMsg(*this->Pointcloud, aggregatedCloudMsg);
 
   // Publish aggregatedCloud
   this->PointsPublisher->publish(aggregatedCloudMsg);
 }
 
-
+//------------------------------------------------------------------------------
 void AggregationNode::SavePointcloudService(
     const std::shared_ptr<lidar_slam::srv::SavePc::Request> req,
     const std::shared_ptr<lidar_slam::srv::SavePc::Response> res)
@@ -106,7 +106,7 @@ void AggregationNode::SavePointcloudService(
   if (req->format > 2 || req->format < 0)
     req->format = 0;
   LidarSlam::PCDFormat f = static_cast<LidarSlam::PCDFormat>(req->format);
-  std::cout << this->now().seconds() << std::endl;
+
   std::string outputFilePath = outputPrefixPath.string() + "_" + std::to_string(int(this->now().seconds())) + ".pcd";
   LidarSlam::savePointCloudToPCD<PointS>(outputFilePath, *this->Pointcloud, f);
   RCLCPP_INFO_STREAM(this->get_logger(), "Pointcloud saved to " << outputFilePath);
