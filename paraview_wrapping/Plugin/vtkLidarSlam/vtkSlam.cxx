@@ -2070,6 +2070,16 @@ void vtkSlam::SetUsePoseGraph(bool usePoseGraph)
 }
 
 //-----------------------------------------------------------------------------
+double* vtkSlam::GetLoopClosurePosition()
+{
+  Eigen::Vector3d revistedPosition = this->SlamAlgo->GetStatePosition(this->LoopIdx.RevisitedIdx);
+  this->LastLoopClosurePosition[0] = revistedPosition.x();
+  this->LastLoopClosurePosition[1] = revistedPosition.y();
+  this->LastLoopClosurePosition[2] = revistedPosition.z();
+  return this->LastLoopClosurePosition;
+}
+
+//-----------------------------------------------------------------------------
 int vtkSlam::GetLoopDetector()
 {
   int loopClosureDetector = static_cast<int>(this->SlamAlgo->GetLoopDetector());

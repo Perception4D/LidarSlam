@@ -239,6 +239,9 @@ public:
   vtkGetMacro(LoopDetected, bool)
   vtkSetMacro(LoopDetected, bool)
 
+  // Return revisited frame position of detected loop closure
+  double* GetLoopClosurePosition() VTK_SIZEHINT(3);
+
   virtual int  GetLoopDetector();
   virtual void SetLoopDetector(int detector);
 
@@ -649,6 +652,7 @@ private:
 
   // Boolean to register whether or not a loop is detected
   bool LoopDetected = false;
+  double LastLoopClosurePosition[3];
 
   LidarSlam::LoopClosure::LoopIndices LoopIdx = {0, 0, -1};
 

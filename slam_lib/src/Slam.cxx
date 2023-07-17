@@ -1898,6 +1898,13 @@ std::vector<LidarState> Slam::GetLastStates(double freq)
   return lastStates;
 }
 
+//-----------------------------------------------------------------------------
+Eigen::Vector3d Slam::GetStatePosition(const unsigned int stateIndex)
+{
+  auto itState = this->GetKeyStateIterator(stateIndex);
+  return itState->Isometry.translation();
+}
+
 //==============================================================================
 //   Loop Closure usage
 //==============================================================================
