@@ -214,7 +214,7 @@ See [ros_wrapping/lidar_slam/README.md](ros_wrapping/lidar_slam/README.md) for m
 ## ROS2 wrapping
 
 The ROS2 wrapping has been tested on Linux and a branch on Windows 10 is currently being tested.
-This wrapping required at least an Humble version of ROS2.
+This wrapping has been tested on Humble and Iron version of ROS2.
 
 ### Dependencies
 
@@ -222,7 +222,7 @@ Ensure all *LidarSlam* dependencies are respected. Specific ROS packages depende
 
 | Dependency      | Tested Versions | Install (`sudo apt-get install <pkg>`)                                             | status    |
 |:---------------:|:---------------:|:----------------------------------------------------------------------------------:|:---------:|
-| ROS            | humble          | `ros-humble-desktop-full` and [tutorial](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html)  |
+| ROS             | humble/iron     | `ros-$ROS_DISTRO-desktop-full`                                                     | mandatory |
 | pcl-ros         | 1.7.4           | `ros-$ROS_DISTRO-pcl-ros`                                                          | mandatory |
 | geodesy         | 0.5.3           | `ros-$ROS_DISTRO-geodesy`                                                          | mandatory |
 | gps_common      | 0.3.0           | `ros-$ROS_DISTRO-gps-common`                                                       | optionnal |
