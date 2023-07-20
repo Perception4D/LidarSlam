@@ -96,6 +96,22 @@ bool CheckTableFields(vtkTable* csvTable, std::vector<std::string> fields)
   return allFieldsHere;
 }
 
+//-----------------------------------------------------------------------------
+vtkSmartPointer<vtkDelimitedTextReader> CreateCSVLoader(const std::string& fileName, const std::string& delimiter)
+{
+  if (fileName.empty())
+    return nullptr;
+
+  vtkSmartPointer<vtkDelimitedTextReader> reader = vtkSmartPointer<vtkDelimitedTextReader>::New();
+  reader->SetFileName(fileName.c_str());
+  reader->DetectNumericColumnsOn();
+  reader->SetHaveHeaders(true);
+  reader->SetFieldDelimiterCharacters(delimiter.c_str());
+  reader->Update();
+
+  return reader;
+}
+
 } // end of anonymous namespace
 } // end of Utils namespace
 
@@ -646,17 +662,10 @@ void vtkSlam::SetSensorData(const std::string& fileName)
   // Empty current measurements and reset local sensor params
   this->SlamAlgo->ResetSensors(true);
 
-  if (fileName.empty())
-    return;
-
-  vtkNew<vtkDelimitedTextReader> reader;
-  reader->SetFileName(fileName.c_str());
-  reader->DetectNumericColumnsOn();
-  reader->SetHaveHeaders(true);
-  reader->SetFieldDelimiterCharacters(" ;,");
-  reader->Update();
-
-  // Extract the table.
+  std::string delimiter = " ;,";
+  vtkSmartPointer<vtkDelimitedTextReader> reader = Utils::CreateCSVLoader(fileName, delimiter);
+  if (!reader)
+     return;
   vtkTable* csvTable = reader->GetOutput();
 
   // Check if time exists and extract it
@@ -858,17 +867,10 @@ void vtkSlam::SetSensorData(const std::string& fileName)
 //-----------------------------------------------------------------------------
 void vtkSlam::SetTrajectory(const std::string& fileName)
 {
-  if (fileName.empty())
-    return;
-  PRINT_INFO("Set trajectory from file.");
-  vtkNew<vtkDelimitedTextReader> reader;
-  reader->SetFileName(fileName.c_str());
-  reader->DetectNumericColumnsOn();
-  reader->SetHaveHeaders(true);
-  reader->SetFieldDelimiterCharacters(" ;,");
-  reader->Update();
-
-  // Extract the table.
+  std::string delimiter = " ;,";
+  vtkSmartPointer<vtkDelimitedTextReader> reader = Utils::CreateCSVLoader(fileName, delimiter);
+  if (!reader)
+     return;
   vtkTable* csvTable = reader->GetOutput();
 
   // Check if time exists and extract it
@@ -951,7 +953,8 @@ void vtkSlam::SetTrajectory(const std::string& fileName)
       trajectoryManager.AddMeasurement(meas);
     }
   }
-  else if (Utils::CheckTableFields(csvTable, {"Orientation(AxisAngle):1", "Orientation(AxisAngle):2", "Orientation(AxisAngle):3",
+  else if (Utils::CheckTableFields(csvTable, {"Orientation(AxisAngle):0", "Orientation(AxisAngle):1",
+                                              "Orientation(AxisAngle):2", "Orientation(AxisAngle):3",
                                               "Points:0", "Points:1", "Points:2"}))
   {
     auto arrayAxisX = csvTable->GetRowData()->GetArray("Orientation(AxisAngle):0");
