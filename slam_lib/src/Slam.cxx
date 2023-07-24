@@ -2606,10 +2606,19 @@ void Slam::UndistortWithLogStates(PointCloud::Ptr pcIn, PointCloud::Ptr pcOut,
                                   Eigen::Isometry3d baseToPointsRef,
                                   double timeOffset) const
 {
+  auto giveUp = [&]()
+  {
+    // Only transform to base
+    #pragma omp parallel for num_threads(this->NbThreads)
+    for (int i = startIdx; i < endIdx; ++i)
+      Utils::TransformPoint(pcIn->at(i), pcOut->at(i), baseToPointsRef);
+  };
+
   if ((!addTworld && this->LogStates.size() < 2) ||
       (addTworld && this->LogStates.empty()))
   {
     PRINT_WARNING("Not enough states logged, cannot undistort")
+    giveUp();
     return;
   }
 
@@ -2638,6 +2647,7 @@ void Slam::UndistortWithLogStates(PointCloud::Ptr pcIn, PointCloud::Ptr pcOut,
     if (this->GetTrajSection(ctrlPoses.back().Time) != this->GetTrajSection(this->CurrentTime))
     {
       PRINT_WARNING("SLAM has not fully recovered, cannot undistort")
+      giveUp();
       return;
     }
 
@@ -2657,6 +2667,7 @@ void Slam::UndistortWithLogStates(PointCloud::Ptr pcIn, PointCloud::Ptr pcOut,
   if (ctrlPoses.size() < 2)
   {
     PRINT_WARNING("Not enough usable logged states, cannot undistort")
+    giveUp();
     return;
   }
 
@@ -2670,13 +2681,14 @@ void Slam::UndistortWithLogStates(PointCloud::Ptr pcIn, PointCloud::Ptr pcOut,
   if (!motionInterpo.CanInterpolate())
   {
     PRINT_WARNING("Cannot perform undistortion with logged states");
+    giveUp();
     return ;
   }
 
   if (endIdx < 0)
     endIdx = pcIn->size();
 
-  // Undistort
+  // Undistort and transform to base
   #pragma omp parallel for num_threads(this->NbThreads)
   for (int i = startIdx; i < endIdx; ++i)
     Utils::TransformPoint(pcIn->at(i), pcOut->at(i), motionInterpo(refTime + pcIn->at(i).time + timeOffset) * baseToPointsRef);
