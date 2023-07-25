@@ -148,6 +148,8 @@ public:
   //! if minNbPoints is negative, all points are taken (no moving objects rejection)
   void BuildSubMapKdTree(const Eigen::Array3f& minPoint, const Eigen::Array3f& maxPoint, int minNbPoints = -1);
 
+  void BuildSubMapKdTree(const PointCloud& pc, int minNbPoints = -1);
+
   //! Check if the KD-tree built on top of the submap is valid or if it needs to be updated.
   //! The KD-tree is cleared every time the map is modified.
   bool IsSubMapKdTreeValid() const {return this->KdTree.GetInputCloud() && !this->KdTree.GetInputCloud()->empty();}
