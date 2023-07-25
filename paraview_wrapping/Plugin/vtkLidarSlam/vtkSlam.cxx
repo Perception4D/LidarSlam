@@ -1789,7 +1789,7 @@ void vtkSlam::SetMapUpdate(unsigned int mode)
 {
   if (this->SlamAlgo->IsRecovery())
   {
-    vtkErrorMacro(<< "Cannot change map update in recovery mode! This param might be falsely set afterwards");
+    vtkErrorMacro(<< "Cannot change map update in recovery mode! This param might be falsely displayed afterwards");
     return;
   }
   LidarSlam::MappingMode mapUpdate = static_cast<LidarSlam::MappingMode>(mode);
@@ -1804,6 +1804,37 @@ void vtkSlam::SetMapUpdate(unsigned int mode)
   if (this->SlamAlgo->GetMapUpdate() != mapUpdate)
   {
     this->SlamAlgo->SetMapUpdate(mapUpdate);
+    this->ParametersModificationTime.Modified();
+  }
+}
+
+//-----------------------------------------------------------------------------
+unsigned int vtkSlam::GetSubmapMode()
+{
+  unsigned int submapMode = static_cast<unsigned int>(this->SlamAlgo->GetSubmapMode());
+  vtkDebugMacro(<< "Returning mapping mode of " << submapMode);
+  return submapMode;
+}
+
+//-----------------------------------------------------------------------------
+void vtkSlam::SetSubmapMode(unsigned int mode)
+{
+  if (this->SlamAlgo->IsRecovery())
+  {
+    vtkErrorMacro(<< "Cannot change submap mode in recovery mode! This param might be falsely displayed afterwards");
+    return;
+  }
+  LidarSlam::PreSearchMode submapMode = static_cast<LidarSlam::PreSearchMode>(mode);
+  if (submapMode != LidarSlam::PreSearchMode::BOUNDING_BOX &&
+      submapMode != LidarSlam::PreSearchMode::PROFILE)
+  {
+    vtkErrorMacro(<< "Invalid submap mode (" << mode << "), ignoring setting.");
+    return;
+  }
+  vtkDebugMacro(<< "Setting submap mode to " << mode);
+  if (this->SlamAlgo->GetSubmapMode() != submapMode)
+  {
+    this->SlamAlgo->SetSubmapMode(submapMode);
     this->ParametersModificationTime.Modified();
   }
 }
