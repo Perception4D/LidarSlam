@@ -96,6 +96,22 @@ bool CheckTableFields(vtkTable* csvTable, std::vector<std::string> fields)
   return allFieldsHere;
 }
 
+//-----------------------------------------------------------------------------
+vtkSmartPointer<vtkDelimitedTextReader> CreateCSVLoader(const std::string& fileName, const std::string& delimiter)
+{
+  if (fileName.empty())
+    return nullptr;
+
+  vtkSmartPointer<vtkDelimitedTextReader> reader = vtkSmartPointer<vtkDelimitedTextReader>::New();
+  reader->SetFileName(fileName.c_str());
+  reader->DetectNumericColumnsOn();
+  reader->SetHaveHeaders(true);
+  reader->SetFieldDelimiterCharacters(delimiter.c_str());
+  reader->Update();
+
+  return reader;
+}
+
 } // end of anonymous namespace
 } // end of Utils namespace
 
@@ -176,6 +192,35 @@ void vtkSlam::OptimizeGraphWithIMU()
   this->ResetTrajectory(lidarStates.front().Time);
   for (auto const& state: lidarStates)
     this->AddPoseToTrajectory(state);
+
+  // Refresh view
+  this->ParametersModificationTime.Modified();
+}
+
+//-----------------------------------------------------------------------------
+void vtkSlam::DetectLoop()
+{
+  const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
+  if (lidarStates.size() < 2)
+    return;
+
+  this->SetLoopDetected(this->SlamAlgo->DetectLoopClosureIndices(this->LoopIdx));
+  // Store detected loop closure indices
+  // Note: For now, detected loop indices are stored as long as LoopDetected is ture.
+  // A popUp window, which requires users to confirm the loop, is going to be added.
+  this->AddLoopDetection();
+
+  // Refresh view
+  this->ParametersModificationTime.Modified();
+}
+
+//-----------------------------------------------------------------------------
+void vtkSlam::AddLoopDetection()
+{
+  if (this->LoopDetected)
+    this->SlamAlgo->AddLoopClosureIndices(this->LoopIdx);
+
+  this->SetLoopDetected(false);
 
   // Refresh view
   this->ParametersModificationTime.Modified();
@@ -646,17 +691,10 @@ void vtkSlam::SetSensorData(const std::string& fileName)
   // Empty current measurements and reset local sensor params
   this->SlamAlgo->ResetSensors(true);
 
-  if (fileName.empty())
-    return;
-
-  vtkNew<vtkDelimitedTextReader> reader;
-  reader->SetFileName(fileName.c_str());
-  reader->DetectNumericColumnsOn();
-  reader->SetHaveHeaders(true);
-  reader->SetFieldDelimiterCharacters(" ;,");
-  reader->Update();
-
-  // Extract the table.
+  std::string delimiter = " ;,";
+  vtkSmartPointer<vtkDelimitedTextReader> reader = Utils::CreateCSVLoader(fileName, delimiter);
+  if (!reader)
+     return;
   vtkTable* csvTable = reader->GetOutput();
 
   // Check if time exists and extract it
@@ -858,17 +896,10 @@ void vtkSlam::SetSensorData(const std::string& fileName)
 //-----------------------------------------------------------------------------
 void vtkSlam::SetTrajectory(const std::string& fileName)
 {
-  if (fileName.empty())
-    return;
-  PRINT_INFO("Set trajectory from file.");
-  vtkNew<vtkDelimitedTextReader> reader;
-  reader->SetFileName(fileName.c_str());
-  reader->DetectNumericColumnsOn();
-  reader->SetHaveHeaders(true);
-  reader->SetFieldDelimiterCharacters(" ;,");
-  reader->Update();
-
-  // Extract the table.
+  std::string delimiter = " ;,";
+  vtkSmartPointer<vtkDelimitedTextReader> reader = Utils::CreateCSVLoader(fileName, delimiter);
+  if (!reader)
+     return;
   vtkTable* csvTable = reader->GetOutput();
 
   // Check if time exists and extract it
@@ -951,7 +982,8 @@ void vtkSlam::SetTrajectory(const std::string& fileName)
       trajectoryManager.AddMeasurement(meas);
     }
   }
-  else if (Utils::CheckTableFields(csvTable, {"Orientation(AxisAngle):1", "Orientation(AxisAngle):2", "Orientation(AxisAngle):3",
+  else if (Utils::CheckTableFields(csvTable, {"Orientation(AxisAngle):0", "Orientation(AxisAngle):1",
+                                              "Orientation(AxisAngle):2", "Orientation(AxisAngle):3",
                                               "Points:0", "Points:1", "Points:2"}))
   {
     auto arrayAxisX = csvTable->GetRowData()->GetArray("Orientation(AxisAngle):0");
@@ -1966,7 +1998,6 @@ void vtkSlam::SetLoopDetector(int detector)
 {
   LidarSlam::LoopClosureDetector loopClosureDetector = static_cast<LidarSlam::LoopClosureDetector>(detector);
   if (loopClosureDetector != LidarSlam::LoopClosureDetector::NONE   &&
-      loopClosureDetector != LidarSlam::LoopClosureDetector::MANUAL &&
       loopClosureDetector != LidarSlam::LoopClosureDetector::TEASERPP)
   {
     vtkErrorMacro(<< "Invalid loop closure detector (" << detector << "), ignoring setting.");
@@ -1981,48 +2012,39 @@ void vtkSlam::SetLoopDetector(int detector)
 }
 
 //-----------------------------------------------------------------------------
-void vtkSlam::SetLoopQueryIdx(unsigned int loopClosureQueryIdx)
+void vtkSlam::LoadLoopDetectionIndices(const std::string& fileName)
 {
-  // Check the input frame index can be found in Logstates
-  // If the input query frame index is not in Logstates, replace it by the last frame index stored in Logstates
-  const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
-  if (lidarStates.empty())
-    return;
-  if (loopClosureQueryIdx < lidarStates.front().Index || loopClosureQueryIdx > lidarStates.back().Index )
-  {
-    vtkWarningMacro(<< "The input query frame index is not valid. Please enter a frame index between ["
-                    << lidarStates.front().Index << ", " << lidarStates.back().Index << "].\n"
-                    << "Otherwise, the query frame index will be replaced by the last stored frame #"
-                    << lidarStates.back().Index);
-    loopClosureQueryIdx = lidarStates.back().Index;
-  }
-  vtkDebugMacro("Setting LoopClosureQueryFrameIdx to " << loopClosureQueryIdx);
-  if (this->SlamAlgo->GetLoopQueryIdx() != loopClosureQueryIdx)
-  {
-    this->SlamAlgo->SetLoopQueryIdx(loopClosureQueryIdx);
-    this->ParametersModificationTime.Modified();
-  }
-}
+  std::string delimiter = " ;,";
+  vtkSmartPointer<vtkDelimitedTextReader> reader = Utils::CreateCSVLoader(fileName, delimiter);
+  if (!reader)
+     return;
+  vtkTable* csvTable = reader->GetOutput();
 
-//-----------------------------------------------------------------------------
-void vtkSlam::SetLoopRevisitedIdx(unsigned int loopClosureRevisitedIdx)
-{
-  // Check the input frame index can be found in Logstates
-  const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
-  if (lidarStates.empty())
-    return;
-  if (loopClosureRevisitedIdx < lidarStates.front().Index || loopClosureRevisitedIdx > lidarStates.back().Index )
+  // Check if loop closure information exists
+  if (!Utils::CheckTableFields(csvTable, {"queryIdx", "revisitedIdx"}))
   {
-    vtkWarningMacro(<< "The input query frame index is not valid. Please enter a frame index between ["
-                    << lidarStates.front().Index << ", " << lidarStates.back().Index << "].");
+    vtkWarningMacro(<<"No loop closure information in the file. Load loop closure indices failed.");
     return;
   }
-  vtkDebugMacro("Setting LoopClosureRevisitedFrameIdx to " << loopClosureRevisitedIdx);
-  if (this->SlamAlgo->GetLoopRevisitedIdx() != loopClosureRevisitedIdx)
+
+  auto arrayQueryIdx     = csvTable->GetRowData()->GetArray("queryIdx"    );
+  auto arrayRevisitedIdx = csvTable->GetRowData()->GetArray("revisitedIdx");
+  vtkIdType numLoops     = arrayQueryIdx->GetNumberOfTuples();
+  if (numLoops == 0)
   {
-    this->SlamAlgo->SetLoopRevisitedIdx(loopClosureRevisitedIdx);
-    this->ParametersModificationTime.Modified();
+    vtkWarningMacro(<<"No valid data in the loop closure indices file. Load loop closure indices failed.");
+    return;
   }
+
+  // Process query frame indices and revisited frame indices
+  for (vtkIdType i = 0; i < numLoops; ++i)
+  {
+    LidarSlam::LoopClosure::LoopIndices loop(arrayQueryIdx->GetTuple1(i), arrayRevisitedIdx->GetTuple1(i), -1);
+    this->SlamAlgo->AddLoopClosureIndices(loop, true);
+  }
+
+  // Refresh view
+  this->ParametersModificationTime.Modified();
 }
 
 //-----------------------------------------------------------------------------

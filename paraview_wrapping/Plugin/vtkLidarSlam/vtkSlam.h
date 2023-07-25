@@ -203,6 +203,12 @@ public:
   // Optimize the graph with available information (needs G2O not GTSAM)
   void OptimizeGraph();
 
+  // Check if there is a loop closure implying current frame
+  void DetectLoop();
+
+  // Add the detected loop indices into slam
+  void AddLoopDetection();
+
   vtkCustomGetMacro(G2oFileName, std::string)
   vtkCustomSetMacro(G2oFileName, std::string)
 
@@ -226,14 +232,13 @@ public:
   //   Loop closure parameters
   // ---------------------------------------------------------------------------
 
+  vtkGetMacro(LoopDetected, bool)
+  vtkSetMacro(LoopDetected, bool)
+
   virtual int  GetLoopDetector();
   virtual void SetLoopDetector(int detector);
 
-  vtkCustomGetMacro(LoopQueryIdx, unsigned int)
-  virtual void SetLoopQueryIdx(unsigned int loopClosureQueryIdx);
-
-  vtkCustomGetMacro(LoopRevisitedIdx, unsigned int)
-  virtual void SetLoopRevisitedIdx(unsigned int loopClosureRevisitedIdx);
+  void LoadLoopDetectionIndices(const std::string& fileName);
 
   vtkCustomGetMacro(LoopQueryMapStartRange, double)
   vtkCustomSetMacro(LoopQueryMapStartRange, double)
@@ -634,6 +639,11 @@ private:
 
   // Boolean to decide whether or not to use the pose graph
   bool UsePoseGraph = false;
+
+  // Boolean to register whether or not a loop is detected
+  bool LoopDetected = false;
+
+  LidarSlam::LoopClosure::LoopIndices LoopIdx = {0, 0, -1};
 
   // Choose whether to synchronize on network packet
   // reception time or on Lidar frame header time

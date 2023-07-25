@@ -220,10 +220,6 @@ struct Parameters
 
   // Parameters for the loop closure registration
 
-  // Frame indices to indicate where the loop closure is formed.
-  unsigned int QueryIdx = 0;
-  unsigned int RevisitedIdx = 0;
-
   // The submaps size in meters around the query frame or the revisited frame for loop closure.
   // To build sub maps around query frame, use frames in the range [QueryIdx - 5m, QueryIdx + 5m].
   // To build sub maps around the revisited frame, use frames in the range [RevisitedIdx - 5m, RevisitedIdx + 5m].
@@ -256,6 +252,17 @@ struct Parameters
     // UndistortionMode Undistortion, bool enableExternalConstraints
     UndistortionMode::NONE, false
   };
+};
+
+struct LoopIndices
+{
+  // Frame indices to indicate where the loop closure is formed.
+  unsigned int QueryIdx = 0;
+  unsigned int RevisitedIdx = 0;
+  // The detection time
+  double Time = -1;
+  LoopIndices(unsigned int queryIdx, unsigned int revisitedIdx, double time):
+    QueryIdx(queryIdx), RevisitedIdx(revisitedIdx), Time(time) {};
 };
 } // end of LoopClosure namespace
 
@@ -729,14 +736,15 @@ public:
   // ---------------------------------------------------------------------------
   //   Loop Closure parameters
   // ---------------------------------------------------------------------------
+
+  // Detect a loop for the current frame
+  bool DetectLoopClosureIndices(LoopClosure::LoopIndices& loop);
+
+  // Add indices of a loop into vector LoopDetections
+  void AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFrame = false);
+
   GetStructParamsMacro(Loop, Detector, LoopClosureDetector)
   SetStructParamsMacro(Loop, Detector, LoopClosureDetector)
-
-  GetStructParamsMacro(Loop, QueryIdx, unsigned int)
-  SetStructParamsMacro(Loop, QueryIdx, unsigned int)
-
-  GetStructParamsMacro(Loop, RevisitedIdx, unsigned int)
-  SetStructParamsMacro(Loop, RevisitedIdx, unsigned int)
 
   GetStructParamsMacro(Loop, QueryMapStartRange, double)
   SetStructParamsMacro(Loop, QueryMapStartRange, double)
@@ -1032,8 +1040,11 @@ private:
   //   Loop closure
   // ---------------------------------------------------------------------------
 
-  // Loop closure parameters
+  // Loop closure parameters for the detection and the registration
   LoopClosure::Parameters LoopParams;
+
+  // Store the frame indices of detected loops
+  std::vector<LoopClosure::LoopIndices> LoopDetections;
 
   // Transform between the query frame and the revisited frame that has been found by the automatic loop detector
   // This pose can be used as a pose prior in LoopClosureRegistration step
@@ -1299,9 +1310,10 @@ private:
   //   Loop Closure usage
   // ---------------------------------------------------------------------------
 
-  // If use manual detection, check whether the inputs of loop closure frame indices are stored in the LogStates
-  // if use teaserpp detector, detect automatically a revisited frame index for the current frame by using teaserpp registration
-  bool DetectLoopClosureIndices(std::list<LidarState>::iterator& itQueryState, std::list<LidarState>::iterator& itRevisitedState);
+  // Get the iterator of LogStates for an input frame index
+  // It is possible that the input frame index does not correspond to a keyframe
+  // In this case, output the nearest neighbor keyframe iterator
+  std::list<LidarState>::iterator GetKeyStateIterator(unsigned int& frameIdx);
 
   // Return true if a loop closure has been found and update itRevisitedState iterator, if not return false.
   bool DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, std::list<LidarState>::iterator& itRevisitedState);
