@@ -1600,13 +1600,19 @@ void Slam::Localization()
         // Estimate current keypoints bounding box
         PointCloud currWorldKeypoints;
         pcl::transformPointCloud(*this->CurrentUndistortedKeypoints[k], currWorldKeypoints, this->Tworld.matrix());
-        Eigen::Vector4f minPoint, maxPoint;
-        pcl::getMinMax3D(currWorldKeypoints, minPoint, maxPoint);
+        if (this->SubmapMode == PreSearchMode::BOUNDING_BOX)
+        {
+          Eigen::Vector4f minPoint, maxPoint;
+          pcl::getMinMax3D(currWorldKeypoints, minPoint, maxPoint);
 
-        // Build submap of all points lying in this bounding box
-        // Moving objects are rejected but the constraint is removed
-        // if less than half the number of current keypoints are extracted from the map
-        this->LocalMaps[k]->BuildSubMapKdTree(minPoint.head<3>().array(), maxPoint.head<3>().array(), currWorldKeypoints.size() / 2);
+          // Build submap of all points lying in this bounding box
+          // Moving objects are rejected but the constraint is removed
+          // if less than half the number of current keypoints are extracted from the map
+          this->LocalMaps[k]->BuildSubMapKdTree(minPoint.head<3>().array(), maxPoint.head<3>().array(), currWorldKeypoints.size() / 2);
+        }
+        else
+          this->LocalMaps[k]->BuildSubMapKdTree(currWorldKeypoints);
+
       }
     }
   }

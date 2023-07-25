@@ -233,4 +233,15 @@ enum class LoopClosureDetector
   TEASERPP = 1
 };
 
+//------------------------------------------------------------------------------
+//! Modes to extract a submap of target keypoints
+enum class PreSearchMode
+{
+  // Extract the bounding box of the current frame
+  BOUNDING_BOX = 0,
+
+  // Extract the voxels of the current frame and their neighbors
+  PROFILE = 1
+};
+
 } // end of LidarSlam namespace

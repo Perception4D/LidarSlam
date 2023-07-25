@@ -447,6 +447,9 @@ public:
   virtual unsigned int GetMapUpdate();
   virtual void SetMapUpdate(unsigned int mode);
 
+  virtual unsigned int GetSubmapMode();
+  virtual void SetSubmapMode(unsigned int mode);
+
   vtkCustomGetMacro(VoxelGridDecayingThreshold, double)
   vtkCustomSetMacro(VoxelGridDecayingThreshold, double)
 

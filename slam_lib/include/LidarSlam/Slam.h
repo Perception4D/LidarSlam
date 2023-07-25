@@ -717,6 +717,9 @@ public:
   GetMacro(MapUpdate, MappingMode)
   SetMacro(MapUpdate, MappingMode)
 
+  GetMacro(SubmapMode, PreSearchMode)
+  SetMacro(SubmapMode, PreSearchMode)
+
   double GetVoxelGridDecayingThreshold() const;
   void SetVoxelGridDecayingThreshold(double decay);
 
@@ -1026,6 +1029,12 @@ private:
   // The map can be updated more or less with new input keypoints
   // from current scanned points depending on the initial map reliability.
   MappingMode MapUpdate = MappingMode::UPDATE;
+
+  // How to extract the submap
+  // The submap can be extracted using a bounding box (extraction fast but kdtree heavy)
+  // or using a profile of the current frame (extraction heavy but kdtree fast)
+  // The use of one mode or the other depends on the environment and the needs
+  PreSearchMode SubmapMode = PreSearchMode::BOUNDING_BOX;
 
   // How to downsample the points in the keypoints' maps
   // This mode parameter allows to choose how to select the remaining point in each voxel.
