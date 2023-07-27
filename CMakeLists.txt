@@ -30,9 +30,6 @@ if(WIN32 AND MSVC)
 	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 endif()
 
-# Boost do not use STATIC libs (Superbuild like), coherent with BUILD_SHARED_LIBS ON
-set(Boost_USE_STATIC_LIBS OFF)
-
 #-------------------------
 #  Find dependencies
 #-------------------------
