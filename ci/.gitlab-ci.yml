@@ -142,6 +142,7 @@ linux_build_superbuild:
       $slam_cmake_option_BOOST_ROOT
       $slam_cmake_option_PCL_DIR
       $slam_cmake_option_g2o_DIR
+      -DBoost_USE_STATIC_LIBS=OFF
       ${CI_PROJECT_DIR}
     - cmake --build $build_dir -j 4
 
@@ -204,6 +205,7 @@ windows_slam_lib:
       $slam_cmake_option_PNG_LIB
       $slam_cmake_option_PNG_PNG_INC
       $slam_cmake_option_PYTHON
+      -DBoost_USE_STATIC_LIBS=OFF
       $CI_PROJECT_DIR
     - cmake --build $build_dir -j 4
 
