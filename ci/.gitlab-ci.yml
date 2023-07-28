@@ -3,6 +3,7 @@ variables:
   data_folder: /usr/src/app/data
   cmake_option_GENERATOR: -GNinja
   cmake_option_build_type: -DCMAKE_BUILD_TYPE=Release
+  cmake_option_shared: -DBUILD_SHARED_LIBS=ON
   deps_install_path: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_SB/install"
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_SUBMODULE_DEPTH: 20
@@ -79,12 +80,14 @@ clean_superbuild:
   script:
     - cd $build_dir
     - cmake -E make_directory install
-    - echo "cmake $cmake_option_GENERATOR $cmake_option_build_type -DCMAKE_INSTALL_PREFIX=${deps_install_path} ${CI_PROJECT_DIR}/slam-superbuild"
-    - cmake
-      "${CI_PROJECT_DIR}/slam-superbuild"
+    - echo "cmake "${CI_PROJECT_DIR}/slam-superbuild"
       $cmake_option_GENERATOR
       $cmake_option_build_type
-      -DCMAKE_INSTALL_PREFIX="${deps_install_path}"
+      -DCMAKE_INSTALL_PREFIX=${deps_install_path}""
+    - cmake "${CI_PROJECT_DIR}/slam-superbuild"
+      $cmake_option_GENERATOR
+      $cmake_option_build_type
+      -DCMAKE_INSTALL_PREFIX=${deps_install_path}"
     - cmake --build . -j 4
 
 # Build superbuild on Windows
@@ -119,6 +122,7 @@ linux_build_superbuild:
     slam_cmake_option_Ceres_DIR: "-DCeres_DIR=${deps_install_path}/lib/cmake/Ceres"
     slam_cmake_option_nanoflann_DIR: "-Dnanoflann_DIR=${deps_install_path}/share/nanoflann/cmake"
     slam_cmake_option_BOOST_ROOT: "-DBOOST_ROOT=${deps_install_path}/"
+    slam_cmake_option_Boost_STATIC: "-DBoost_USE_STATIC_LIBS=OFF"
     slam_cmake_option_g2o_DIR: "-Dg2o_DIR=${deps_install_path}/lib/cmake/g2o"
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -129,21 +133,32 @@ linux_build_superbuild:
     - cmake -E remove_directory $build_dir
     - cmake -E make_directory $build_dir
     - cd $build_dir
-    - echo "cmake $cmake_option_GENERATOR $cmake_option_build_type -DBUILD_SHARED_LIBS=ON $slam_cmake_option_Eigen_INCLUDE_DIR $slam_cmake_option_Eigen_DIR $slam_cmake_option_glog_DIR $slam_cmake_option_Ceres_DIR $slam_cmake_option_nanoflann_DIR $slam_cmake_option_Boost_DIR $slam_cmake_option_PCL_DIR $slam_cmake_option_g2o_DIR ${CI_PROJECT_DIR}"
-    - cmake
+    - echo "cmake $CI_PROJECT_DIR
       $cmake_option_GENERATOR
       $cmake_option_build_type
-      -DBUILD_SHARED_LIBS=ON
+      $cmake_option_shared
       $slam_cmake_option_Eigen_INCLUDE_DIR
       $slam_cmake_option_Eigen_DIR
       $slam_cmake_option_glog_DIR
       $slam_cmake_option_Ceres_DIR
       $slam_cmake_option_nanoflann_DIR
       $slam_cmake_option_BOOST_ROOT
+      $slam_cmake_option_Boost_STATIC
+      $slam_cmake_option_PCL_DIR
+      $slam_cmake_option_g2o_DIR"
+    - cmake $CI_PROJECT_DIR
+      $cmake_option_GENERATOR
+      $cmake_option_build_type
+      $cmake_option_shared
+      $slam_cmake_option_Eigen_INCLUDE_DIR
+      $slam_cmake_option_Eigen_DIR
+      $slam_cmake_option_glog_DIR
+      $slam_cmake_option_Ceres_DIR
+      $slam_cmake_option_nanoflann_DIR
+      $slam_cmake_option_BOOST_ROOT
+      $slam_cmake_option_Boost_STATIC
       $slam_cmake_option_PCL_DIR
       $slam_cmake_option_g2o_DIR
-      -DBoost_USE_STATIC_LIBS=OFF
-      ${CI_PROJECT_DIR}
     - cmake --build $build_dir -j 4
 
 # Build core LidarSlam lib on Linux
@@ -174,6 +189,7 @@ windows_slam_lib:
   needs: []
   variables:
     build_dir: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_paraview_wrapping"
+    slam_cmake_option_Boost_STATIC: "-DBoost_USE_STATIC_LIBS=OFF"
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
@@ -183,11 +199,10 @@ windows_slam_lib:
     - cmake -E remove_directory $build_dir
     - cmake -E make_directory $build_dir
     - cd $build_dir
-    - echo "cmake $cmake_option_GENERATOR $cmake_option_build_type -DBUILD_SHARED_LIBS=ON -DSLAM_PARAVIEW_PLUGIN=ON $slam_cmake_option_Eigen_DIR $slam_cmake_option_Eigen_INCLUDE_DIR $slam_cmake_option_glog_DIR $slam_cmake_option_Ceres_DIR $slam_cmake_option_nanoflann_DIR $slam_cmake_option_BOOST_ROOT $slam_cmake_option_Boost_DIR $slam_cmake_option_PCL_DIR $slam_cmake_option_g2o_DIR $slam_cmake_option_ParaView_DIR $slam_cmake_option_Qt5_DIR $slam_cmake_option_ZLIB_LIB $slam_cmake_option_ZLIB_INC $slam_cmake_option_PNG_LIB $slam_cmake_option_PNG_PNG_INC $slam_cmake_option_PYTHON ${CI_PROJECT_DIR}"
-    - cmake
+    - echo "cmake $CI_PROJECT_DIR
       $cmake_option_GENERATOR
       $cmake_option_build_type
-      -DBUILD_SHARED_LIBS=ON
+      $cmake_option_shared
       -DSLAM_PARAVIEW_PLUGIN=ON
       $slam_cmake_option_Eigen_INCLUDE_DIR
       $slam_cmake_option_Eigen_DIR
@@ -196,6 +211,29 @@ windows_slam_lib:
       $slam_cmake_option_nanoflann_DIR
       $slam_cmake_option_BOOST_ROOT
       $slam_cmake_option_Boost_DIR
+      $slam_cmake_option_Boost_STATIC
+      $slam_cmake_option_PCL_DIR
+      $slam_cmake_option_g2o_DIR
+      $slam_cmake_option_ParaView_DIR
+      $slam_cmake_option_Qt5_DIR
+      $slam_cmake_option_ZLIB_LIB
+      $slam_cmake_option_ZLIB_INC
+      $slam_cmake_option_PNG_LIB
+      $slam_cmake_option_PNG_PNG_INC
+      $slam_cmake_option_PYTHON"
+    - cmake $CI_PROJECT_DIR
+      $cmake_option_GENERATOR
+      $cmake_option_build_type
+      $cmake_option_shared
+      -DSLAM_PARAVIEW_PLUGIN=ON
+      $slam_cmake_option_Eigen_INCLUDE_DIR
+      $slam_cmake_option_Eigen_DIR
+      $slam_cmake_option_glog_DIR
+      $slam_cmake_option_Ceres_DIR
+      $slam_cmake_option_nanoflann_DIR
+      $slam_cmake_option_BOOST_ROOT
+      $slam_cmake_option_Boost_DIR
+      $slam_cmake_option_Boost_STATIC
       $slam_cmake_option_PCL_DIR
       $slam_cmake_option_g2o_DIR
       $slam_cmake_option_ParaView_DIR
@@ -205,8 +243,6 @@ windows_slam_lib:
       $slam_cmake_option_PNG_LIB
       $slam_cmake_option_PNG_PNG_INC
       $slam_cmake_option_PYTHON
-      -DBoost_USE_STATIC_LIBS=OFF
-      $CI_PROJECT_DIR
     - cmake --build $build_dir -j 4
 
 # Build PV wrapping on Linux
