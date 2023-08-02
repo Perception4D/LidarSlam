@@ -19,7 +19,7 @@
 #pragma once
 
 #define _USE_MATH_DEFINES
-#include <cmath> 
+#include <cmath>
 
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>

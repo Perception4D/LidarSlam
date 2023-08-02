@@ -4,7 +4,7 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription 
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
 from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.conditions import IfCondition, UnlessCondition
@@ -128,28 +128,28 @@ def generate_launch_description():
   # Aggregate points
   slam_aggregation_config_path = os.path.join(lidar_slam_share_path, "params", "aggregation_config.yaml")
   aggregation_node = Node(name="aggregation", package="lidar_slam", executable="aggregation_node", output="screen",
-    parameters=[slam_aggregation_config_path], 
+    parameters=[slam_aggregation_config_path],
     condition=IfCondition(LaunchConfiguration("aggregate")),
   )
 
   # Moving base coordinates systems description                                         tf_FROM_to_TO
   tf_base_to_os_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_lidar",
     arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0", 
+               "--roll", "0", "--pitch", "0", "--yaw", "0",
                "--frame-id", "base_link", "--child-frame-id", "laser_sensor_frame"],
   )
 
   # Moving base coordinates systems description                                     tf_FROM_to_TO
   gps_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_gps",
     arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0", 
+               "--roll", "0", "--pitch", "0", "--yaw", "0",
                "--frame-id", "base_link", "--child-frame-id", "gps"],
   )
 
   # Default transformation for Odom frame
   odom_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_odom_to_base",
     arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0", 
+               "--roll", "0", "--pitch", "0", "--yaw", "0",
                "--frame-id", "odom", "--child-frame-id", "base_link"],
     )
 
