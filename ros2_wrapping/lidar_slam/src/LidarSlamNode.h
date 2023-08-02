@@ -210,9 +210,9 @@ protected:
   /*!
    * @brief Publish a Tf2 static transform
    *        Use the StaticTfBroadcaster of the node
-   * 
-   * @param[in] timeSec The time in second 
-   * @param[in] frameId The frame Id 
+   *
+   * @param[in] timeSec The time in second
+   * @param[in] frameId The frame Id
    * @param[in] childFrameId The child frame Id
    * @param[in] transfo The transformation matrix
    */
@@ -253,7 +253,7 @@ protected:
   // External sensors
   // Callback group separate from default one to receive  messages from external sensors in parallel
   rclcpp::CallbackGroup::SharedPtr ExternalSensorGroup;
-  
+
   // Booleans to select which sensor to activate
   // If sensor enabled, data are received and stored
   // External sensor data can be used in local optimization or in postprocess pose graph optimization

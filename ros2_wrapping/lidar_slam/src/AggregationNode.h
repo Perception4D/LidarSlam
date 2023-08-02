@@ -74,7 +74,7 @@ private:
   // ROS subscribers, publishers and services
   rclcpp::Subscription<Pcl2_msg>::SharedPtr FrameSubscriber;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr PointsPublisher;
-  rclcpp::Service<lidar_slam::srv::SavePc>::SharedPtr SaveService; 
+  rclcpp::Service<lidar_slam::srv::SavePc>::SharedPtr SaveService;
 
   // Dense map containing aggregated points from all frames
   std::shared_ptr<LidarSlam::RollingGrid> DenseMap;

@@ -315,7 +315,7 @@ void LidarSlamNode::SecondaryScanCallback(const Pcl2_msg& pcl_msg)
   CloudS::Ptr cloudS_ptr = std::make_shared<CloudS>();
 
   pcl::fromROSMsg(pcl_msg, *cloudS_ptr);
-  
+
   if(cloudS_ptr->empty())
   {
     RCLCPP_WARN(this->get_logger(), "Secondary input point cloud sent by Lidar sensor driver is empty -> ignoring message");
@@ -883,7 +883,7 @@ void LidarSlamNode::PublishOutput()
       // Publish as TF from OdometryFrameId to TrackingFrameId
       if (this->Publish[POSE_TF])
         this->PublishTransformTF(state.Time, this->OdometryFrameId, this->TrackingFrameId, state.Isometry);
-    
+
       // Enable subscribers to receive those messages
       // Warning : this may alter cout working in this code area
       rclcpp::sleep_for(std::chrono::milliseconds(1));
@@ -1160,7 +1160,7 @@ void LidarSlamNode::SetSlamParameters()
   // Confidence estimators
   // Overlap
   SetSlamParam(float,  "slam.confidence.overlap.sampling_ratio", OverlapSamplingRatio)
-  
+
   // Motion limitations (hard constraints to detect failure)
   std::vector<double> acc;
   if (this->get_parameter("slam.confidence.motion_limits.acceleration", acc) && acc.size() == 2)

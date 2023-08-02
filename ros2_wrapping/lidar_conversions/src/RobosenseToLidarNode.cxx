@@ -56,7 +56,7 @@ RobosenseToLidarNode::RobosenseToLidarNode(std::string node_name, const rclcpp::
 //------------------------------------------------------------------------------
 void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
 {
-  //convertion to CloudRS 
+  //convertion to CloudRS
   CloudRS cloudRS;
   pcl::fromROSMsg(msg_received, cloudRS);
 
