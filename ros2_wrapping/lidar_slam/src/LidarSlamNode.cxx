@@ -156,7 +156,7 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
   // Check if the parameter type is a string_array
   // If the parameter doesn't exist or is a string, push back a value
   std::vector<std::string> lidarTopics;
-  if (this->has_parameter("intput") && this->get_parameter_types({"input"})[0] == rclcpp::ParameterType::PARAMETER_STRING_ARRAY)
+  if (this->has_parameter("input") && this->get_parameter_types({"input"})[0] == rclcpp::ParameterType::PARAMETER_STRING_ARRAY)
     this->get_parameter<std::vector<std::string>>("input", lidarTopics);
   else
   {
