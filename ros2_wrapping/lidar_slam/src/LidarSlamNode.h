@@ -228,6 +228,8 @@ protected:
 
   // Number of Lidars connected to the SLAM process
   int MultiLidarsNb = 1;
+  // To save the lidar devices id from which frames are recieved
+  std::set<uint8_t> MultiLidarsCounter;
 
   // ROS subscribers and publishers
   std::vector<rclcpp::Subscription<Pcl2_msg>::SharedPtr> CloudSubs;
