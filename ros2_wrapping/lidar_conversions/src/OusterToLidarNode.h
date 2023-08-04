@@ -21,7 +21,7 @@
 #include <rclcpp/rclcpp.hpp>
 // #include <pcl_ros/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <ouster_point.h>
+#include <os_point.h>
 #include <LidarSlam/LidarPoint.h>
 
 namespace lidar_conversions
