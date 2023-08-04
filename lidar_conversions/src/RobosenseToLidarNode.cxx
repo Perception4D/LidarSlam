@@ -35,11 +35,18 @@ RobosenseToLidarNode::RobosenseToLidarNode(std::string node_name, const rclcpp::
   // Get number of lasers
   this->get_parameter("nb_lasers", this->NbLasers);
 
+  std::string talker_topic;
+  std::string listener_topic;
+  this->get_parameter("talker_topic_name", talker_topic);
+  this->get_parameter("listener_topic_name", listener_topic);
+  std::cout<<" talk = "<<talker_topic<<" listener = "<<listener_topic<<"\n";
+  std::cout<<" device = "<<this->DeviceId<<"\n";
+
   // Init ROS publisher
-  this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
+  this->Talker = this->create_publisher<Pcl2_msg>(talker_topic, 1);
 
   // Init ROS subscriber
-  this->Listener = this->create_subscription<Pcl2_msg>("rslidar_points", 1,
+  this->Listener = this->create_subscription<Pcl2_msg>(listener_topic, 1,
                               std::bind(&RobosenseToLidarNode::Callback, this, std::placeholders::_1));
 
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("RSLidar data converter is ready !"));

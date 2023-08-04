@@ -99,14 +99,15 @@ def generate_launch_description():
   ##########
 
   # Velodyne points conversion
-  velodyne_conversion_node = Node(
-    package="lidar_conversions", executable="velodyne_conversion_node", name="velodyne_conversion", output="screen",
-    parameters=[{
-      "use_sim_time": LaunchConfiguration("use_sim_time"),
-      "rpm": LaunchConfiguration("rpm"),
-      "timestamp_first_packet": LaunchConfiguration("timestamp_first_packet"),
-    }],
-  )
+  # velodyne_conversion_node = Node(
+  #   package="lidar_conversions", executable="robosense_conversion_node", name="velodyne_conversion", output="screen",
+  #   parameters=[{
+  #     "use_sim_time": LaunchConfiguration("use_sim_time"),
+  #     "rpm": LaunchConfiguration("rpm"),
+  #     "timestamp_first_packet": LaunchConfiguration("timestamp_first_packet"),
+  #     "device_id": LaunchConfiguration("device_id"),
+  #   }],
+  # )
 
   # LiDAR SLAM : compute TF slam_init -> velodyne
 
@@ -177,15 +178,26 @@ def generate_launch_description():
                "--frame-id", "odom", "--child-frame-id", "base_link"],
   )
 
-  if os.name != "nt" :
-    ld.add_action(velodyne_group)
-  ld.add_action(velodyne_conversion_node)
+    # left lidar link
+  left_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_left_to_base",
+    arguments=["--x", "-0.655", "--y", "0.455", "--z", "0.364",
+               "--roll", "0", "--pitch", "0", "--yaw", "2.356",
+               "--frame-id", "base_link", "--child-frame-id", "bpearl_back_left_frame"],
+  )
+
+  # right lidar link
+  right_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_right_to_base",
+    arguments=["--x", "0.655", "--y", "-0.455", "--z", "0.364",
+               "--roll", "0", "--pitch", "0", "--yaw", "-0.785",
+               "--frame-id", "base_link", "--child-frame-id", "bpearl_front_right_frame"],
+  )
+
+  # ld.add_action(velodyne_conversion_node)
   ld.add_action(slam_outdoor_node)
   ld.add_action(slam_indoor_node)
   ld.add_action(aggregation_node)
-  ld.add_action(tf_base_to_velo_node)
-  ld.add_action(gps_conversions_include)
-  ld.add_action(gps_tf_node)
   ld.add_action(odom_tf_node)
+  ld.add_action(left_tf_node)
+  ld.add_action(right_tf_node)
   ld.add_action(rviz_node)
   return (ld)
