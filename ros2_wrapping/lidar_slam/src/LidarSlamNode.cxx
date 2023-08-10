@@ -153,6 +153,8 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
   // Init ROS subscribers
 
   // LiDAR inputs
+  this->get_parameter_or<int>("lidars_nb", this->MultiLidarsNb, 1);
+
   // Check if the parameter type is a string_array
   // If the parameter doesn't exist or is a string, push back a value
   std::vector<std::string> lidarTopics;
