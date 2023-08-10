@@ -226,6 +226,9 @@ protected:
   std::vector<CloudS::Ptr> Frames;
   bool SlamEnabled = true;
 
+  // Number of Lidars connected to the SLAM process
+  int MultiLidarsNb = 1;
+
   // ROS subscribers and publishers
   std::vector<rclcpp::Subscription<Pcl2_msg>::SharedPtr> CloudSubs;
   rclcpp::Subscription<lidar_slam::msg::SlamCommand>::SharedPtr SlamCommandSub;
