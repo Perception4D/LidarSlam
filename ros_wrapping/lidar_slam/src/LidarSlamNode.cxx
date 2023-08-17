@@ -150,6 +150,7 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   // Init ROS subscribers
 
   // LiDAR inputs
+  priv_nh.getParam("lidars_nb", this->MultiLidarsNb);
   std::vector<std::string> lidarTopics;
   if (!priv_nh.getParam("input", lidarTopics))
     lidarTopics.push_back(priv_nh.param<std::string>("input", "lidar_points"));
