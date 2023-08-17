@@ -235,6 +235,8 @@ protected:
 
   // Number of Lidars connected to the SLAM process
   int MultiLidarsNb = 1;
+  // To save the lidar devices id from which frames are received
+  std::set<uint8_t> MultiLidarsCounter;
 
   // ROS node handles, subscribers and publishers
   ros::NodeHandle &Nh, &PrivNh;
