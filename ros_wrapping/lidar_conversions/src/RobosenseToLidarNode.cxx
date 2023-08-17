@@ -45,18 +45,11 @@ RobosenseToLidarNode::RobosenseToLidarNode(ros::NodeHandle& nh, ros::NodeHandle&
   // Get LiDAR spinning speed
   this->PrivNh.param("rpm", this->Rpm, this->Rpm);
 
-  std::string talker_topic;
-  std::string listener_topic;
-  this->PrivNh.param("talker_topic_name", talker_topic, talker_topic);
-  this->PrivNh.param("listener_topic_name", listener_topic, listener_topic);
-  std::cout<<" talk = "<<talker_topic<<" listener = "<<listener_topic<<"\n";
-  std::cout<<" device = "<<this->DeviceId<<"\n";
-
   // Init ROS publisher
-  this->Talker = nh.advertise<CloudS>(talker_topic, 1);
+  this->Talker = nh.advertise<CloudS>("lidar_points", 1);
 
   // Init ROS subscriber
-  this->Listener = nh.subscribe(listener_topic, 1, &RobosenseToLidarNode::Callback, this);
+  this->Listener = nh.subscribe("rslidar_points", 1, &RobosenseToLidarNode::Callback, this);
 
   ROS_INFO_STREAM(BOLD_GREEN("RSLidar data converter is ready !"));
 }
