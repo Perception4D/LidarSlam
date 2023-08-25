@@ -3625,12 +3625,15 @@ void Slam::ClearMaps(Maps& maps)
 //-----------------------------------------------------------------------------
 void Slam::ClearLog()
 {
-  auto prevlastLogStateIt = LogStates.end();
-  --prevlastLogStateIt;
-  --prevlastLogStateIt;
+  if (this->LogStates.empty())
+    return;
+
+  auto prevlastLogStateIt = this->LogStates.end();
+  Utils::SafeAdvance(prevlastLogStateIt, -2, this->LogStates.begin());
   std::list<LidarState> storeLog;
   storeLog.push_back(*prevlastLogStateIt);
-  storeLog.push_back(*(++prevlastLogStateIt));
+  if (this->LogStates.size() > 1)
+    storeLog.push_back(*(++prevlastLogStateIt));
 
   this->LogStates.clear();
   this->LogStates = storeLog;
