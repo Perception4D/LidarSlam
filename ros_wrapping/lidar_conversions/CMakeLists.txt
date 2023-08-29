@@ -80,9 +80,18 @@ target_link_libraries(livox_conversion_node ${catkin_LIBRARIES})
 
 add_dependencies(livox_conversion_node lidar_conversions_generate_messages_cpp)
 
+# Generic converter
+add_executable(generic_conversion_node src/GenericConversionNode.cxx)
+target_link_libraries(generic_conversion_node ${catkin_LIBRARIES})
+
 #############
 ## Install ##
 #############
 
-install(TARGETS velodyne_conversion_node robosense_conversion_node ouster_conversion_node livox_conversion_node
-        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(TARGETS
+  velodyne_conversion_node
+  robosense_conversion_node
+  ouster_conversion_node
+  livox_conversion_node
+  generic_conversion_node
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

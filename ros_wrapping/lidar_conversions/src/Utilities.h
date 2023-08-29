@@ -29,6 +29,14 @@ namespace lidar_conversions
 namespace Utils
 {
 
+struct Cluster
+{
+  double Mean = 0.;
+  double Std = 0.;
+  bool Empty = true;
+  std::vector<double> Inliers;
+};
+
 //------------------------------------------------------------------------------
 /*!
  * @brief Copy pointcloud metadata to an other cloud
@@ -42,6 +50,38 @@ inline void CopyPointCloudMetadata(const pcl::PointCloud<PointI>& from, pcl::Poi
   to.is_dense = from.is_dense;
   to.sensor_orientation_ = from.sensor_orientation_;
   to.sensor_origin_ = from.sensor_origin_;
+}
+
+//----------------------------------------------------------------------------
+/*!
+  * @brief Initialize the PointCloud published by lidar driver
+  * @param msg_received New Lidar Frame, published by lidar_pointcloud/cloud_node.
+  */
+template<typename CloudRawType>
+CloudRawType InitCloudRaw(const sensor_msgs::PointCloud2& msg_received)
+{
+  CloudRawType cloudRaw;
+  pcl::fromROSMsg(msg_received, cloudRaw);
+  return cloudRaw;
+}
+
+//------------------------------------------------------------------------------
+/*!
+  * @brief Initialize the PointCloud needed by SLAM
+  * @param cloudRaw PointCloud published by lidar driver
+  */
+template<typename CloudRawType>
+pcl::PointCloud<LidarSlam::LidarPoint> InitCloudS(CloudRawType cloudRaw)
+{
+  // Init SLAM pointcloud
+  pcl::PointCloud<LidarSlam::LidarPoint> cloudS;
+  cloudS.reserve(cloudRaw.size());
+
+  // Copy pointcloud metadata
+  Utils::CopyPointCloudMetadata(cloudRaw, cloudS);
+  cloudS.is_dense = true;
+
+  return cloudS;
 }
 
 //------------------------------------------------------------------------------
