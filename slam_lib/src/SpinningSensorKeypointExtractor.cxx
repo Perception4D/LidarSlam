@@ -161,23 +161,19 @@ void SpinningSensorKeypointExtractor::ConvertAndSortScanLines()
   // Clear previous scan lines
   for (auto& scanLineCloud: this->ScanLines)
   {
-    // Use clear() if pointcloud already exists to avoid re-allocating memory.
     // No worry as ScanLines is never shared with outer scope.
-    if (scanLineCloud)
-      scanLineCloud->clear();
-    else
-      scanLineCloud.reset(new PointCloud);
+    scanLineCloud.second.reset(new PointCloud);
   }
 
   // Separate pointcloud into different scan lines
   for (const Point& point: *this->Scan)
   {
-    // Ensure that there are enough available scan lines
-    while (point.laser_id >= this->ScanLines.size())
-      this->ScanLines.emplace_back(new PointCloud);
-
+    auto it = this->ScanLines.find(point.laser_id);
+    // Add laser line if it doesn't exist
+    if (it == this->ScanLines.end())
+      it = this->ScanLines.emplace(point.laser_id, std::make_unique<PointCloud>()).first;
     // Add the current point to its corresponding laser scan
-    this->ScanLines[point.laser_id]->push_back(point);
+    it->second->push_back(point);
   }
 
   // Save the number of lasers
@@ -202,14 +198,14 @@ void SpinningSensorKeypointExtractor::PrepareDataForNextFrame()
 
   // Initialize the scan lines features vectors with the correct length
   #pragma omp parallel for num_threads(this->NbThreads) schedule(guided)
-  for (int scanLine = 0; scanLine < static_cast<int>(this->NbLaserRings); ++scanLine)
+  for (int scanLineIdx = 0; scanLineIdx < static_cast<int>(this->NbLaserRings); ++scanLineIdx)
   {
-    size_t nbPoint = this->ScanLines[scanLine]->size();
-    this->Label[scanLine].assign(nbPoint, KeypointFlags().reset());  // set all flags to 0
-    this->Angles[scanLine].assign(nbPoint, -1.);
-    this->DepthGap[scanLine].assign(nbPoint, -1.);
-    this->SpaceGap[scanLine].assign(nbPoint, -1.);
-    this->IntensityGap[scanLine].assign(nbPoint, -1.);
+    size_t nbPoint = this->GetScanlineCloud(scanLineIdx)->size();
+    this->Label[scanLineIdx].assign(nbPoint, KeypointFlags().reset());  // set all flags to 0
+    this->Angles[scanLineIdx].assign(nbPoint, -1.);
+    this->DepthGap[scanLineIdx].assign(nbPoint, -1.);
+    this->SpaceGap[scanLineIdx].assign(nbPoint, -1.);
+    this->IntensityGap[scanLineIdx].assign(nbPoint, -1.);
   }
 
   // Reset voxel grids
@@ -250,7 +246,7 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
   for (int scanLine = 0; scanLine < static_cast<int>(this->NbLaserRings); ++scanLine)
   {
     // Useful shortcuts
-    const PointCloud& scanLineCloud = *(this->ScanLines[scanLine]);
+    const PointCloud& scanLineCloud = *this->GetScanlineCloud(scanLine);
     const int Npts = scanLineCloud.size();
 
     // if the line is almost empty, skip it
@@ -478,7 +474,7 @@ void SpinningSensorKeypointExtractor::AddKptsUsingCriterion (Keypoint k,
   // Loop over the scan lines
   for (int scanlineIdx = 0; scanlineIdx < static_cast<int>(this->NbLaserRings); ++scanlineIdx)
   {
-    const int Npts = this->ScanLines[scanlineIdx]->size();
+    const int Npts = this->GetScanlineCloud(scanlineIdx)->size();
 
     // If the line is almost empty, skip it
     if (this->IsScanLineAlmostEmpty(Npts))
@@ -521,7 +517,7 @@ void SpinningSensorKeypointExtractor::AddKptsUsingCriterion (Keypoint k,
       // Indicate the type of the keypoint to debug and to exclude double edges
       this->Label[scanlineIdx][index].set(k);
       // Add keypoint
-      this->Keypoints[k].AddPoint(this->ScanLines[scanlineIdx]->at(index), weight);
+      this->Keypoints[k].AddPoint(this->GetScanlineCloud(scanlineIdx)->at(index), weight);
     }
   }
 }
@@ -557,13 +553,13 @@ void SpinningSensorKeypointExtractor::ComputeBlobs()
 
   for (unsigned int scanLine = 0; scanLine < this->NbLaserRings; ++scanLine)
   {
-    for (unsigned int index = 0; index < this->ScanLines[scanLine]->size(); ++index)
+    for (unsigned int index = 0; index < this->GetScanlineCloud(scanLine)->size(); ++index)
     {
       // Random sampling to decrease keypoints extraction
       // computation time
       if (this->InputSamplingRatio < 1.f && dis(gen) > this->InputSamplingRatio)
         continue;
-      this->Keypoints[Keypoint::BLOB].AddPoint(this->ScanLines[scanLine]->at(index));
+      this->Keypoints[Keypoint::BLOB].AddPoint(this->GetScanlineCloud(scanLine)->at(index));
     }
   }
 }
@@ -574,15 +570,16 @@ void SpinningSensorKeypointExtractor::EstimateAzimuthalResolution()
   // Compute horizontal angle values between successive points
   std::vector<float> angles;
   angles.reserve(this->Scan->size());
-  for (const PointCloud::Ptr& scanLine : this->ScanLines)
+  for (int scanLineIdx = 0; scanLineIdx < this->NbLaserRings; ++scanLineIdx)
   {
-    for (unsigned int index = 1; index < scanLine->size(); ++index)
+    const auto& scanLineCloud = *this->GetScanlineCloud(scanLineIdx);
+    for (unsigned int index = 1; index < scanLineCloud.size(); ++index)
     {
       // Compute horizontal angle between two measurements
       // WARNING: to be correct, the points need to be in the LIDAR sensor
       // coordinates system, where the sensor is spinning around Z axis.
-      Eigen::Map<const Eigen::Vector2f> p1(scanLine->at(index - 1).data);
-      Eigen::Map<const Eigen::Vector2f> p2(scanLine->at(index).data);
+      Eigen::Map<const Eigen::Vector2f> p1(scanLineCloud.at(index - 1).data);
+      Eigen::Map<const Eigen::Vector2f> p2(scanLineCloud.at(index).data);
       float angle = std::abs(std::acos(p1.dot(p2) / (p1.norm() * p2.norm())));
 
       // Keep only angles greater than 0 to avoid dual return issues
@@ -654,6 +651,14 @@ std::unordered_map<std::string, std::vector<float>> SpinningSensorKeypointExtrac
   map["plane_keypoint"] = get1DVectorFromFlag(this->Label, Keypoint::PLANE);
   map["blob_keypoint"]  = get1DVectorFromFlag(this->Label, Keypoint::BLOB);
   return map;
+}
+
+//-----------------------------------------------------------------------------
+pcl::PointCloud<LidarPoint>::Ptr SpinningSensorKeypointExtractor::GetScanlineCloud(unsigned int i)
+{
+  if (i >= this->ScanLines.size())
+    return nullptr;
+  return std::next(this->ScanLines.begin(), i)->second;
 }
 
 } // end of LidarSlam namespace
