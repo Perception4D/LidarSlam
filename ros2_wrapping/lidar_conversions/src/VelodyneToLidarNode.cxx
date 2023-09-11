@@ -85,6 +85,10 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
   // Build SLAM pointcloud
   for (const PointV& velodynePoint : cloudV)
   {
+    // Remove no return points by checking unvalid values (NaNs or zeros)
+    if (!Utils::IsPointValid(velodynePoint))
+      continue;
+
     PointS slamPoint;
     slamPoint.x = velodynePoint.x;
     slamPoint.y = velodynePoint.y;

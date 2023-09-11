@@ -85,9 +85,8 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
   {
     const PointRS& rsPoint = cloudRS[i];
 
-    // Check that input point does not have NaNs as even invalid points are
-    // returned by the RSLidar driver
-    if (!Utils::IsFinite(rsPoint))
+    // Remove no return points by checking unvalid values (NaNs or zeros)
+    if (!Utils::IsPointValid(rsPoint))
       continue;
 
     // In case of dual returns mode, check that the second return is not identical to the first
