@@ -83,8 +83,8 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   // Build SLAM pointcloud
   for (const PointO& ousterPoint : cloudO)
   {
-    // Remove no return points
-    if (ousterPoint.getVector3fMap().norm() < 1e-3)
+    // Remove no return points by checking unvalid values (NaNs or zeros)
+    if (!Utils::IsPointValid(ousterPoint))
       continue;
 
     PointS slamPoint;
