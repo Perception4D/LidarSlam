@@ -49,9 +49,12 @@ inline void CopyPointCloudMetadata(const pcl::PointCloud<PointI>& from, pcl::Poi
  * @return true if all point coordinates are valid, false otherwise.
  */
 template<typename PointT>
-inline bool IsFinite(const PointT& point)
+inline bool IsPointValid(const PointT& point)
 {
-  return std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
+  bool isZeroPoint = point.getVector3fMap().norm() < 1e-6;
+  bool isFinit = std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
+  bool isValid = isFinit && !isZeroPoint;
+  return isValid;
 }
 
 //------------------------------------------------------------------------------
