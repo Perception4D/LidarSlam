@@ -23,6 +23,7 @@ if (NOT WIN32)
 endif()
 find_package(pcl_conversions REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(livox_ros_driver REQUIRED)
 
 ###########
 ## Build ##
@@ -54,7 +55,6 @@ ament_target_dependencies(velodyne_conversion_node
   ${conversion_dependencies}
 )
 
-
 # Ouster Lidar
 add_executable(ouster_conversion_node src/OusterToLidarNode.cxx)
 
@@ -71,11 +71,20 @@ ament_target_dependencies(robosense_conversion_node
   ${conversion_dependencies}
 )
 
+# Livox mid100 Lidar
+add_executable(livox_conversion_node src/LivoxToLidarNode.cxx)
+
+#link dependencies to target
+ament_target_dependencies(livox_conversion_node
+  ${conversion_dependencies}
+  livox_ros_driver
+)
+
 #############
 ## Install ##
 #############
 
-install(TARGETS velodyne_conversion_node ouster_conversion_node robosense_conversion_node
+install(TARGETS velodyne_conversion_node ouster_conversion_node robosense_conversion_node livox_conversion_node
         RUNTIME DESTINATION lib/${PROJECT_NAME})
 
 ament_export_dependencies(${conversion_dependencies})
