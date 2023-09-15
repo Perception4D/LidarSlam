@@ -38,11 +38,10 @@ LivoxToLidarNode::LivoxToLidarNode(std::string node_name, const rclcpp::NodeOpti
   this->get_parameter("pointcloud2", this->IsPcl2);
 
   // Init ROS subscriber
-  // ! Problem with multiple types for same topic. Find a solution for Pcl2_msg type
-  // if (this->IsPcl2)
-  //   this->Pcl2Listener = this->create_subscription<Pcl2_msg>("livox/lidar", 1,
-  //                                             std::bind(&LivoxToLidarNode::PointCloud2Callback, this, std::placeholders::_1));
-  // else
+  if (this->IsPcl2)
+    this->Pcl2Listener = this->create_subscription<Pcl2_msg>("livox/lidar", 1,
+                                              std::bind(&LivoxToLidarNode::PointCloud2Callback, this, std::placeholders::_1));
+  else
     this->LivoxMsgListener = this->create_subscription<LivoxCustomMsg>("livox/lidar", 1,
                                               std::bind(&LivoxToLidarNode::LivoxCustomMsgCallback, this, std::placeholders::_1));
 

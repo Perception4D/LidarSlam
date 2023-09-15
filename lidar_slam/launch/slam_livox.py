@@ -14,8 +14,7 @@ def generate_launch_description():
   ld = LaunchDescription([
     # General args
     DeclareLaunchArgument("replay", default_value="true", description="Whether to process live or replayed data"),
-    # TODO Handle pcl2_msg type
-    # DeclareLaunchArgument("pointcloud2", default_value="false" , description="True if pointcloud message is in pointcloud2 format"),
+    DeclareLaunchArgument("pointcloud2", default_value="true" , description="True if pointcloud message is in pointcloud2 format"),
     DeclareLaunchArgument("outdoor", default_value="true", description="Decide which set of parameters to use."),
     DeclareLaunchArgument("rviz", default_value="true", description="Visualize results with RViz."),
     DeclareLaunchArgument("tags_topic", default_value="tag_detections", description="Topic from which to get the tag measurements"),
@@ -36,7 +35,7 @@ def generate_launch_description():
   livox_conversion_node = Node(
       name="livox_conversion_node", package="lidar_conversions", executable="livox_conversion_node", output="screen",
       parameters=[{
-          # "pointcloud2" :LaunchConfiguration("pointcloud2"),
+          "pointcloud2" :LaunchConfiguration("pointcloud2"),
       }],
   )
 
