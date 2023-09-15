@@ -57,7 +57,7 @@ OusterToLidarNode::OusterToLidarNode(std::string node_name, const rclcpp::NodeOp
 //------------------------------------------------------------------------------
 void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
 {
-  CloudV cloudO;
+  CloudO cloudO;
   pcl::fromROSMsg(msg_received, cloudO);
 
   // If input cloud is empty, ignore it
