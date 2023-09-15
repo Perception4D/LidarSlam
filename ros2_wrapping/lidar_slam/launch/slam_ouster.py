@@ -28,6 +28,7 @@ def generate_launch_description():
     DeclareLaunchArgument("camera_info_topic", default_value="camera_info", description="topic from which to get the rgb camera info"),
     DeclareLaunchArgument("driver_parameter_file", default_value=os.path.join(lidar_slam_share_path, 'params', "ouster_driver_parameters.yaml"),
                           description="Path to the file containing Ouster driver parameters"),
+    DeclareLaunchArgument("metadata_in", default_value=os.path.join(lidar_slam_share_path, 'params', "metadata_OS1_64_1024x10.json"), description="Configuration file for Ouster data to replay"),
     # /!\ rpm and timestamp_first_packet are also used to generate approximate point-wise timestamps as 'time' field is not usable. -->
     DeclareLaunchArgument("rpm", default_value="600.", description="Ouster sensor spinning speed."),
     DeclareLaunchArgument("timestamp_first_packet", default_value="false", description="If Ouster timestamping is based on the first or last packet of each scan."),
