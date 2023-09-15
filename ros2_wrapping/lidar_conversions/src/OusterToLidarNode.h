@@ -38,7 +38,7 @@ class OusterToLidarNode : public rclcpp::Node
 {
 public:
   using PointO = ouster_ros::Point;
-  using CloudV = pcl::PointCloud<PointO>;  ///< Pointcloud published by ouster driver
+  using CloudO = pcl::PointCloud<PointO>;  ///< Pointcloud published by ouster driver
   using PointS = LidarSlam::LidarPoint;
   using CloudS = pcl::PointCloud<PointS>;  ///< Pointcloud needed by SLAM
   using Pcl2_msg = sensor_msgs::msg::PointCloud2;
