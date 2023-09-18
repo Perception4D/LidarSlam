@@ -23,6 +23,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_types.h>
 #include <LidarSlam/LidarPoint.h>
+#include "Utilities.h"
 
 namespace lidar_conversions
 {
@@ -68,20 +69,20 @@ private:
   rclcpp::Subscription<Pcl2_msg>::SharedPtr Listener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
 
-  // Optional mapping used to correct the numeric identifier of the laser ring that shot each point.
-  // SLAM expects that the lowest/bottom laser ring is 0, and is increasing upward.
-  // If unset, the following mappings will be used :
-  // - if input cloud has 16 rings : RS16 mapping [0, 1, 2, 3, 4, 5, 6, 7, 15, 14, 13, 12, 11, 10, 9, 8]
-  // - otherwise : identity mapping (no laser_id change)
-  std::vector<int64_t> LaserIdMapping;
+  std::map<std::string, int> DeviceIdMap;  ///< Map to store the device id of each device (in case of multilidar).
 
-  int DeviceId = 0;  ///< LiDAR device identifier to set for each point.
+  bool InitEstimParamToDo = true; ///< Flag to initialize the parameters useful for laser_id and time estimations.
+  bool ClockwiseRotationBool;  ///< True if the LiDAR rotates clockwise, false otherwise.
 
-  // Useful variables for approximate point-wise timestamps computation
-  // These parameters should be set to the same values as ROS RSLidar driver's.
-  // NOTE: to be precise, this timestamp estimation requires that each input
-  // scan is an entire scan covering excatly 360°.
-  double Rpm = 600;  ///< Spinning speed of sensor [rpm]. The duration of each input scan will be 60 / Rpm seconds.
+  // Useful variable to estimate RPM (itself used to estimate time)
+  // NOTE: to be precise, this RPM estimation requires that each input
+  // scan is an entire scan covering excatly 360°
+  double Rpm = -1.;
+  double PreviousTimeStamp = -1.;
+  const std::vector<double> PossibleFrequencies = {5., 10., 20.}; ///< Vector of all the possible frequencies for robosense LiDAR
+
+  // Useful variable to estimate laser_id
+  std::vector<Utils::Cluster> Clusters;
 };
 
 }  // end of namespace lidar_conversions

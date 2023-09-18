@@ -17,8 +17,6 @@
 //==============================================================================
 
 #include "RobosenseToLidarNode.h"
-#include "Utilities.h"
-#include <pcl_conversions/pcl_conversions.h>
 
 #define BOLD_GREEN(s) "\033[1;32m" << s << "\033[0m"
 
@@ -34,15 +32,6 @@ namespace
 RobosenseToLidarNode::RobosenseToLidarNode(std::string node_name, const rclcpp::NodeOptions options)
   : Node(node_name, options)
 {
-  // Get laser ID mapping
-  this->get_parameter("laser_id_mapping", this->LaserIdMapping);
-
-  //  Get LiDAR id
-  this->get_parameter("device_id", this->DeviceId);
-
-  // Get LiDAR spinning speed
-  this->get_parameter("rpm", this->Rpm);
-
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
@@ -57,8 +46,7 @@ RobosenseToLidarNode::RobosenseToLidarNode(std::string node_name, const rclcpp::
 void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
 {
   //convertion to CloudRS
-  CloudRS cloudRS;
-  pcl::fromROSMsg(msg_received, cloudRS);
+  CloudRS cloudRS = Utils::InitCloudRaw<CloudRS>(msg_received);
 
   // If input cloud is empty, ignore it
   if (cloudRS.empty())
@@ -67,18 +55,30 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
     return;
   }
 
+  // Fill the map of device_id if the device hasn't already been attributed one
+  if (this->DeviceIdMap.count(cloudRS.header.frame_id) == 0)
+    this->DeviceIdMap[cloudRS.header.frame_id] = this->DeviceIdMap.size();
+
+  // We compute RPM : to do so, we need to ignore the first frame of the LiDAR, but it doesn't really matter as it is just 100ms ignored
+  double currentTimeStamp = cloudRS.header.stamp;
+  this->Rpm = Utils::EstimateRpm(currentTimeStamp, this->PreviousTimeStamp, this->Rpm, this->PossibleFrequencies);
+  // We ignore first frame because it has no RPM
+  if (this->Rpm < 0.)
+    return;
+
   // Init SLAM pointcloud
-  CloudS cloudS;
-  cloudS.reserve(cloudRS.size());
+  CloudS cloudS = Utils::InitCloudS<CloudRS>(cloudRS);
 
-  // Copy pointcloud metadata
-  Utils::CopyPointCloudMetadata(cloudRS, cloudS);
-  cloudS.is_dense = true;
-
-  // Helpers to estimate point-wise fields
   const unsigned int nLasers = cloudRS.height;
-  const unsigned int pointsPerRing = cloudRS.size() / nLasers;
-  const bool useLaserIdMapping = !this->LaserIdMapping.empty();
+
+  // Init of parameters useful for laser_id and time estimations
+  if (this->InitEstimParamToDo)
+  {
+    Utils::InitEstimationParameters<PointRS>(cloudRS, nLasers, this->Clusters, this->ClockwiseRotationBool);
+    this->InitEstimParamToDo = false;
+  }
+  double rotationTime = 1. / (this->Rpm * 60.);
+  Eigen::Vector2d firstPoint = {cloudRS[0].x, cloudRS[0].y};
 
   // Build SLAM pointcloud
   for (unsigned int i = 0; i < cloudRS.size(); ++i)
@@ -100,29 +100,12 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.y = rsPoint.y;
     slamPoint.z = rsPoint.z;
     slamPoint.intensity = rsPoint.intensity;
-    slamPoint.device_id = this->DeviceId;
-
-    // Compute laser ID
-    // Use LaserIdMapping if given, otherwise use RS16's if input has 16 rings,
-    // otherwise do not correct laser_id.
-    // CHECK this operation for other sensors than RS16
-    uint16_t laser_id = i / cloudRS.width;
-    slamPoint.laser_id = useLaserIdMapping ? this->LaserIdMapping[laser_id] :
-                                             (nLasers == 16) ? LASER_ID_MAPPING_RS16[laser_id] : laser_id;
-
-    // Build approximate point-wise timestamp from point id.
-    // 'frame advancement' is 0 for first point, and should match 1 for last point
-    // for a 360 degrees scan at ideal spinning frequency.
-    // 'time' is the offset to add to 'header.stamp' (timestamp of the last RSLidar packet)
-    // to get approximate point-wise timestamp.
-    // NOTE: to be precise, this estimation requires that each input scan is an
-    // entire scan covering excatly 360°.
-    double frameAdvancement = static_cast<double>(i % pointsPerRing) / pointsPerRing;
-    slamPoint.time = (frameAdvancement - 1) / this->Rpm * 60.;
+    slamPoint.device_id = this->DeviceIdMap[cloudRS.header.frame_id];
+    slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nLasers, this->Clusters);
+    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, rotationTime, firstPoint, this->ClockwiseRotationBool);
 
     cloudS.push_back(slamPoint);
   }
-
 
   // Publish pointcloud only if non empty
   if (!cloudS.empty())
