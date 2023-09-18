@@ -79,7 +79,7 @@ private:
 
   int DeviceId = 0;  ///< LiDAR device identifier to set for each point.
 
-  bool IsPcl2 = true;
+  bool IsPcl2 = false;
 };
 
 }  // end of namespace lidar_conversions
