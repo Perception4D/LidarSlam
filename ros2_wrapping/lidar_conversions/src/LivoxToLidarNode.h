@@ -44,6 +44,7 @@ public:
   using CloudS = pcl::PointCloud<PointS>;  ///< Pointcloud needed by SLAM
   using Pcl2_msg = sensor_msgs::msg::PointCloud2;
   using LivoxCustomMsg = livox_ros_driver::msg::CustomMsg;
+  using LivoxCustomPoint = livox_ros_driver::msg::CustomPoint;
 
   //----------------------------------------------------------------------------
   /*!
@@ -78,7 +79,7 @@ private:
 
   int DeviceId = 0;  ///< LiDAR device identifier to set for each point.
 
-  bool IsPcl2 = true;
+  bool IsPcl2 = false;
 };
 
 }  // end of namespace lidar_conversions
