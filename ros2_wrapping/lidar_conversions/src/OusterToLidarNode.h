@@ -68,13 +68,6 @@ private:
   rclcpp::Subscription<Pcl2_msg>::SharedPtr Listener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
 
-  // Optional mapping used to correct the numeric identifier of the laser ring that shot each point.
-  // SLAM expects that the lowest/bottom laser ring is 0, and is increasing upward.
-  // If unset, identity mapping (no laser_id change) will be used.
-  // NOTE: the Ouster ROS driver should already correctly modify the laser_id,
-  // so this shouldn't be needed.
-  std::vector<int64_t> LaserIdMapping;
-
   // Map to store the device id of each device (in case of multilidar).
   std::map<std::string, int> DeviceIdMap;
 
