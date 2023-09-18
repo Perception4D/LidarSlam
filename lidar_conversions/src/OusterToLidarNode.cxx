@@ -17,8 +17,6 @@
 //==============================================================================
 
 #include "OusterToLidarNode.h"
-#include "Utilities.h"
-#include <pcl_conversions/pcl_conversions.h>
 #include "rmw/qos_profiles.h"
 
 #define BOLD_GREEN(s) "\033[1;32m" << s << "\033[0m"
@@ -32,12 +30,8 @@ OusterToLidarNode::OusterToLidarNode(std::string node_name, const rclcpp::NodeOp
   // Get laser ID mapping
   this->get_parameter("laser_id_mapping", this->LaserIdMapping);
 
-  //  Get LiDAR id
-  this->get_parameter("device_id", this->DeviceId);
-
-  //  Get LiDAR spinning speed and first timestamp option
-  this->get_parameter("rpm", this->Rpm);
-  this->get_parameter("timestamp_first_packet", this->TimestampFirstPacket);
+  // Get number of lasers
+  this->get_parameter("nb_lasers", this->NbLasers);
 
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
@@ -57,9 +51,7 @@ OusterToLidarNode::OusterToLidarNode(std::string node_name, const rclcpp::NodeOp
 //------------------------------------------------------------------------------
 void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
 {
-  CloudO cloudO;
-  pcl::fromROSMsg(msg_received, cloudO);
-
+  CloudO cloudO = Utils::InitCloudRaw<CloudO>(msg_received);
   // If input cloud is empty, ignore it
   if (cloudO.empty())
   {
@@ -67,18 +59,37 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
     return;
   }
 
-  // Init SLAM pointcloud
-  CloudS cloudS;
-  cloudS.reserve(cloudO.size());
+  // Fill the map of device_id if the device hasn't already been attributed one
+  if (this->DeviceIdMap.count(cloudO.header.frame_id) == 0)
+    this->DeviceIdMap[cloudO.header.frame_id] = this->DeviceIdMap.size();
 
-  // Copy pointcloud metadata
-  Utils::CopyPointCloudMetadata(cloudO, cloudS);
+  // We compute RPM : to do so, we need to ignore the first frame of the LiDAR, but it doesn't really matter as it is just 100ms ignored
+  // However, we chose to ignore the first frame after having initialized estimation parameters (see below)
+  double currentTimeStamp = cloudO.header.stamp;
+  this->Rpm = Utils::EstimateRpm(currentTimeStamp, this->PreviousTimeStamp, this->Rpm, this->PossibleFrequencies);
+  // We now ignore first frame because it has no RPM
+  if (this->Rpm < 0.)
+    return;
+
+  // Init SLAM pointcloud
+  CloudS cloudS = Utils::InitCloudS<CloudO>(cloudO);
 
   // Check wether to use custom laser ID mapping or leave it untouched
   bool useLaserIdMapping = !this->LaserIdMapping.empty();
 
-  // Helper to estimate frameAdvancement in case time field is invalid
-  Utils::SpinningFrameAdvancementEstimator frameAdvancementEstimator;
+  // Init of parameters useful for laser_id and time estimations
+  if (this->InitEstimParamToDo)
+  {
+    Utils::InitEstimationParameters<PointO>(cloudO, this->NbLasers, this->Clusters, this->ClockwiseRotationBool);
+    this->InitEstimParamToDo = false;
+  }
+  double rotationTime = 1. / (this->Rpm * 60.);
+  Eigen::Vector2d firstPoint = {cloudO[0].x, cloudO[0].y};
+
+  // Check if time field looks properly set
+  bool isTimeValid = cloudO.back().t - cloudO.front().t > 1e-8;
+  if (!isTimeValid)
+    RCLCPP_WARN_STREAM(this->get_logger(), "Invalid 'time' field, it will be built from azimuth advancement.");
 
   // Build SLAM pointcloud
   for (const PointO& ousterPoint : cloudO)
@@ -93,16 +104,13 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.z = ousterPoint.z;
     slamPoint.intensity = ousterPoint.reflectivity;
     slamPoint.laser_id = useLaserIdMapping ? this->LaserIdMapping[ousterPoint.ring] : ousterPoint.ring;
-    slamPoint.device_id = this->DeviceId;
+    slamPoint.device_id = this->DeviceIdMap[cloudO.header.frame_id];
 
-    // Build approximate point-wise timestamp from azimuth angle
-    // 'frameAdvancement' is 0 for first point, and should match 1 for last point
-    // for a 360 degrees scan at ideal spinning frequency.
-    // 'time' is the offset to add to 'header.stamp' to get approximate point-wise timestamp.
-    // By default, 'header.stamp' is the timestamp of the last Ouster packet,
-    // but user can choose the first packet timestamp using parameter 'timestamp_first_packet'.
-    double frameAdvancement = frameAdvancementEstimator(slamPoint);
-    slamPoint.time = (this->TimestampFirstPacket ? frameAdvancement : frameAdvancement - 1) / this->Rpm * 60.;
+    // Use time field if available, else estimate it from azimuth advancement
+    if (isTimeValid)
+      slamPoint.time = ousterPoint.t;
+    else
+      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, rotationTime, firstPoint, this->ClockwiseRotationBool);
 
     cloudS.push_back(slamPoint);
   }

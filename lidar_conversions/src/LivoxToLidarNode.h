@@ -77,7 +77,7 @@ private:
   rclcpp::Subscription<LivoxCustomMsg>::SharedPtr LivoxMsgListener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
 
-  int DeviceId = 0;  ///< LiDAR device identifier to set for each point.
+  std::map<std::string, int> DeviceIdMap;  ///< Map to store the device id of each device (in case of multilidar).
 
   bool IsPcl2 = false;
 };
