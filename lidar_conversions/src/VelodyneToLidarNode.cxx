@@ -26,9 +26,6 @@ namespace lidar_conversions
 VelodyneToLidarNode::VelodyneToLidarNode(std::string node_name, const rclcpp::NodeOptions options)
   : rclcpp::Node(node_name, options)
 {
-  // Get laser ID mapping
-  this->get_parameter("laser_id_mapping", this->LaserIdMapping);
-
   // Get number of lasers
   this->get_parameter("nb_lasers", this->NbLasers);
 
@@ -66,9 +63,6 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
   // Init SLAM pointcloud
   CloudS cloudS = Utils::InitCloudS<CloudV>(cloudV);
 
-  // Check wether to use custom laser ID mapping or leave it untouched
-  bool useLaserIdMapping = !this->LaserIdMapping.empty();
-
   // Init of parameters useful for laser_id and time estimations
   if (this->InitEstimParamToDo)
   {
@@ -95,8 +89,8 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.y = velodynePoint.y;
     slamPoint.z = velodynePoint.z;
     slamPoint.intensity = velodynePoint.intensity;
-    slamPoint.laser_id = useLaserIdMapping ? this->LaserIdMapping[velodynePoint.ring] : velodynePoint.ring;
     slamPoint.device_id = this->DeviceIdMap[cloudV.header.frame_id];
+    slamPoint.laser_id = velodynePoint.ring;
 
     // Use time field if available, else estimate it from azimuth advancement
     if (isTimeValid)

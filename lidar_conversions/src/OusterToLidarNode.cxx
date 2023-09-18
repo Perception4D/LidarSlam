@@ -27,9 +27,6 @@ namespace lidar_conversions
 OusterToLidarNode::OusterToLidarNode(std::string node_name, const rclcpp::NodeOptions options)
   : Node(node_name, options)
 {
-  // Get laser ID mapping
-  this->get_parameter("laser_id_mapping", this->LaserIdMapping);
-
   // Get number of lasers
   this->get_parameter("nb_lasers", this->NbLasers);
 
@@ -74,9 +71,6 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   // Init SLAM pointcloud
   CloudS cloudS = Utils::InitCloudS<CloudO>(cloudO);
 
-  // Check wether to use custom laser ID mapping or leave it untouched
-  bool useLaserIdMapping = !this->LaserIdMapping.empty();
-
   // Init of parameters useful for laser_id and time estimations
   if (this->InitEstimParamToDo)
   {
@@ -103,8 +97,8 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.y = ousterPoint.y;
     slamPoint.z = ousterPoint.z;
     slamPoint.intensity = ousterPoint.reflectivity;
-    slamPoint.laser_id = useLaserIdMapping ? this->LaserIdMapping[ousterPoint.ring] : ousterPoint.ring;
     slamPoint.device_id = this->DeviceIdMap[cloudO.header.frame_id];
+    slamPoint.laser_id = ousterPoint.ring;
 
     // Use time field if available, else estimate it from azimuth advancement
     if (isTimeValid)
