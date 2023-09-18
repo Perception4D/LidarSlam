@@ -77,12 +77,14 @@ void LivoxToLidarNode::PointCloud2Callback(const Pcl2_msg& msg_received)
   double prevTime = -0.1;
   for (const PointL& livoxPoint : cloudL)
   {
+    // Remove no return points by checking unvalid values (NaNs or zeros)
+    if (!Utils::IsPointValid(livoxPoint))
+      continue;
+
     PointS slamPoint;
     slamPoint.x = livoxPoint.x;
     slamPoint.y = livoxPoint.y;
     slamPoint.z = livoxPoint.z;
-    if (slamPoint.getVector3fMap().norm() < 1e-6)
-      continue;
     slamPoint.intensity = livoxPoint.intensity;
     slamPoint.laser_id = 0;
     slamPoint.device_id = this->DeviceId;
@@ -112,11 +114,9 @@ void LivoxToLidarNode::LivoxCustomMsgCallback(const LivoxCustomMsg& cloudLmsg)
   // Build SLAM pointcloud
   for (int i = 0; i < cloudLmsg.point_num; ++i)
   {
-    const auto& livoxPoint = cloudLmsg.points[i];
+    const LivoxCustomPoint& livoxPoint = cloudLmsg.points[i];
 
-    // Remove no return points by checking unvalid values (NaNs or zeros)
-    auto coord = pcl::PointXYZ(livoxPoint.x, livoxPoint.y, livoxPoint.z);
-    if (!Utils::IsPointValid(coord))
+  if (!Utils::IsPointValid(pcl::PointXYZ(livoxPoint.x, livoxPoint.y, livoxPoint.z)))
       continue;
 
     PointS slamPoint;
@@ -127,7 +127,7 @@ void LivoxToLidarNode::LivoxCustomMsgCallback(const LivoxCustomMsg& cloudLmsg)
     slamPoint.laser_id = livoxPoint.line;
     slamPoint.device_id = cloudLmsg.lidar_id;
 
-    slamPoint.time = double(cloudLmsg.points[i].offset_time) * 1e-9; // seconds
+    slamPoint.time = double(livoxPoint.offset_time) * 1e-9; // seconds
     cloudS.push_back(slamPoint);
   }
 

@@ -44,6 +44,7 @@ public:
   using CloudS = pcl::PointCloud<PointS>;  ///< Pointcloud needed by SLAM
   using Pcl2_msg = sensor_msgs::msg::PointCloud2;
   using LivoxCustomMsg = livox_ros_driver::msg::CustomMsg;
+  using LivoxCustomPoint = livox_ros_driver::msg::CustomPoint;
 
   //----------------------------------------------------------------------------
   /*!
