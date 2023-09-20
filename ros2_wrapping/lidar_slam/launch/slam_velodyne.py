@@ -41,7 +41,7 @@ def generate_launch_description():
   ##########
   ## Rviz ##
   ##########
-  rviz_node = Node(package="rviz2", executable="rviz2", name="rviz2",
+  rviz_node = Node(package="rviz2", executable="rviz2",
     arguments=["-d", os.path.join(lidar_slam_share_path, 'params', 'slam.rviz')],
     parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')},],
     condition = IfCondition(LaunchConfiguration("rviz")),

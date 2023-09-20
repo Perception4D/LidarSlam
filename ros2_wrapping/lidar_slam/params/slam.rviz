@@ -27,6 +27,8 @@ Panels:
     Name: Time
     SyncMode: 0
     SyncSource: ""
+  - Class: slam_visualization/SlamControlPanel
+    Name: SlamControlPanel
 Visualization Manager:
   Class: ""
   Displays:
