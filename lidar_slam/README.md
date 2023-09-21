@@ -3,6 +3,9 @@
 - [lidar_slam](#lidar_slam)
   - [LiDAR SLAM node](#lidar-slam-node)
     - [Description and basic usage](#description-and-basic-usage)
+      - [Slam node](#slam-node)
+      - [With a Velodyne Lidar](#with-a-velodyne-lidar)
+      - [With an Ouster Lidar](#with-an-ouster-lidar)
     - [More advanced usage](#more-advanced-usage)
       - [Detailed pipeline](#detailed-pipeline)
       - [Online configuration](#online-configuration)
@@ -32,6 +35,7 @@ Wrapping for Kitware LiDAR-only SLAM. It can also use GPS data to publish SLAM o
 
 ### Description and basic usage
 
+#### Slam node
 The SLAM node subscribes to one or several topics of LiDAR pointclouds, and computes current pose of the tracked frame relative to the fixed odometry frame. It can output various data, such as SLAM pose (as Odometry msg or TF), keypoint maps, etc.
 
 SLAM node supports massive configuration from ROS parameter server (even if default values are already provided). Examples of yaml configuration files can be found in [`params/`](params/). All parameters have to be set as private parameters.
@@ -44,7 +48,14 @@ If you want to specify parameters, you should consider using a launchfile. Two l
 
 **NOTE** : all launchfile options are described in the launchfile itself
 
-With velodyne launch file:
+#### With a Velodyne Lidar
+To use a Velodyne lidar with the SLAM, install the Velodyne driver and use the velodyne launch file.
+
+- To install the Velodyne driver, run :
+```bash
+sudo apt install ros-$ROS_DISTRO-velodyne
+```
+
 - To start SLAM when replaying a velodyne rosbag file, run :
 ```bash
 ros2 launch lidar_slam slam_velodyne.py   # in 1st shell
@@ -55,22 +66,33 @@ ros2 bag play --clock <my_bag_file>  # in 2nd shell
 ros2 launch lidar_slam slam_velodyne.py use_sim_time:=false
 ```
 
-With ouster launch file:
+#### With an Ouster Lidar
+To use an Ouster lidar with the SLAM, install the Ouster driver and use the ouster launch file.
+
 **NOTE** : Use this [commit id](https://github.com/ouster-lidar/ouster-ros/commit/6c9b3f514c7e4c0c8e1240c47c1c2ecbd3c7a365) of the ouster driver.
+
+- To install the Ouster driver, run :
+```bash
+cd colcon_ws
+git clone --recurse-submodules https://github.com/ouster-lidar/ouster-ros -b ros2 src/ouster-lidar
+# Change to the right commit id
+cd src/ouster-lidar
+git checkout 6c9b3f514c7e4c0c8e1240c47c1c2ecbd3c7a365
+# Build the driver
+cd ../..
+colcon build --base-paths src/ouster-lidar
+# Source the package to use it
+source ./install/setup.bash
+```
 
 - To start SLAM when replaying a ouster rosbag file, run :
 ```bash
 ros2 launch lidar_slam slam_ouster.py replay:=true os_driver:=true # in 1st shell
 ros2 bag play --clock <my_bag_file>  # in 2nd shell
 ```
-- When using it in real live conditions, use :
-```bash
-# Find ethernet interface of Ouster Lidar
-ip a
-# Give an ip address to Ouster Lidar interface
-sudo route add ipv4_addr interf_eth
-```
-In ros2_wrapping/lidar_slam/params/ouster_driver_parameters.yaml change the sensor_hostname parameter to your ip address.
+- When using it in real live conditions :
+
+Change the sensor_hostname parameter to your ip address in the file ros2_wrapping/lidar_slam/params/ouster_driver_parameters.yaml.
 Then lauch the slam with the ouster driver on a live usage
 ```bash
 ros2 launch lidar_slam slam_ouster.py os_driver:=true replay:=false
@@ -79,6 +101,14 @@ ros2 launch lidar_slam slam_ouster.py os_driver:=true replay:=false
 You can also use your own ouster driver parameters file with
 ```bash
 ros2 launch lidar_slam slam_ouster.py os_driver:=true replay:=false driver_parameter_file:="path/to/driver_parameters.yaml"
+```
+
+**NOTE** : If you don't find the IP address of your lidar, you can remap it using : 
+```bash
+# Find ethernet interface of Ouster Lidar
+ip a
+# Give an ip address to Ouster Lidar interface
+sudo route add ipv4_addr interf_eth
 ```
 
 These launch files will start :
