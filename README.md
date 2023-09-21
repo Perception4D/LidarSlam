@@ -273,7 +273,7 @@ Ensure all *LidarSlam* dependencies are respected (see next sections to do so). 
 
 For Velodyne usage, please note that the ROS Velodyne driver with minimum version 1.6 is needed.
 Be careful, this ROS Velodyne driver 1.6 is not backward-compatible with previous versions.
-You can install the new Velodyne driver using the command `sudo apt install ros-$ROS_DISTRO-velodyne ros-$ROS_DISTRO-velodyne-pcl`.
+You can install the new Velodyne driver using the command `sudo apt install ros-$ROS_DISTRO-velodyne`.
 
 For Ouster usage, the driver can be found in this [git repo](https://github.com/ouster-lidar/ouster-ros/tree/ros2). We recommand to build it on another workspace but you can also clone it under the ros2_wrapping folder and build it at the same time as the SLAM.
 
@@ -282,7 +282,7 @@ For Ouster usage, the driver can be found in this [git repo](https://github.com/
 Clone this git repo directly into your colcon workspace (called **colcon_ws** in the following), under the src directory
 
  ```bash
- cmake -E make_directory colcon_ws && cd catkin_ws
+ cmake -E make_directory colcon_ws && cd colcon_ws
  git clone https://gitlab.kitware.com/keu-computervision/slam.git src/slam --recursive -b feat/ROS2
 ```
 
@@ -379,7 +379,12 @@ git clone https://github.com/ros-perception/perception_pcl.git -b ros2
 git clone https://github.com/ros-perception/pcl_msgs.git -b ros2
 cd ..
 call path\to\ros2_humble\local_setup.bat
-colcon build --merge-install --packages-up-to pcl_conversions
+colcon build --merge-install --packages-up-to pcl_conversions \
+             --cmake-args -DCMAKE_BUILD_TYPE=Release \
+                          -DBoost_DIR=path\to\SB-build\install\lib\cmake\Boost-1.76.0 \
+                          -DBOOST_ROOT=path\to\SB-build\install \
+                          -DPCL_DIR=path\to\SB-build\install\share\pcl-1.13 \
+                          -DBoost_USE_STATIC_LIBS=OFF
 ```
 To use pcl-conversions package, you need to source your command prompt
 ```bash
