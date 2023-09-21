@@ -55,7 +55,7 @@ public:
   //----------------------------------------------------------------------------
   /*!
    * @brief New lidar frame callback, converting and publishing RSLidar PointCloud as SLAM LidarPoint.
-   * @param cloud New Lidar Frame, published by rslidar_pointcloud/cloud_node.
+   * @param msg_received New Lidar Frame, published by rslidar_pointcloud/cloud_node.
    */
   void Callback(const Pcl2_msg& msg_received);
 

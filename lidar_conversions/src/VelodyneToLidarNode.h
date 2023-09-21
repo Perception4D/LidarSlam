@@ -54,7 +54,7 @@ public:
   //----------------------------------------------------------------------------
   /*!
    * @brief New lidar frame callback, converting and publishing Velodyne PointCloud as SLAM LidarPoint.
-   * @param msg_received New Lidar Frame, published by velodyne_pointcloud/transform_node.
+   * @param msg_received New Lidar Frame from a Velodyne lidar
    */
   void Callback(const Pcl2_msg& msg_received);
 
@@ -63,7 +63,6 @@ private:
   //----------------------------------------------------------------------------
 
   // ROS node handles, subscriber and publisher
-  // ros::NodeHandle &Nh, &PrivNh;
   rclcpp::Subscription<Pcl2_msg>::SharedPtr Listener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
 

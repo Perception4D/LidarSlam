@@ -29,10 +29,10 @@ namespace lidar_conversions
 
 /**
  * @class OusterToLidarNode aims at converting pointclouds published by ROS
- * Velodyne driver to the expected SLAM pointcloud format.
+ * Ouster driver to the expected SLAM pointcloud format.
  *
- * The ROS Velodyne driver can be found here :
- * https://github.com/ros-drivers/velodyne
+ * The ROS Ouster driver can be found here :
+ * https://github.com/ouster-lidar/ouster-ros/tree/ros2
  */
 class OusterToLidarNode : public rclcpp::Node
 {
@@ -54,8 +54,8 @@ public:
 
   //----------------------------------------------------------------------------
   /*!
-   * @brief New lidar frame callback, converting and publishing Velodyne PointCloud as SLAM LidarPoint.
-   * @param cloud New Lidar Frame, published by velodyne_pointcloud/transform_node.
+   * @brief New lidar frame callback, converting and publishing Ouster PointCloud as SLAM LidarPoint.
+   * @param msg_received New Lidar Frame from an Ouster lidar
    */
   void Callback(const Pcl2_msg& msg_received);
 
@@ -64,21 +64,20 @@ private:
   //----------------------------------------------------------------------------
 
   // ROS node handles, subscriber and publisher
-  // ros::NodeHandle &Nh, &PrivNh;
   rclcpp::Subscription<Pcl2_msg>::SharedPtr Listener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
 
   // Optional mapping used to correct the numeric identifier of the laser ring that shot each point.
   // SLAM expects that the lowest/bottom laser ring is 0, and is increasing upward.
   // If unset, identity mapping (no laser_id change) will be used.
-  // NOTE: the Velodyne ROS driver should already correctly modify the laser_id,
+  // NOTE: the Ouster ROS driver should already correctly modify the laser_id,
   // so this shouldn't be needed.
   std::vector<int64_t> LaserIdMapping;
 
   int DeviceId = 0;  ///< LiDAR device identifier to set for each point.
 
   // Useful variables for approximate point-wise timestamps computation
-  // These parameters should be set to the same values as ROS Velodyne driver's.
+  // These parameters should be set to the same values as ROS Ouster driver's.
   double Rpm = 600;  ///< Spinning speed of sensor [rpm]
   bool TimestampFirstPacket = false;  ///< Wether timestamping is based on the first or last packet of each scan
 };

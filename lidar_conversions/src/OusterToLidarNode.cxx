@@ -99,7 +99,7 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
     // 'frameAdvancement' is 0 for first point, and should match 1 for last point
     // for a 360 degrees scan at ideal spinning frequency.
     // 'time' is the offset to add to 'header.stamp' to get approximate point-wise timestamp.
-    // By default, 'header.stamp' is the timestamp of the last Veloydne packet,
+    // By default, 'header.stamp' is the timestamp of the last Ouster packet,
     // but user can choose the first packet timestamp using parameter 'timestamp_first_packet'.
     double frameAdvancement = frameAdvancementEstimator(slamPoint);
     slamPoint.time = (this->TimestampFirstPacket ? frameAdvancement : frameAdvancement - 1) / this->Rpm * 60.;
