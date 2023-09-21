@@ -32,6 +32,9 @@ namespace
 RobosenseToLidarNode::RobosenseToLidarNode(std::string node_name, const rclcpp::NodeOptions options)
   : Node(node_name, options)
 {
+  // Get number of lasers
+  this->get_parameter("nb_lasers", this->NbLasers);
+
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
@@ -69,7 +72,7 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
   // Init SLAM pointcloud
   CloudS cloudS = Utils::InitCloudS<CloudRS>(cloudRS);
 
-  const unsigned int nLasers = cloudRS.height;
+  const double nLasers = (cloudRS.height >= 8 && cloudRS.height <= 128) ? static_cast<double>(cloudRS.height) : this->NbLasers;
 
   // Init of parameters useful for laser_id and time estimations
   if (this->InitEstimParamToDo)

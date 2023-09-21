@@ -71,10 +71,12 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   // Init SLAM pointcloud
   CloudS cloudS = Utils::InitCloudS<CloudO>(cloudO);
 
+  const double nLasers = (cloudO.height >= 8 && cloudO.height <= 128) ? static_cast<double>(cloudO.height) : this->NbLasers;
+
   // Init of parameters useful for laser_id and time estimations
   if (this->InitEstimParamToDo)
   {
-    Utils::InitEstimationParameters<PointO>(cloudO, this->NbLasers, this->Clusters, this->ClockwiseRotationBool);
+    Utils::InitEstimationParameters<PointO>(cloudO, nLasers, this->Clusters, this->ClockwiseRotationBool);
     this->InitEstimParamToDo = false;
   }
   double rotationTime = 1. / (this->Rpm * 60.);
