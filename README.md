@@ -297,7 +297,7 @@ This applies if you have installed all the dependencies on your system, e.g. whe
 
 **NOTE** : The only mandatory missing dependency should be nanoflann at this point. Example to install it with apt : `sudo apt-get install -y libnanoflann-dev`.
 
-Run `colcon build --base-paths slam/ros2_wrapping` or `colcon build --base-paths slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release` (to turn on optimizations, highly recommended when using Eigen). It will automatically build *LidarSlam* lib with ROS2 packages. base_paths must point to the relative path of the ros2_wrapping folder.
+Run `colcon build --base-paths src/slam/ros2_wrapping` or `colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release` (to turn on optimizations, highly recommended when using Eigen). It will automatically build *LidarSlam* lib with ROS2 packages. base_paths must point to the relative path of the ros2_wrapping folder.
 
 #### With local dependencies
 
@@ -307,7 +307,7 @@ You can use local dependencies for Slam lib by passing their path to cmake.
 _Example_ for Ceres and g2o :
 
  ```bash
- colcon build --base-paths ./slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DCeres_DIR=path/to/CeresConfig.cmake -Dg2o_DIR=path/to/g2oConfig.cmake
+ colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DCeres_DIR=path/to/CeresConfig.cmake -Dg2o_DIR=path/to/g2oConfig.cmake
  ```
 
 #### With Superbuild
@@ -329,7 +329,7 @@ _Full installation with superbuild example_ :
  # Build Slam ROS package pointing to the superbuild install directory
  cd ../ros2_ws
  call path\to\ros2_humble\local_setup.bat
- colcon build --base-paths ./slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install
+ colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install
 ```
 
 ### Live usage
@@ -398,7 +398,7 @@ cmake -E make_directory ws_ros2
 dir ws_ros2
 git clone https://gitlab.kitware.com/keu-computervision/slam -b feat/ROS2
 call path\to\ros2_humble\local_setup.bat
-colcon build --base-paths=slam\ros2_wrapping  --merge-install --cmake-args  -DCMAKE_BUILD_TYPE=Release -DENABLE_OpenCV=OFF
+colcon build --base-paths=src\slam\ros2_wrapping  --merge-install --cmake-args  -DCMAKE_BUILD_TYPE=Release -DENABLE_OpenCV=OFF -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install
 ```
 source the SLAM
 ```
