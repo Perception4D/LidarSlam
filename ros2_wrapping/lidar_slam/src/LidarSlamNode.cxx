@@ -154,6 +154,10 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
 
   // LiDAR inputs
   this->get_parameter_or<int>("lidars_nb", this->MultiLidarsNb, 1);
+  int frameMode;
+  this->get_parameter_or<int>("frames_mode", frameMode, 1);
+  this->WaitFramesDef = static_cast<LidarSlamNode::FramesCollectionMode>(frameMode);
+  this->get_parameter_or<double>("frames_waiting_time", this->WaitFramesTime, 0.2);
 
   // Check if the parameter type is a string_array
   // If the parameter doesn't exist or is a string, push back a value
@@ -240,16 +244,34 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
   if (!this->UpdateBaseToLidarOffset(cloudS_ptr->header.frame_id, cloudS_ptr->front().device_id))
     return;
 
+  double timeInterval = this->Frames.empty() ? 0 : (LidarSlam::Utils::PclStampToSec(cloudS_ptr->header.stamp) - LidarSlam::Utils::PclStampToSec(this->Frames[0]->header.stamp));
+
+  // Add other frames when there is more than one lidar
   if (!this->Frames.empty())
   {
     this->Frames.push_back(cloudS_ptr);
-    this->MultiLidarsCounter.insert(cloudS_ptr->front().device_id);
+    auto check_device = this->MultiLidarsCounter.find(cloudS_ptr->front().device_id);
+    if (check_device == this->MultiLidarsCounter.end())
+      this->MultiLidarsCounter.insert(std::make_pair(cloudS_ptr->front().device_id, 1));
+    else
+      check_device->second++;
+
+    // Multilidar mode: drop old frame when waiting for long time
+    if (this->WaitFramesDef == LidarSlamNode::FramesCollectionMode::BY_NBLIDARS && timeInterval > this->WaitFramesTime)
+    {
+      auto check = this->MultiLidarsCounter.find(this->Frames[0]->front().device_id);
+      check->second--;
+      if (check->second == 0)
+        this->MultiLidarsCounter.erase(check);
+      this->Frames.erase(this->Frames.begin());
+    }
   }
+  // Add first frame
   else
   {
     // Fill Frames with pointcloud
     this->Frames = {cloudS_ptr};
-    this->MultiLidarsCounter.insert(cloudS_ptr->front().device_id);
+    this->MultiLidarsCounter.insert(std::make_pair(cloudS_ptr->front().device_id, 1));
 
     this->StartTime = this->now().seconds();
     if (!this->LidarTimePosix)
@@ -271,8 +293,13 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
       this->LidarSlam.SetSensorTimeOffset(this->SensorTimeOffset);
   }
 
-  // Run SLAM when all frames from enabled lidar devices are gathered
-  if (this->MultiLidarsCounter.size() == this->MultiLidarsNb)
+  // Run SLAM when:
+  // 1. frames are arrived from all lidar devices when frames collection mode is defined by waiting all lidar,
+  // 2. time interval is greater than waiting time (0.2s) when frames collection mode is defined by waiting time
+  // 3. the frame is collected when there is only one lidar
+  if ((this->WaitFramesDef == LidarSlamNode::FramesCollectionMode::BY_NBLIDARS && this->MultiLidarsCounter.size() == this->MultiLidarsNb) ||
+      (this->WaitFramesDef == LidarSlamNode::FramesCollectionMode::BY_TIME && this->MultiLidarsNb > 1 && timeInterval > 0.2) ||
+      this->MultiLidarsNb == 1)
   {
     // Run SLAM : register new frames and update localization and map.
     this->LidarSlam.AddFrames(this->Frames);
