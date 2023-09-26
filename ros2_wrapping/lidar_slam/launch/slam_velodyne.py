@@ -27,7 +27,7 @@ def generate_launch_description():
     DeclareLaunchArgument("camera_info_topic", default_value="camera_info", description="topic from which to get the rgb camera info"),
     # Velodyne driver parameters
     DeclareLaunchArgument("velodyne_driver", default_value="false", description="If true, start Velodyne driver."),
-    DeclareLaunchArgument("calibration_file_path", default_value=os.path.join(velodyne_pointcloud_share_path, 'params', 'VLP16db.yaml'), description="calibration file path")
+    DeclareLaunchArgument("calibration_file_path", default_value=os.path.join(get_package_share_directory('velodyne_pointcloud'), 'params', 'VLP16db.yaml'), description="calibration file path"),
     DeclareLaunchArgument("model", default_value="VLP16", description="Model of Velodyne Lidar, choices are : VLP16 / 32C / VLS128"),
     DeclareLaunchArgument("device_ip", default_value=""),
     DeclareLaunchArgument("port", default_value=TextSubstitution(text="2368")),
