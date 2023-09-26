@@ -21,14 +21,14 @@ def generate_launch_description():
     DeclareLaunchArgument("use_sim_time", default_value="true", description="Use simulation time when replaying rosbags with '--clock' option."),
     DeclareLaunchArgument("outdoor", default_value="true", description="Decide which set of parameters to use"),
     DeclareLaunchArgument("rviz", default_value="true", description="Visualize results with RViz."),
-    # Possibility to use VLP32 with appropriate launch files
-    # Check github repo : https://github.com/ros-drivers/velodyne/tree/ros2
-    DeclareLaunchArgument("vlp16_driver", default_value="false", description="If true, start Velodyne driver for vlp16."),
     DeclareLaunchArgument("gps", default_value="false", description="If true, use GPS data to calibrate SLAM output. Otherwise, provide calibration."),
     DeclareLaunchArgument("tags_topic", default_value="tag_detections", description="Topic from which to get the tag measurements"),
     DeclareLaunchArgument("camera_topic", default_value="camera", description="topic from which to get the rgb camera data"),
     DeclareLaunchArgument("camera_info_topic", default_value="camera_info", description="topic from which to get the rgb camera info"),
     # Velodyne driver parameters
+    DeclareLaunchArgument("velodyne_driver", default_value="false", description="If true, start Velodyne driver."),
+    DeclareLaunchArgument("calibration_file_path", default_value=os.path.join(velodyne_pointcloud_share_path, 'params', 'VLP16db.yaml'), description="calibration file path")
+    DeclareLaunchArgument("model", default_value="VLP16", description="Model of Velodyne Lidar, choices are : VLP16 / 32C / VLS128"),
     DeclareLaunchArgument("device_ip", default_value=""),
     DeclareLaunchArgument("port", default_value=TextSubstitution(text="2368")),
     DeclareLaunchArgument("pcap", default_value=""),
@@ -64,7 +64,7 @@ def generate_launch_description():
     params_velod_driv["read_fast"]    = False
     params_velod_driv["repeat_delay"] = 0.0
     params_velod_driv["frame_id"]     = "velodyne"
-    params_velod_driv["model"]        = "VLP16"
+    params_velod_driv["model"]        = LaunchConfiguration('model')
     params_velod_driv["rpm"]          = LaunchConfiguration('rpm')
     params_velod_driv["pcap"]         = LaunchConfiguration('pcap')
     params_velod_driv["port"]         = LaunchConfiguration('port')
@@ -75,7 +75,7 @@ def generate_launch_description():
     with open(params_velod_pcl_path, 'r') as f:
         params_velod_pcl = yaml.safe_load(f)['velodyne_transform_node']['ros__parameters']
 
-    params_velod_pcl['calibration']    = os.path.join(velodyne_pointcloud_share_path, 'params', 'VLP16db.yaml')
+    params_velod_pcl['calibration']    = LaunchConfiguration('calibration_file_path')
     params_velod_pcl["min_range"]      = 0.4
     params_velod_pcl["max_range"]      = 130.0
     params_velod_pcl["organize_cloud"] = False
@@ -91,7 +91,7 @@ def generate_launch_description():
         Node(package='velodyne_pointcloud', executable='velodyne_transform_node', output='both', name='velodyne_transform_node',
           parameters=[params_velod_pcl],)
       ],
-      condition = IfCondition(LaunchConfiguration("vlp16_driver"))
+      condition = IfCondition(LaunchConfiguration("velodyne_driver"))
     )
 
   ##########
