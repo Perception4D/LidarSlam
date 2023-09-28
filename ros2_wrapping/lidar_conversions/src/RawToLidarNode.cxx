@@ -26,12 +26,6 @@ namespace lidar_conversions
 RawToLidarNode::RawToLidarNode(std::string node_name, const rclcpp::NodeOptions options)
     : Node(node_name, options)
 {
-  //  Get LiDAR id
-  this->get_parameter("device_id", this->DeviceId);
-
-  // Get LiDAR spinning speed
-  this->get_parameter("rpm", this->Rpm);
-
   // Get number of lasers
   this->get_parameter("nb_lasers", this->NbLasers);
 
@@ -59,6 +53,17 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
     return;
   }
 
+  // Fill the map of device_id if the device hasn't already been attributed one
+  if (this->DeviceIdMap.count(cloudRaw.header.frame_id) == 0)
+    this->DeviceIdMap[cloudRaw.header.frame_id] = this->DeviceIdMap.size();
+
+  // We compute RPM : to do so, we need to ignore the first frame of the LiDAR, but it doesn't really matter as it is just 100ms ignored
+  double currentTimeStamp = cloudRaw.header.stamp;
+  this->Rpm = Utils::EstimateRpm(currentTimeStamp, this->PreviousTimeStamp, this->Rpm, this->PossibleFrequencies);
+  // We now ignore first frame because it has no RPM
+  if (this->Rpm < 0.)
+    return;
+
   CloudS cloudS = Utils::InitCloudS<CloudXYZ>(cloudRaw);
 
   // Build SLAM pointcloud
@@ -78,7 +83,7 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
     slamPoint.x = rawPoint.x;
     slamPoint.y = rawPoint.y;
     slamPoint.z = rawPoint.z;
-    slamPoint.device_id = this->DeviceId;
+    slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
     slamPoint.intensity = 0.;
     slamPoint.laser_id = 0.;
     slamPoint.time = 0.;
@@ -100,6 +105,17 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
     return;
   }
 
+  // Fill the map of device_id if the device hasn't already been attributed one
+  if (this->DeviceIdMap.count(cloudRaw.header.frame_id) == 0)
+    this->DeviceIdMap[cloudRaw.header.frame_id] = this->DeviceIdMap.size();
+
+  // We compute RPM : to do so, we need to ignore the first frame of the LiDAR, but it doesn't really matter as it is just 100ms ignored
+  double currentTimeStamp = cloudRaw.header.stamp;
+  this->Rpm = Utils::EstimateRpm(currentTimeStamp, this->PreviousTimeStamp, this->Rpm, this->PossibleFrequencies);
+  // We now ignore first frame because it has no RPM
+  if (this->Rpm < 0.)
+    return;
+
   CloudS cloudS = Utils::InitCloudS<CloudXYZI>(cloudRaw);
 
   // Build SLAM pointcloud
@@ -119,7 +135,7 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
     slamPoint.x = rawPoint.x;
     slamPoint.y = rawPoint.y;
     slamPoint.z = rawPoint.z;
-    slamPoint.device_id = this->DeviceId;
+    slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
     slamPoint.intensity = rawPoint.intensity;
     slamPoint.laser_id = 0.;
     slamPoint.time = 0.;

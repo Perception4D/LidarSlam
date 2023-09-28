@@ -101,6 +101,64 @@ inline bool IsPointValid(const PointT& point)
 
 //------------------------------------------------------------------------------
 /*!
+ * @brief Check if Rpm has a likely value
+ * @return boolean to know if the RPM is correct
+ * @param rpm RPM of the lidar
+ */
+inline bool CheckRpm(double rpm, std::vector<double> possibleFrequencies)
+{
+  // We assume that if the user hasn't specified a list of possible frequencies,
+  // it's because he doesn't want to check the RPM or doesn't care about outliers
+  if (possibleFrequencies.empty())
+    return true;
+
+  for (double frequency : possibleFrequencies)
+  {
+    double rpmFreq = frequency * 60.;
+    double epsilon = 0.05 * rpmFreq; // We accept 5% error
+    if (frequency - epsilon < rpm && rpm < frequency + epsilon)
+      return true;
+  }
+  return false;
+}
+
+//------------------------------------------------------------------------------
+/*!
+ * @brief Estimate the number of rotations per minute of the lidar
+ * @return RPM of the lidar
+ * @param currentTimestamp Timestamp of current frame
+ * @param previousTimestamp Timestamp of previous frame
+ * @param previousRpm RPM of the lidar computed from all previous frames
+ */
+inline double EstimateRpm(double currentTimeStamp, double& previousTimeStamp, double& previousRpm, std::vector<double> possibleFrequencies)
+{
+  if (previousTimeStamp < 0.)
+  {
+    previousTimeStamp = currentTimeStamp;
+    return -1.; // Indicates that it's the first frame
+  }
+  else if (previousRpm < 0.)
+  {
+    double rpmFirst = 1. / ((currentTimeStamp - previousTimeStamp) / (1e6 * 60.)); // /1e6 to convert micros to s, /60 to convert s to min
+    if (!CheckRpm(rpmFirst, possibleFrequencies))
+      return -1.; // This RPM is unusable so we'll wait next frame
+    previousRpm = rpmFirst;
+    previousTimeStamp = currentTimeStamp;
+    return rpmFirst; // Return the initial RPM (computed frame 2)
+  }
+  else
+  {
+    double rpmCurr = 1. / ((currentTimeStamp - previousTimeStamp) / (1e6 * 60.));
+    if (!CheckRpm(rpmCurr, possibleFrequencies))
+      return previousRpm; // Return the previous RPM
+    double averagedRpm = (rpmCurr + previousRpm) / 2.;
+    previousRpm = averagedRpm;
+    return averagedRpm; // Return the estimated RPM
+  }
+}
+
+//------------------------------------------------------------------------------
+/*!
  * @struct Helper to estimate point-wise within frame advancement for a spinning
  * lidar sensor using azimuth angle.
  */

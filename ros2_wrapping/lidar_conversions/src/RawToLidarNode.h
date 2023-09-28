@@ -97,16 +97,18 @@ private:
   rclcpp::Subscription<Pcl2_msg>::SharedPtr ListenerXYZI;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
 
-  // LiDAR device identifier to set for each point.
-  int DeviceId = 0;
+  // Map to store the device id of each device (in case of multilidar).
+  std::map<std::string, int> DeviceIdMap;
 
-  // Useful variables for approximate point-wise timestamps computation
-  // These parameters should be set to the same values as ROS RSLidar driver's.
-  // NOTE: to be precise, this timestamp estimation requires that each input
-  // scan is an entire scan covering excatly 360°.
-  double Rpm = 600;  ///< Spinning speed of sensor [rpm]. The duration of each input scan will be 60 / Rpm seconds.
-  const double Factor = 30;
-  double NbLasers = 16;
+  // Number of lasers of the LiDAR.
+  double NbLasers = 16.;
+
+  // Useful variable to estimate RPM
+  // NOTE: to be precise, this RPM estimation requires that each input
+  // scan is an entire scan covering excatly 360°
+  double Rpm = -1.;
+  double PreviousTimeStamp = -1.;
+  const std::vector<double> PossibleFrequencies; ///< Vector of all the possible frequencies of a certain type of LiDAR
 };
 
 }  // end of namespace lidar_conversions
