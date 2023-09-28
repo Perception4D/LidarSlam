@@ -217,8 +217,18 @@ protected:
 
   // Number of Lidars connected to the SLAM process
   int MultiLidarsNb = 1;
-  // To save the lidar devices id from which frames are received
-  std::set<uint8_t> MultiLidarsCounter;
+  // To save the lidars' frame_id from which frames are received and count the number of frames of each lidar
+  std::unordered_map<std::string, int> MultiLidarsCounter;
+
+  // Enum to choose the frames collection mode when there is more than one lidar
+  enum FramesCollectionMode
+  {
+    BY_TIME     = 0, // wait for a time to receive frames(0.2s)
+    BY_NBLIDARS = 1  // wait until received frames from all lidar devices
+  };
+  FramesCollectionMode WaitFramesDef = FramesCollectionMode::BY_NBLIDARS;
+  // Time to wait to receive frames
+  double WaitFramesTime = 0.2;
 
   // ROS node handles, subscribers and publishers
   ros::NodeHandle &Nh, &PrivNh;
