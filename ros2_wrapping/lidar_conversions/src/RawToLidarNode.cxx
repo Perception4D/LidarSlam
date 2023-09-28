@@ -66,6 +66,13 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
 
   CloudS cloudS = Utils::InitCloudS<CloudXYZ>(cloudRaw);
 
+  // Init of parameters useful for laser_id and time estimations
+  if (this->InitEstimParamToDo)
+  {
+    Utils::InitEstimationParameters<PointXYZ>(cloudRaw, this->NbLasers, this->Clusters);
+    this->InitEstimParamToDo = false;
+  }
+
   // Build SLAM pointcloud
   #pragma omp parallel for
   for (const PointXYZ& rawPoint : cloudRaw)
@@ -85,7 +92,7 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
     slamPoint.z = rawPoint.z;
     slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
     slamPoint.intensity = 0.;
-    slamPoint.laser_id = 0.;
+    slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, this->NbLasers, this->Clusters);
     slamPoint.time = 0.;
 
     cloudS.push_back(slamPoint);
@@ -118,6 +125,13 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
 
   CloudS cloudS = Utils::InitCloudS<CloudXYZI>(cloudRaw);
 
+  // Init of parameters useful for laser_id and time estimations
+  if (this->InitEstimParamToDo)
+  {
+    Utils::InitEstimationParameters<PointXYZI>(cloudRaw, this->NbLasers, this->Clusters);
+    this->InitEstimParamToDo = false;
+  }
+
   // Build SLAM pointcloud
   #pragma omp parallel for
   for (const PointXYZI& rawPoint : cloudRaw)
@@ -137,7 +151,7 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
     slamPoint.z = rawPoint.z;
     slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
     slamPoint.intensity = rawPoint.intensity;
-    slamPoint.laser_id = 0.;
+    slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, this->NbLasers, this->Clusters);
     slamPoint.time = 0.;
 
     cloudS.push_back(slamPoint);

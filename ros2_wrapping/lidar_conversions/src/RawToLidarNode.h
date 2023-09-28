@@ -109,6 +109,11 @@ private:
   double Rpm = -1.;
   double PreviousTimeStamp = -1.;
   const std::vector<double> PossibleFrequencies; ///< Vector of all the possible frequencies of a certain type of LiDAR
+
+  bool InitEstimParamToDo = true; ///< Flag to initialize the parameter useful for laser_id estimation
+
+  // Useful variable to estimate laser_id
+  std::vector<Utils::Cluster> Clusters;
 };
 
 }  // end of namespace lidar_conversions
