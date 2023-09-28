@@ -28,9 +28,6 @@ namespace lidar_conversions
 LivoxToLidarNode::LivoxToLidarNode(std::string node_name, const rclcpp::NodeOptions options)
   : rclcpp::Node(node_name, options)
 {
-  //  Get LiDAR id
-  this->get_parameter("device_id", this->DeviceId);
-
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
@@ -63,6 +60,10 @@ void LivoxToLidarNode::PointCloud2Callback(const Pcl2_msg& msg_received)
     return;
   }
 
+  // Fill the map of device_id if the device hasn't already been attributed one
+  if (this->DeviceIdMap.count(cloudL.header.frame_id) == 0)
+    this->DeviceIdMap[cloudL.header.frame_id] = this->DeviceIdMap.size();
+
   // Init SLAM pointcloud
   CloudS cloudS;
   cloudS.reserve(cloudL.size());
@@ -87,7 +88,7 @@ void LivoxToLidarNode::PointCloud2Callback(const Pcl2_msg& msg_received)
     slamPoint.z = livoxPoint.z;
     slamPoint.intensity = livoxPoint.intensity;
     slamPoint.laser_id = 0;
-    slamPoint.device_id = this->DeviceId;
+    slamPoint.device_id = this->DeviceIdMap[cloudL.header.frame_id];
 
     slamPoint.time = prevTime + 0.1/300000.; // Supposing 10 Hz and 300 000 points
     prevTime = slamPoint.time;

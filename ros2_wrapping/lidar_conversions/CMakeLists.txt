@@ -80,12 +80,26 @@ ament_target_dependencies(livox_conversion_node
   livox_ros_driver
 )
 
+# Raw points
+add_executable(raw_conversion_node src/RawToLidarNode.cxx)
+
+#link dependencies to target
+ament_target_dependencies(raw_conversion_node
+  ${conversion_dependencies}
+)
+
 #############
 ## Install ##
 #############
 
-install(TARGETS velodyne_conversion_node ouster_conversion_node robosense_conversion_node livox_conversion_node
-        RUNTIME DESTINATION lib/${PROJECT_NAME})
+install(TARGETS
+    velodyne_conversion_node
+    ouster_conversion_node
+    robosense_conversion_node
+    livox_conversion_node
+    raw_conversion_node
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
 
 ament_export_dependencies(${conversion_dependencies})
 ament_package()

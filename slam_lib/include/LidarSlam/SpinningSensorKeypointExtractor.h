@@ -185,6 +185,10 @@ private:
                               bool threshIsMax = true,
                               double weightBasis = 1.);
 
+  // Helper to get the pointcloud of the scan line of index i
+  // i being a continuous index from 0 to nbScanlines (not equivalent to laser_id)
+  PointCloud::Ptr GetScanlineCloud(unsigned int i);
+
   // ---------------------------------------------------------------------------
   //   Parameters
   // ---------------------------------------------------------------------------
@@ -268,7 +272,7 @@ private:
 
   // Current point cloud stored in two differents formats
   PointCloud::Ptr Scan;
-  std::vector<PointCloud::Ptr> ScanLines;
+  std::unordered_map<int, PointCloud::Ptr> ScanLines;
 };
 
 } // end of LidarSlam namespace

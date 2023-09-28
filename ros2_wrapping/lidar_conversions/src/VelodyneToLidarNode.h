@@ -22,6 +22,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <velodyne_point.h>
 #include <LidarSlam/LidarPoint.h>
+#include "Utilities.h"
 
 namespace lidar_conversions
 {
@@ -66,19 +67,22 @@ private:
   rclcpp::Subscription<Pcl2_msg>::SharedPtr Listener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
 
-  // Optional mapping used to correct the numeric identifier of the laser ring that shot each point.
-  // SLAM expects that the lowest/bottom laser ring is 0, and is increasing upward.
-  // If unset, identity mapping (no laser_id change) will be used.
-  // NOTE: the Velodyne ROS driver should already correctly modify the laser_id,
-  // so this shouldn't be needed.
-  std::vector<int64_t> LaserIdMapping;
+  // Map to store the device id of each device (in case of multilidar).
+  std::map<std::string, int> DeviceIdMap;
 
-  int DeviceId = 0;  ///< LiDAR device identifier to set for each point.
+  double NbLasers = 16.; ///< Number of lasers of the LiDAR. Optional as it can be taken from header attribute .height of the PointCloud.
+  bool InitEstimParamToDo = true; ///< Flag to initialize the parameters useful for laser_id and time estimations.
+  bool ClockwiseRotationBool;  ///< True if the LiDAR rotates clockwise, false otherwise.
 
-  // Useful variables for approximate point-wise timestamps computation
-  // These parameters should be set to the same values as ROS Velodyne driver's.
-  double Rpm = 600;  ///< Spinning speed of sensor [rpm]
-  bool TimestampFirstPacket = false;  ///< Wether timestamping is based on the first or last packet of each scan
+  // Useful variable to estimate RPM (itself used to estimate time)
+  // NOTE: to be precise, this RPM estimation requires that each input
+  // scan is an entire scan covering excatly 360°
+  double Rpm = -1.;
+  double PreviousTimeStamp = -1.;
+  const std::vector<double> PossibleFrequencies = {5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20.}; ///< Vector of all the possible frequencies for Velodyne LiDAR
+
+  // Useful variable to estimate laser_id
+  std::vector<Utils::Cluster> Clusters;
 };
 
 }  // end of namespace lidar_conversions
