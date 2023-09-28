@@ -21,11 +21,21 @@
 #include <pcl/point_cloud.h>
 #include <cmath>
 #include <map>
+#include <LidarSlam/LidarPoint.h>
 
 namespace lidar_conversions
 {
 namespace Utils
 {
+
+
+struct Cluster
+{
+  double mean = 0.;
+  double std = 0.;
+  bool empty = true;
+  std::vector<double> inliers;
+};
 
 //------------------------------------------------------------------------------
 /*!
@@ -42,18 +52,50 @@ inline void CopyPointCloudMetadata(const pcl::PointCloud<PointI>& from, pcl::Poi
   to.sensor_origin_ = from.sensor_origin_;
 }
 
+//----------------------------------------------------------------------------
+/*!
+  * @brief Initialize the PointCloud published by lidar driver
+  * @param msg_received New Lidar Frame, published by lidar_pointcloud/cloud_node.
+  */
+template<typename CloudRawType>
+CloudRawType InitCloudRaw(const sensor_msgs::msg::PointCloud2& msg_received)
+{
+  CloudRawType cloudRaw;
+  pcl::fromROSMsg(msg_received, cloudRaw);
+  return cloudRaw;
+}
+
+//------------------------------------------------------------------------------
+/*!
+  * @brief Initialize the PointCloud needed by SLAM
+  * @param cloudRaw PointCloud published by lidar driver
+  */
+template<typename CloudRawType>
+pcl::PointCloud<LidarSlam::LidarPoint> InitCloudS(CloudRawType cloudRaw)
+{
+  // Init SLAM pointcloud
+  pcl::PointCloud<LidarSlam::LidarPoint> cloudS;
+  cloudS.reserve(cloudRaw.size());
+
+  // Copy pointcloud metadata
+  Utils::CopyPointCloudMetadata(cloudRaw, cloudS);
+  cloudS.is_dense = true;
+
+  return cloudS;
+}
+
 //------------------------------------------------------------------------------
 /*!
  * @brief Check if a PCL point is valid
- * @param point A PCL point, with possible NaN as coordinates.
+ * @param point A PCL point, with possible NaN as coordinates or null.
  * @return true if all point coordinates are valid, false otherwise.
  */
 template<typename PointT>
 inline bool IsPointValid(const PointT& point)
 {
   bool isZeroPoint = point.getVector3fMap().norm() < 1e-6;
-  bool isFinit = std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
-  bool isValid = isFinit && !isZeroPoint;
+  bool isFinite = std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
+  bool isValid = isFinite && !isZeroPoint;
   return isValid;
 }
 
