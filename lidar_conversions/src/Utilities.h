@@ -159,6 +159,147 @@ inline double EstimateRpm(double currentTimeStamp, double& previousTimeStamp, do
 
 //------------------------------------------------------------------------------
 /*!
+ * @brief Organize angles in clusters (in order to deduce laser_id)
+ * @return Clusters of vertical angles
+ * @param cloudRaw PointCloud published by lidar driver
+ * @param NbLasers Number of lasers of the lidar
+ * @param Clusters Clusters of vertical angles to initialize
+ */
+template <typename PointType>
+inline std::vector<Cluster> ClusteringAngles(pcl::PointCloud<PointType> cloudRaw, double NbLasers)
+{
+  std::vector<double> verticalAngles;
+  std::vector<Cluster> Clusters(NbLasers);
+
+  // Initialisation of the means of each cluster
+  for (PointType Point : cloudRaw)
+    verticalAngles.push_back((180./M_PI) * std::acos(double(Point.z) / std::sqrt(std::pow(Point.x, 2.) + std::pow(Point.y, 2.) + std::pow(Point.z, 2.))));
+  double maxAngle = *std::max_element(verticalAngles.begin(), verticalAngles.end());
+  double minAngle = *std::min_element(verticalAngles.begin(), verticalAngles.end());
+  double clustersRange = (maxAngle - minAngle) / NbLasers;
+  for (unsigned int idCluster = 0; idCluster < NbLasers; idCluster++)
+    Clusters[idCluster].mean = minAngle + idCluster * clustersRange;
+
+  std::vector<double> prevNbInliers (Clusters.size(), verticalAngles.size() / Clusters.size());
+  bool notConverged = true;
+  // Adjust these cluster means
+  while (notConverged)
+  {
+    notConverged = false;
+    // Fill the inliers vector of a Cluster (~ the angles are sorted in clusters)
+    // Necessary hypothesis : Clusters vector is sorted by increasing mean (handled)
+    for (double angle : verticalAngles)
+    {
+      auto insertionIt = std::upper_bound(Clusters.begin(), Clusters.end(), angle, [](double angle, const Cluster &cluster) {return angle < cluster.mean;});
+      if (insertionIt == Clusters.begin())
+      {
+        Clusters.front().inliers.push_back(angle);
+        Clusters.front().empty = false;
+      }
+      else if (insertionIt == Clusters.end())
+      {
+        Clusters.back().inliers.push_back(angle);
+        Clusters.back().empty = false;
+      }
+      else
+      {
+        auto prev = std::prev(insertionIt);
+        auto& minElemIt = angle - prev->mean < insertionIt->mean - angle ? prev : insertionIt;
+        minElemIt->inliers.push_back(angle);
+        minElemIt->empty = false;
+      }
+    }
+
+    // Compute standard dev (std) of each vector of angles (inliers) from a Cluster
+    for (Cluster &Cluster : Clusters)
+    {
+      if (!Cluster.empty)
+      {
+        double new_mean = std::accumulate(Cluster.inliers.begin(), Cluster.inliers.end(), 0.) / (double)Cluster.inliers.size();
+        double sumSquaredSteps = 0.;
+        for (double angle : Cluster.inliers)
+        {
+          sumSquaredSteps += std::pow(angle - new_mean, 2.0);
+        }
+        Cluster.std = std::sqrt(sumSquaredSteps / Cluster.inliers.size());
+        Cluster.mean = new_mean;
+      }
+    }
+
+    // Compare old sizes of each cluster to their new one, to see if the model tends to stabilize
+    double sum = 0.0;
+    for (unsigned int i = 0; i < prevNbInliers.size(); ++i)
+    {
+      double diff = (prevNbInliers[i] - Clusters[i].inliers.size());
+      double avg = (prevNbInliers[i] + Clusters[i].inliers.size()) / 2.0;
+      if (std::abs(avg) > 1e-8)
+        sum += std::abs(diff / avg);
+      prevNbInliers[i] = Clusters[i].inliers.size(); // Prepare the next iteration of the while loop
+    }
+    if (100.0 * (sum / prevNbInliers.size()) > 5.0) // We chose a 5% threshold
+      notConverged = true;
+
+    // Identify the "nan" values and change them to the following value of the cluster having the higher standard dev
+    for (Cluster &ClusterCurr : Clusters)
+    {
+      if (ClusterCurr.empty)
+      {
+        Cluster &ClusterMaxStd = *std::max_element(Clusters.begin(), Clusters.end(), [](const Cluster &cluster1, const Cluster &cluster2) {return cluster1.std < cluster2.std;});
+        ClusterMaxStd.std /= 2.;
+        ClusterCurr.mean = ClusterMaxStd.mean + ClusterMaxStd.std;
+        notConverged = true;
+      }
+      std::vector<double>().swap(ClusterCurr.inliers); // Empty the inliers vector to prepare the next iteration
+      ClusterCurr.empty = true;
+    }
+
+    // Before iterating again, we sort the Clusters by mean since the mean of the empty ones has been changed
+    std::sort(Clusters.begin(), Clusters.end(), [](const Cluster &cluster1, const Cluster &cluster2){return cluster1.mean < cluster2.mean;});
+  }
+  return Clusters;
+}
+
+//----------------------------------------------------------------------------
+/*!
+* @brief Compute laser_id of a point missing this field
+* @return laser_id of the current point
+* @param currentPoint Point(x,y,z) extracted from current slamPoint
+* @param NbLasers Number of lasers of the lidar
+* @param Clusters Clusters of vertical angles
+*/
+inline double ComputeLaserId(Eigen::Vector3d currentPoint, double NbLasers, std::vector<Cluster> Clusters)
+{
+  // Estimate laser ID thanks to a clustering of vertical angles
+  double laser_id;
+  double angle_v = (180./M_PI) * std::acos(double(currentPoint.z()) / currentPoint.norm());
+  auto insertionIt = std::upper_bound(Clusters.begin(), Clusters.end(), angle_v, [](double angle_v, const Cluster &cluster) {return angle_v < cluster.mean;});
+  if (insertionIt == Clusters.begin())
+    laser_id = 0;
+  else if (insertionIt == Clusters.end())
+    laser_id = NbLasers - 1;
+  else
+  {
+    auto prev = std::prev(insertionIt);
+    laser_id = std::distance(Clusters.begin(), (angle_v - (*prev).mean < (*insertionIt).mean - angle_v) ? prev : insertionIt);
+  }
+  return laser_id;
+}
+
+//------------------------------------------------------------------------------
+/*!
+ * @brief Initialize estimation parameter : clusters
+ * @param cloudRaw PointCloud published by lidar driver
+ * @param NbLasers Number of lasers of the lidar
+ * @param Clusters Clusters of vertical angles to initialize
+ */
+template<typename PointT>
+inline void InitEstimationParameters(pcl::PointCloud<PointT>& cloudRaw, double NbLasers, std::vector<Cluster>& Clusters)
+{
+  Clusters = ClusteringAngles<PointT>(cloudRaw, NbLasers);
+}
+
+//------------------------------------------------------------------------------
+/*!
  * @struct Helper to estimate point-wise within frame advancement for a spinning
  * lidar sensor using azimuth angle.
  */
