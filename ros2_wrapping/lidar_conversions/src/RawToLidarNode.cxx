@@ -69,9 +69,11 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
   // Init of parameters useful for laser_id and time estimations
   if (this->InitEstimParamToDo)
   {
-    Utils::InitEstimationParameters<PointXYZ>(cloudRaw, this->NbLasers, this->Clusters);
+    Utils::InitEstimationParameters<PointXYZ>(cloudRaw, this->NbLasers, this->Clusters, this->ClockwiseRotationBool);
     this->InitEstimParamToDo = false;
   }
+  double rotationTime = 1. / (this->Rpm * 60.);
+  Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
 
   // Build SLAM pointcloud
   #pragma omp parallel for
@@ -93,7 +95,7 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
     slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
     slamPoint.intensity = 0.;
     slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, this->NbLasers, this->Clusters);
-    slamPoint.time = 0.;
+    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, rotationTime, firstPoint, this->ClockwiseRotationBool);
 
     cloudS.push_back(slamPoint);
   }
@@ -128,9 +130,11 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
   // Init of parameters useful for laser_id and time estimations
   if (this->InitEstimParamToDo)
   {
-    Utils::InitEstimationParameters<PointXYZI>(cloudRaw, this->NbLasers, this->Clusters);
+    Utils::InitEstimationParameters<PointXYZI>(cloudRaw, this->NbLasers, this->Clusters, this->ClockwiseRotationBool);
     this->InitEstimParamToDo = false;
   }
+  double rotationTime = 1. / (this->Rpm * 60.);
+  Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
 
   // Build SLAM pointcloud
   #pragma omp parallel for
@@ -152,7 +156,7 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
     slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
     slamPoint.intensity = rawPoint.intensity;
     slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, this->NbLasers, this->Clusters);
-    slamPoint.time = 0.;
+    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, rotationTime, firstPoint, this->ClockwiseRotationBool);
 
     cloudS.push_back(slamPoint);
   }

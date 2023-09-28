@@ -285,17 +285,58 @@ inline double ComputeLaserId(Eigen::Vector3d currentPoint, double NbLasers, std:
   return laser_id;
 }
 
+//----------------------------------------------------------------------------
+/*!
+ * @brief Deduce the rotation sense of the lidar
+ * @return true if the LiDAR rotates clockwise, false otherwise.
+ * @param cloudRaw PointCloud published by lidar driver
+ * @param NbLasers Number of lasers of the lidar
+ */
+template <typename PointType>
+inline bool ClockwiseRotation(pcl::PointCloud<PointType> cloudRaw, double NbLasers)
+{
+  Eigen::Vector2d firstPointFirstLine ({cloudRaw.front().x, cloudRaw.front().y});
+  Eigen::Vector2d firstPointSecondLine ({cloudRaw[NbLasers].x, cloudRaw[NbLasers].y});
+  double angle = std::atan2(firstPointSecondLine.y(), firstPointSecondLine.x()) - std::atan2(firstPointFirstLine.y(), firstPointFirstLine.x());
+  // Normalize the angle between -pi and pi
+  while (angle > M_PI)
+    angle -= 2.0 * M_PI;
+  while (angle < -M_PI)
+    angle += 2.0 * M_PI;
+  return (angle < 0.0);
+}
+
+//----------------------------------------------------------------------------
+/*!
+ * @brief Estimate time of a point missing this field
+ * @return time of the current point
+ * @param currentPoint Point(x,y) extracted from current slamPoint
+ * @param rotationTime Time for a full rotation of the lidar
+ * @param firstPoint First point of the frame
+ * @param ClockwiseRotationBool True if the LiDAR rotates clockwise, false otherwise.
+ */
+inline double EstimateTime(Eigen::Vector2d currentPoint, double rotationTime, Eigen::Vector2d firstPoint, bool ClockwiseRotationBool)
+{
+  double angle_h = std::acos(firstPoint.normalized().dot(currentPoint.normalized()));
+  double crossZ = firstPoint.x() * currentPoint.y() - firstPoint.y() * currentPoint.x();
+  if (crossZ < 0)
+    angle_h = 2. * M_PI - angle_h;
+  return (ClockwiseRotationBool ? (-angle_h / 2.*M_PI) * rotationTime : (angle_h / 2.*M_PI) * rotationTime);
+}
+
 //------------------------------------------------------------------------------
 /*!
  * @brief Initialize estimation parameter : clusters
  * @param cloudRaw PointCloud published by lidar driver
  * @param NbLasers Number of lasers of the lidar
  * @param Clusters Clusters of vertical angles to initialize
+ * @param ClockwiseRotationBool True if the LiDAR rotates clockwise, false otherwise.
  */
 template<typename PointT>
-inline void InitEstimationParameters(pcl::PointCloud<PointT>& cloudRaw, double NbLasers, std::vector<Cluster>& Clusters)
+inline void InitEstimationParameters(pcl::PointCloud<PointT>& cloudRaw, double NbLasers, std::vector<Cluster>& Clusters, bool& ClockwiseRotationBool)
 {
   Clusters = ClusteringAngles<PointT>(cloudRaw, NbLasers);
+  ClockwiseRotationBool = ClockwiseRotation<PointT>(cloudRaw, NbLasers);
 }
 
 //------------------------------------------------------------------------------
