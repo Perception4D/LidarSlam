@@ -21,9 +21,10 @@
 #include <rclcpp/rclcpp.hpp>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_types.h>
+#include <lidar_conversions/srv/estim_params.hpp>
 #include <LidarSlam/LidarPoint.h>
 #include "Utilities.h"
-#include <lidar_conversions/srv/estim_params.hpp>
+#include "GenericPoint.h"
 #include <unordered_map>
 #include <random>
 
@@ -31,21 +32,17 @@ namespace lidar_conversions
 {
 
 /**
- * @class RawToLidarNode aims at converting pointclouds published by RSLidar
+ * @class GenericConversionNode aims at converting pointclouds published by RSLidar
  * ROS driver to the expected SLAM pointcloud format.
  *
  * The ROS RSLidar driver can be found here :
  * https://github.com/RoboSense-LiDAR/ros_rslidar
  */
-class RawToLidarNode : public rclcpp::Node
+class GenericConversionNode : public rclcpp::Node
 {
 public:
   using PointXYZ = pcl::PointXYZ;
-  using PointXYZI = pcl::PointXYZI;
-
   using CloudXYZ = pcl::PointCloud<PointXYZ>;  ///< Pointcloud published by lidar driver
-  using CloudXYZI = pcl::PointCloud<PointXYZI>;
-
   using PointS = LidarSlam::LidarPoint;
   using CloudS = pcl::PointCloud<PointS>;  ///< Pointcloud needed by SLAM
   using Pcl2_msg = sensor_msgs::msg::PointCloud2;
@@ -56,8 +53,8 @@ public:
    * @param node_name name of the node created
    * @param[in] options Options of the node, default no options
    */
-  RawToLidarNode(const std::string node_name,
-                 const rclcpp::NodeOptions options = rclcpp::NodeOptions());
+  GenericConversionNode(const std::string node_name,
+                        const rclcpp::NodeOptions options = rclcpp::NodeOptions());
 
   //------------------------------------------------------------------------------
   /*!
@@ -76,19 +73,12 @@ public:
     }
   }
 
- //----------------------------------------------------------------------------
-  /*!
-   * @brief New lidar frame callback, converting and publishing PointCloud of Points with only x, y, z as SLAM PointCloud.
-   * @param msg_received New Lidar Frame, published by lidar_pointcloud/cloud_node.
-   */
-  void CallbackXYZ(const Pcl2_msg& msg_received);
-
   //----------------------------------------------------------------------------
   /*!
-   * @brief New lidar frame callback, converting and publishing PointCloud with only x, y, z, intensity as SLAM PointCloud.
+   * @brief New lidar frame callback, converting and publishing PointCloud as SLAM PointCloud.
    * @param msg_received New Lidar Frame, published by lidar_pointcloud/cloud_node.
    */
-  void CallbackXYZI(const Pcl2_msg& msg_received);
+  void Callback(const Pcl2_msg& msg_received);
 
   //----------------------------------------------------------------------------
   /*!
@@ -103,8 +93,7 @@ private:
   //----------------------------------------------------------------------------
 
   // ROS node handles, subscriber, publisher and service
-  rclcpp::Subscription<Pcl2_msg>::SharedPtr ListenerXYZ;
-  rclcpp::Subscription<Pcl2_msg>::SharedPtr ListenerXYZI;
+  rclcpp::Subscription<Pcl2_msg>::SharedPtr Listener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
   rclcpp::Service<lidar_conversions::srv::EstimParams>::SharedPtr EstimService;
 
