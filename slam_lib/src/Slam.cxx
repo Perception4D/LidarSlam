@@ -257,6 +257,9 @@ void Slam::Reset(bool resetLog)
   this->MotionCheck.Reset();
   this->FailDetect.Reset();
   this->RecoveryTimes.clear();
+
+  // Reset LoopDetections
+  this->ClearLoopDetections();
 }
 
 //-----------------------------------------------------------------------------
@@ -936,9 +939,7 @@ bool Slam::OptimizeGraph()
   if (this->UsePGOConstraints[PGO_EXT_POSE] && this->PoseHasData())
     // Update offset of referential frames with new de-skewed trajectory
     this->PoseManager->UpdateOffset(this->LogStates);
-  // Reset LoopDetections vector after PGO
-  if (this->UsePGOConstraints[LOOP_CLOSURE] && !this->LoopDetections.empty())
-    this->LoopDetections.clear();
+
   // Update the maps from the beginning using the new trajectory
   // Points older than the first logged state remain untouched
   this->UpdateMaps();
@@ -1933,6 +1934,13 @@ void Slam::AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFr
   auto itQueryState     = this->GetKeyStateIterator(loop.QueryIdx);
   auto itRevisitedState = this->GetKeyStateIterator(loop.RevisitedIdx);
   this->LoopDetections.emplace_back(itQueryState->Index, itRevisitedState->Index, loop.Time);
+}
+
+//-----------------------------------------------------------------------------
+void Slam::ClearLoopDetections()
+{
+  this->LoopDetections.clear();
+  PRINT_WARNING("The LoopDetections vector is cleared!");
 }
 
 //-----------------------------------------------------------------------------

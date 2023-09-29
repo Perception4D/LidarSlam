@@ -209,6 +209,9 @@ public:
   // Add the detected loop indices into slam
   void AddLoopDetection();
 
+  // Reset the LoopDetections vector
+  void ClearLoopDetections();
+
   vtkCustomGetMacro(G2oFileName, std::string)
   vtkCustomSetMacro(G2oFileName, std::string)
 

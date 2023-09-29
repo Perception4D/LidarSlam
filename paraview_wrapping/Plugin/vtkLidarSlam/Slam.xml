@@ -1953,6 +1953,17 @@
         </Hints>
       </Property>
 
+      <Property name="Reset loop detection"
+                command="ClearLoopDetections"
+                panel_visibility="advanced">
+        <Documentation>
+          Clear LoopDetections vector.
+        </Documentation>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="Loop closure detector" value="0" />
+        </Hints>
+      </Property>
+
       <DoubleVectorProperty name="Query map start range"
                             command="SetLoopQueryMapStartRange"
                             number_of_elements="1"
@@ -2084,9 +2095,10 @@
       </IntVectorProperty>
 
       <PropertyGroup label="Loop closure parameters">
+        <Property name="Loop closure detector" />
         <Property name="Load loop indices" />
         <Property name="Detect Loop" />
-        <Property name="Loop closure detector" />
+        <Property name="Reset loop detection" />
         <Property name="Query map start range" />
         <Property name="Query map end range" />
         <Property name="Loop gap length" />

@@ -741,6 +741,9 @@ public:
   // Add indices of a loop into vector LoopDetections
   void AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFrame = false);
 
+  // Reset LoopDetections vector
+  void ClearLoopDetections();
+
   GetStructParamsMacro(Loop, Detector, LoopClosureDetector)
   SetStructParamsMacro(Loop, Detector, LoopClosureDetector)
 
