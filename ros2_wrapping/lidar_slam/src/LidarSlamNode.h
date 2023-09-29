@@ -226,6 +226,21 @@ protected:
   std::vector<CloudS::Ptr> Frames;
   bool SlamEnabled = true;
 
+  // Number of Lidars connected to the SLAM process
+  int MultiLidarsNb = 1;
+  // To save the lidar devices id from which frames are received and count the number of frames of each lidar
+  std::unordered_map<uint8_t, int> MultiLidarsCounter;
+
+  // Enum to choose the frames collection mode when there is more than one lidar
+  enum FramesCollectionMode
+  {
+    BY_TIME     = 0, // wait for a time to receive frames(0.2s)
+    BY_NBLIDARS = 1  // wait until received frames from all lidar devices
+  };
+  FramesCollectionMode WaitFramesDef = FramesCollectionMode::BY_NBLIDARS;
+  // Time to wait to receive frames
+  double WaitFramesTime = 0.2;
+
   // ROS subscribers and publishers
   std::vector<rclcpp::Subscription<Pcl2_msg>::SharedPtr> CloudSubs;
   rclcpp::Subscription<lidar_slam::msg::SlamCommand>::SharedPtr SlamCommandSub;

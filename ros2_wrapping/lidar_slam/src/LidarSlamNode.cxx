@@ -153,10 +153,16 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
   // Init ROS subscribers
 
   // LiDAR inputs
+  this->get_parameter_or<int>("lidars_nb", this->MultiLidarsNb, 1);
+  int frameMode;
+  this->get_parameter_or<int>("frames_mode", frameMode, 1);
+  this->WaitFramesDef = static_cast<LidarSlamNode::FramesCollectionMode>(frameMode);
+  this->get_parameter_or<double>("frames_waiting_time", this->WaitFramesTime, 0.2);
+
   // Check if the parameter type is a string_array
   // If the parameter doesn't exist or is a string, push back a value
   std::vector<std::string> lidarTopics;
-  if (this->has_parameter("intput") && this->get_parameter_types({"input"})[0] == rclcpp::ParameterType::PARAMETER_STRING_ARRAY)
+  if (this->has_parameter("input") && this->get_parameter_types({"input"})[0] == rclcpp::ParameterType::PARAMETER_STRING_ARRAY)
     this->get_parameter<std::vector<std::string>>("input", lidarTopics);
   else
   {
@@ -165,14 +171,11 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
     lidarTopics.push_back(input);
   }
 
-  this->CloudSubs.push_back(this->create_subscription<Pcl2_msg>(lidarTopics[0], 1,
-                                                                            std::bind(&LidarSlamNode::ScanCallback, this, std::placeholders::_1)));
-  RCLCPP_INFO_STREAM(this->get_logger(), "Using LiDAR frames on topic '" << lidarTopics[0] << "'");
-  for (unsigned int lidarTopicId = 1; lidarTopicId < lidarTopics.size(); lidarTopicId++)
+  for (unsigned int lidarTopicId = 0; lidarTopicId < lidarTopics.size(); lidarTopicId++)
   {
     this->CloudSubs.push_back(this->create_subscription<Pcl2_msg>(lidarTopics[lidarTopicId], 1,
-                                                                                std::bind(&LidarSlamNode::SecondaryScanCallback, this, std::placeholders::_1)));
-    RCLCPP_INFO_STREAM(this->get_logger(), "Using secondary LiDAR frames on topic '" << lidarTopics[lidarTopicId] << "'");
+                                                                                std::bind(&LidarSlamNode::ScanCallback, this, std::placeholders::_1)));
+    RCLCPP_INFO_STREAM(this->get_logger(), "Using LiDAR frames on topic '" << lidarTopics[lidarTopicId] << "'");
   }
 
   // Set SLAM pose from external guess
@@ -237,73 +240,109 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
     return;
   }
 
-  this->StartTime = this->now().seconds();
-
-  if (!this->LidarTimePosix)
-  {
-    // Compute time offset
-    // Get ROS frame reception time
-    double TimeFrameReceptionPOSIX = this->now().seconds();
-    // Get last acquired point timestamp
-    double TimeLastPoint = LidarSlam::Utils::PclStampToSec(cloudS_ptr->header.stamp) + cloudS_ptr->back().time;
-    // Compute offset
-    double potentialOffset = TimeLastPoint - TimeFrameReceptionPOSIX;
-    // Get current offset
-    double absCurrentOffset = std::abs(this->LidarSlam.GetSensorTimeOffset());
-    // If the current computed offset is more accurate, replace it
-    if (absCurrentOffset < 1e-6 || std::abs(potentialOffset) < absCurrentOffset)
-      this->LidarSlam.SetSensorTimeOffset(potentialOffset + this->SensorTimeOffset);
-  }
-  else
-    this->LidarSlam.SetSensorTimeOffset(this->SensorTimeOffset);
-
   // Update TF from BASE to LiDAR
   if (!this->UpdateBaseToLidarOffset(cloudS_ptr->header.frame_id, cloudS_ptr->front().device_id))
     return;
 
-  // Set the SLAM main input frame at first position
-  this->Frames.insert(this->Frames.begin(), cloudS_ptr);
+  double timeInterval = this->Frames.empty() ? 0 : (LidarSlam::Utils::PclStampToSec(cloudS_ptr->header.stamp) - LidarSlam::Utils::PclStampToSec(this->Frames[0]->header.stamp));
 
-  // Run SLAM : register new frame and update localization and map.
-  this->LidarSlam.AddFrames(this->Frames);
-
-  // TMP
-  // Check if SLAM has failed
-  if (this->LidarSlam.IsRecovery())
+  // Add other frames when there is more than one lidar
+  if (!this->Frames.empty())
   {
-    // TMP : in the future, the user should have a look
-    // at the result to validate recovery
-    // Check if the SLAM can go on and pose has to be displayed
-    if (this->LidarSlam.GetOverlapEstimation() > 0.2f &&
-        this->LidarSlam.GetPositionErrorStd()  < 0.1f)
+    this->Frames.push_back(cloudS_ptr);
+    auto check_device = this->MultiLidarsCounter.find(cloudS_ptr->front().device_id);
+    if (check_device == this->MultiLidarsCounter.end())
+      this->MultiLidarsCounter.insert(std::make_pair(cloudS_ptr->front().device_id, 1));
+    else
+      check_device->second++;
+
+    // Multilidar mode: drop old frame when waiting for long time
+    if (this->WaitFramesDef == LidarSlamNode::FramesCollectionMode::BY_NBLIDARS && timeInterval > this->WaitFramesTime)
     {
-      RCLCPP_WARN_STREAM(this->get_logger(), "Getting out of recovery mode");
-      // Frame is relocalized, reset params
-      this->LidarSlam.EndRecovery();
+      auto check = this->MultiLidarsCounter.find(this->Frames[0]->front().device_id);
+      check->second--;
+      if (check->second == 0)
+        this->MultiLidarsCounter.erase(check);
+      this->Frames.erase(this->Frames.begin());
+    }
+  }
+  // Add first frame
+  else
+  {
+    // Fill Frames with pointcloud
+    this->Frames = {cloudS_ptr};
+    this->MultiLidarsCounter.insert(std::make_pair(cloudS_ptr->front().device_id, 1));
+
+    this->StartTime = this->now().seconds();
+    if (!this->LidarTimePosix)
+    {
+      // Compute time offset
+      // Get ROS frame reception time
+      double timeFrameReceptionPOSIX = this->now().seconds();
+      // Get last acquired point timestamp
+      double timeLastPoint = LidarSlam::Utils::PclStampToSec(cloudS_ptr->header.stamp) + cloudS_ptr->back().time;
+      // Compute offset
+      double potentialOffset = timeLastPoint - timeFrameReceptionPOSIX;
+      // Get current offset
+      double absCurrentOffset = std::abs(this->LidarSlam.GetSensorTimeOffset());
+      // If the current computed offset is more accurate, replace it
+      if (absCurrentOffset < 1e-6 || std::abs(potentialOffset) < absCurrentOffset)
+        this->LidarSlam.SetSensorTimeOffset(potentialOffset + this->SensorTimeOffset);
     }
     else
-      RCLCPP_WARN_STREAM(this->get_logger(), "Still waiting for recovery");
+      this->LidarSlam.SetSensorTimeOffset(this->SensorTimeOffset);
   }
-  else if (this->LidarSlam.HasFailed())
+
+  // Run SLAM when:
+  // 1. frames are arrived from all lidar devices when frames collection mode is defined by waiting all lidar,
+  // 2. time interval is greater than waiting time (0.2s) when frames collection mode is defined by waiting time
+  // 3. the frame is collected when there is only one lidar
+  if ((this->WaitFramesDef == LidarSlamNode::FramesCollectionMode::BY_NBLIDARS && this->MultiLidarsCounter.size() == this->MultiLidarsNb) ||
+      (this->WaitFramesDef == LidarSlamNode::FramesCollectionMode::BY_TIME && this->MultiLidarsNb > 1 && timeInterval > 0.2) ||
+      this->MultiLidarsNb == 1)
   {
-    RCLCPP_WARN_STREAM(this->get_logger(),
-                    "SLAM has failed : entering recovery mode :\n"
-                    << "\t -Maps will not be updated\n"
-                    << "\t -Egomotion and undistortion are disabled\n"
-                    << "\t -The number of ICP iterations is increased\n"
-                    << "\t -The maximum distance between a frame point and a map target point is increased");
-    // Enable recovery mode :
-    // Last frames are removed
-    // Maps are not updated
-    // Param are tuned to handle bigger motions
-    // Warning : real time is not ensured
-    this->LidarSlam.StartRecovery(this->RecoveryTime);
+    // Run SLAM : register new frames and update localization and map.
+    this->LidarSlam.AddFrames(this->Frames);
+
+    // Check if SLAM has failed
+    if (this->LidarSlam.IsRecovery())
+    {
+      // TMP : in the future, the user should have a look
+      // at the result to validate recovery
+      // Check if the SLAM can go on and pose has to be displayed
+      if (this->LidarSlam.GetOverlapEstimation() > 0.2f &&
+          this->LidarSlam.GetPositionErrorStd()  < 0.1f)
+      {
+        RCLCPP_WARN_STREAM(this->get_logger(), "Getting out of recovery mode");
+        // Frame is relocalized, reset params
+        this->LidarSlam.EndRecovery();
+      }
+      else
+        RCLCPP_WARN_STREAM(this->get_logger(), "Still waiting for recovery");
+    }
+    else if (this->LidarSlam.HasFailed())
+    {
+      RCLCPP_WARN_STREAM(this->get_logger(),
+                         "SLAM has failed : entering recovery mode :\n"
+                         << "\t -Maps will not be updated\n"
+                         << "\t -Egomotion and undistortion are disabled\n"
+                         << "\t -The number of ICP iterations is increased\n"
+                         << "\t -The maximum distance between a frame point and a map target point is increased");
+      // Enable recovery mode :
+      // Last frames are removed
+      // Maps are not updated
+      // Param are tuned to handle bigger motions
+      // Warning : real time is not ensured
+      this->LidarSlam.StartRecovery(this->RecoveryTime);
+    }
+
+    // Publish SLAM output as requested by user
+    this->PublishOutput();
+
+    // Reset frames vector and multi lidar counter
+    this->Frames.clear();
+    this->MultiLidarsCounter.clear();
   }
-
-  // Publish SLAM output as requested by user
-  this->PublishOutput();
-
-  this->Frames.clear();
 }
 
 //------------------------------------------------------------------------------
