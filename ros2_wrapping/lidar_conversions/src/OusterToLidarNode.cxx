@@ -60,12 +60,12 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   if (this->DeviceIdMap.count(cloudO.header.frame_id) == 0)
     this->DeviceIdMap[cloudO.header.frame_id] = this->DeviceIdMap.size();
 
-  // We compute RPM : to do so, we need to ignore the first frame of the LiDAR, but it doesn't really matter as it is just 100ms ignored
+  // We compute the rotation duration : to do so, we need to ignore the first frame of the LiDAR, but it doesn't really matter as it is just 100ms ignored
   // However, we chose to ignore the first frame after having initialized estimation parameters (see below)
   double currentTimeStamp = cloudO.header.stamp;
-  this->Rpm = Utils::EstimateRpm(currentTimeStamp, this->PreviousTimeStamp, this->Rpm, this->PossibleFrequencies);
-  // We now ignore first frame because it has no RPM
-  if (this->Rpm < 0.)
+  this->RotationDuration = Utils::EstimateFrameTime(currentTimeStamp, this->PreviousTimeStamp, this->RotationDuration, this->PossibleFrequencies);
+  // We now ignore first frame because it has no rotation duration
+  if (this->RotationDuration < 0.)
     return;
 
   // Init SLAM pointcloud
@@ -79,7 +79,7 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
     Utils::InitEstimationParameters<PointO>(cloudO, nLasers, this->Clusters, this->ClockwiseRotationBool);
     this->InitEstimParamToDo = false;
   }
-  double rotationTime = 1. / (this->Rpm * 60.);
+  
   Eigen::Vector2d firstPoint = {cloudO[0].x, cloudO[0].y};
 
   // Check if time field looks properly set
@@ -106,7 +106,7 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
     if (isTimeValid)
       slamPoint.time = ousterPoint.t;
     else
-      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, rotationTime, firstPoint, this->ClockwiseRotationBool);
+      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->ClockwiseRotationBool);
 
     cloudS.push_back(slamPoint);
   }

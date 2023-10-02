@@ -101,22 +101,22 @@ inline bool IsPointValid(const PointT& point)
 
 //------------------------------------------------------------------------------
 /*!
- * @brief Check if Rpm has a likely value
- * @return boolean to know if the RPM is correct
- * @param rpm RPM of the lidar
+ * @brief Check if the rotation duration has a likely value
+ * @return boolean to know if the rotation duration is correct
+ * @param rotationDuration RotationDuration of the lidar
  */
-inline bool CheckRpm(double rpm, std::vector<double> possibleFrequencies)
+inline bool CheckRotationDuration(double rotationDuration, std::vector<double> possibleFrequencies)
 {
   // We assume that if the user hasn't specified a list of possible frequencies,
-  // it's because he doesn't want to check the RPM or doesn't care about outliers
+  // it's because he doesn't want to check the rotation duration or doesn't care about outliers
   if (possibleFrequencies.empty())
     return true;
 
   for (double frequency : possibleFrequencies)
   {
-    double rpmFreq = frequency * 60.;
-    double epsilon = 0.05 * rpmFreq; // We accept 5% error
-    if (frequency - epsilon < rpm && rpm < frequency + epsilon)
+    double currentFreq = 1. / rotationDuration;
+    double epsilon = 0.05 * frequency; // We accept 5% error
+    if (frequency - epsilon < currentFreq && currentFreq < frequency + epsilon)
       return true;
   }
   return false;
@@ -124,36 +124,40 @@ inline bool CheckRpm(double rpm, std::vector<double> possibleFrequencies)
 
 //------------------------------------------------------------------------------
 /*!
- * @brief Estimate the number of rotations per minute of the lidar
- * @return RPM of the lidar
+ * @brief Estimate the duration of a rotation in seconds
+ * @return rotation duration of the lidar
  * @param currentTimestamp Timestamp of current frame
  * @param previousTimestamp Timestamp of previous frame
- * @param previousRpm RPM of the lidar computed from all previous frames
+ * @param previousRotationDuration Rotation duration of the lidar computed from all previous frames
+ * @param possibleFrequencies Vector of all the possible frequencies (specicfic to the type of LiDAR)
  */
-inline double EstimateRpm(double currentTimeStamp, double& previousTimeStamp, double& previousRpm, std::vector<double> possibleFrequencies)
+inline double EstimateFrameTime(double currentTimeStamp, double& previousTimeStamp, double& previousRotationDuration, std::vector<double> possibleFrequencies)
 {
   if (previousTimeStamp < 0.)
   {
     previousTimeStamp = currentTimeStamp;
     return -1.; // Indicates that it's the first frame
   }
-  else if (previousRpm < 0.)
+  else if (previousRotationDuration < 0.)
   {
-    double rpmFirst = 1. / ((currentTimeStamp - previousTimeStamp) / (1e6 * 60.)); // /1e6 to convert micros to s, /60 to convert s to min
-    if (!CheckRpm(rpmFirst, possibleFrequencies))
-      return -1.; // This RPM is unusable so we'll wait next frame
-    previousRpm = rpmFirst;
+    double rotationDurationFirst = (currentTimeStamp - previousTimeStamp) / 1e6; // /1e6 to convert micros to s
+    if (!CheckRotationDuration(rotationDurationFirst, possibleFrequencies))
+      return -1.;
+    previousRotationDuration = rotationDurationFirst;
     previousTimeStamp = currentTimeStamp;
-    return rpmFirst; // Return the initial RPM (computed frame 2)
+    return rotationDurationFirst;
   }
   else
   {
-    double rpmCurr = 1. / ((currentTimeStamp - previousTimeStamp) / (1e6 * 60.));
-    if (!CheckRpm(rpmCurr, possibleFrequencies))
-      return previousRpm; // Return the previous RPM
-    double averagedRpm = (rpmCurr + previousRpm) / 2.;
-    previousRpm = averagedRpm;
-    return averagedRpm; // Return the estimated RPM
+    double rotationDurationCurr = (currentTimeStamp - previousTimeStamp) / 1e6;
+    if (!CheckRotationDuration(rotationDurationCurr, possibleFrequencies) ||
+        std::abs(rotationDurationCurr - previousRotationDuration) > 0.005)
+      return previousRotationDuration;
+
+    double averagedRotationDuration = (rotationDurationCurr + previousRotationDuration) / 2.;
+    previousRotationDuration = averagedRotationDuration;
+    previousTimeStamp = currentTimeStamp;
+    return averagedRotationDuration;
   }
 }
 
@@ -297,13 +301,8 @@ inline bool ClockwiseRotation(pcl::PointCloud<PointType> cloudRaw, double NbLase
 {
   Eigen::Vector2d firstPointFirstLine ({cloudRaw.front().x, cloudRaw.front().y});
   Eigen::Vector2d firstPointSecondLine ({cloudRaw[NbLasers].x, cloudRaw[NbLasers].y});
-  double angle = std::atan2(firstPointSecondLine.y(), firstPointSecondLine.x()) - std::atan2(firstPointFirstLine.y(), firstPointFirstLine.x());
-  // Normalize the angle between -pi and pi
-  while (angle > M_PI)
-    angle -= 2.0 * M_PI;
-  while (angle < -M_PI)
-    angle += 2.0 * M_PI;
-  return (angle < 0.0);
+  double crossZ = firstPointFirstLine.x() * firstPointSecondLine.y() - firstPointFirstLine.y() * firstPointSecondLine.x();
+  return crossZ > 0;
 }
 
 //----------------------------------------------------------------------------
@@ -311,17 +310,17 @@ inline bool ClockwiseRotation(pcl::PointCloud<PointType> cloudRaw, double NbLase
  * @brief Estimate time of a point missing this field
  * @return time of the current point
  * @param currentPoint Point(x,y) extracted from current slamPoint
- * @param rotationTime Time for a full rotation of the lidar
+ * @param rotationDuration Time for a full rotation of the lidar
  * @param firstPoint First point of the frame
- * @param ClockwiseRotationBool True if the LiDAR rotates clockwise, false otherwise.
+ * @param clockwiseRotationBool True if the LiDAR rotates clockwise, false otherwise.
  */
-inline double EstimateTime(Eigen::Vector2d currentPoint, double rotationTime, Eigen::Vector2d firstPoint, bool ClockwiseRotationBool)
+inline double EstimateTime(Eigen::Vector2d currentPoint, double rotationDuration, Eigen::Vector2d firstPoint, bool clockwiseRotationBool)
 {
   double angle_h = std::acos(firstPoint.normalized().dot(currentPoint.normalized()));
   double crossZ = firstPoint.x() * currentPoint.y() - firstPoint.y() * currentPoint.x();
-  if (crossZ < 0)
+  if ((crossZ <= 0 && clockwiseRotationBool) || (crossZ > 0 && !clockwiseRotationBool))
     angle_h = 2. * M_PI - angle_h;
-  return (ClockwiseRotationBool ? (-angle_h / 2.*M_PI) * rotationTime : (angle_h / 2.*M_PI) * rotationTime);
+  return ((angle_h / (2.*M_PI)) - 1) * rotationDuration;
 }
 
 //------------------------------------------------------------------------------
