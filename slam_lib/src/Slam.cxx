@@ -1938,7 +1938,7 @@ void Slam::AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFr
 //-----------------------------------------------------------------------------
 std::list<LidarState>::iterator Slam::GetKeyStateIterator(unsigned int& frameIdx)
 {
-  // Get the state iterator
+  // Get the first state iterator whose index is greater than frameIdx
   auto itState = std::upper_bound(this->LogStates.begin(),
                                   this->LogStates.end(),
                                   frameIdx,
@@ -1949,9 +1949,15 @@ std::list<LidarState>::iterator Slam::GetKeyStateIterator(unsigned int& frameIdx
     return this->LogStates.begin();
   }
 
+  // Take the state whose index is closer to frameIdx
+  auto itPrevState = std::prev(itState);
+  if ((frameIdx - itPrevState->Index) < (itState->Index - frameIdx))
+    itState = itPrevState;
+
   if (itState->Index != frameIdx)
     PRINT_WARNING("The frame index #" << frameIdx << " is not found in Logstates "
                   "and is replaced by frame #" << itState->Index << ".");
+
   return itState;
 }
 
