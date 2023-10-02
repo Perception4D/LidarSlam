@@ -1892,9 +1892,9 @@ bool Slam::DetectLoopClosureIndices(LoopClosure::LoopIndices& loop)
   bool detectionValid = false;
   switch (this->LoopParams.Detector)
   {
-    case LoopClosureDetector::NONE:
+    case LoopClosureDetector::EXTERNAL:
     {
-      PRINT_WARNING("Loop closure detection is disabled!");
+      PRINT_WARNING("Loop closure detection is disabled! Loop indices need to be provided from external source.");
       return false;
     }
     case LoopClosureDetector::TEASERPP:
