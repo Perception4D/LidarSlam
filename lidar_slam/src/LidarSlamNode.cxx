@@ -716,32 +716,40 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
 
     // Disable SLAM maps update
     case lidar_slam::msg::SlamCommand::DISABLE_SLAM_MAP_UPDATE:
+    {
       this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::NONE);
       RCLCPP_WARN(this->get_logger(), "Disabling SLAM maps update.");
       break;
+    }
 
     // Enable the agregation of keypoints to a fixed initial map
     case lidar_slam::msg::SlamCommand::ENABLE_SLAM_MAP_EXPANSION:
+    {
       if (this->LidarSlam.IsRecovery())
         RCLCPP_ERROR_STREAM(this->get_logger(), "Cannot unable map expansion in recovery mode!");
       this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::ADD_KPTS_TO_FIXED_MAP);
       RCLCPP_WARN(this->get_logger(), "Enabling SLAM maps expansion with new keypoints.");
       break;
+    }
 
     // Enable the update of the map with new keypoints
     case lidar_slam::msg::SlamCommand::ENABLE_SLAM_MAP_UPDATE:
+    {
       if (this->LidarSlam.IsRecovery())
         RCLCPP_ERROR_STREAM(this->get_logger(), "Cannot unable map update in recovery mode!");
       this->LidarSlam.SetMapUpdate(LidarSlam::MappingMode::UPDATE);
       RCLCPP_WARN(this->get_logger(), "Enabling SLAM maps update with new keypoints.");
       break;
+    }
 
     // Reset the SLAM internal state.
     case lidar_slam::msg::SlamCommand::RESET_SLAM:
+    {
       RCLCPP_WARN(this->get_logger(), "Resetting the SLAM internal state.");
       this->LidarSlam.Reset(true);
       this->SetSlamInitialState();
       break;
+    }
 
      // Enable/Disable the SLAM process
       case lidar_slam::msg::SlamCommand::SWITCH_ON_OFF:
@@ -795,11 +803,14 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
 
     // Load SLAM keypoints maps from PCD files
     case lidar_slam::msg::SlamCommand::LOAD_KEYPOINTS_MAPS:
+    {
       RCLCPP_INFO_STREAM(this->get_logger(), "Loading keypoints maps from PCD.");
       this->LidarSlam.LoadMapsFromPCD(msg.string_arg);
       break;
+    }
 
     case lidar_slam::msg::SlamCommand::OPTIMIZE_GRAPH:
+    {
       if ((!this->UseExtSensor[LidarSlam::GPS] && !this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR])
             || this->LidarSlam.GetSensorMaxMeasures() < 2 || this->LidarSlam.GetLoggingTimeout() < 0.2)
       {
@@ -838,6 +849,29 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
         publishWithCast(this->Publishers[PGO_PATH], nav_msgs::msg::Path, optimSlamTraj);
       }
       break;
+    }
+
+    case lidar_slam::msg::SlamCommand::SWITCH_SENSOR:
+    {
+      // Get sensor to enable/disable
+      LidarSlam::ExternalSensor sensor;
+      try
+      {
+        sensor = static_cast<LidarSlam::ExternalSensor>(std::stoi(msg.string_arg));
+      }
+      catch(...)
+      {
+        RCLCPP_WARN_STREAM(this->get_logger(), "External sensor #" << msg.string_arg << " does not exist.");
+        break;
+      }
+
+      std::string onOff;
+      onOff = this->UseExtSensor[sensor]? "Disabling " : "Enabling ";
+      RCLCPP_INFO_STREAM(this->get_logger(), onOff << LidarSlam::ExternalSensorNames.at(sensor));
+      this->UseExtSensor[sensor] = !this->UseExtSensor[sensor];
+      break;
+    }
+
 
     // Unknown command
     default:
