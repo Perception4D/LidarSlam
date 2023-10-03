@@ -290,6 +290,26 @@ void LidarSlamNode::ScanCallback(const CloudS::Ptr cloudS_ptr)
 }
 
 //------------------------------------------------------------------------------
+void LidarSlamNode::SecondaryScanCallback(const CloudS::Ptr cloudS_ptr)
+{
+  if (!this->SlamEnabled)
+    return;
+
+  if (cloudS_ptr->empty())
+  {
+    ROS_WARN_STREAM("Secondary input point cloud sent by Lidar sensor driver is empty -> ignoring message");
+    return;
+  }
+
+  // Update TF from BASE to LiDAR for this device
+  if (!this->UpdateBaseToLidarOffset(cloudS_ptr->header.frame_id, cloudS_ptr->front().device_id))
+    return;
+
+  // Add new frame to SLAM input frames
+  this->Frames.push_back(cloudS_ptr);
+}
+
+//------------------------------------------------------------------------------
 void LidarSlamNode::ImageCallback(const sensor_msgs::Image& imageMsg)
 {
   if (!this->SlamEnabled)
