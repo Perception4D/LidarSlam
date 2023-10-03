@@ -346,30 +346,6 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
 }
 
 //------------------------------------------------------------------------------
-void LidarSlamNode::SecondaryScanCallback(const Pcl2_msg& pcl_msg)
-{
-  if (!this->SlamEnabled)
-    return;
-
-  CloudS::Ptr cloudS_ptr = std::make_shared<CloudS>();
-
-  pcl::fromROSMsg(pcl_msg, *cloudS_ptr);
-
-  if(cloudS_ptr->empty())
-  {
-    RCLCPP_WARN(this->get_logger(), "Secondary input point cloud sent by Lidar sensor driver is empty -> ignoring message");
-    return;
-  }
-
-  // Update TF from BASE to LiDAR for this device
-  if (!this->UpdateBaseToLidarOffset(cloudS_ptr->header.frame_id, cloudS_ptr->front().device_id))
-    return;
-
-  // Add new frame to SLAM input frames
-  this->Frames.push_back(cloudS_ptr);
-}
-
-//------------------------------------------------------------------------------
 void LidarSlamNode::ImageCallback(const sensor_msgs::msg::Image& imageMsg)
 {
   if (!this->SlamEnabled)
