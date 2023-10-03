@@ -22,6 +22,10 @@ float32 overlap
 # Bad values are lower than 50
 int16 nb_matches
 
+# This value indicates if the estimated pose
+# respects the specified physical constraints on velocity and acceleration
+bool comply_motion_limits
+
 # Standard deviation of the position error based on the pose
 # covariance supplied by the SLAM algorithm
 float32 std_position_error
@@ -29,10 +33,6 @@ float32 std_position_error
 # Boolean based on the fusion of the previous estimators
 # to indicate whether or not the SLAM has failed
 bool failure
-
-# This value indicates if the estimated pose
-# respects the specified physical constraints on velocity and acceleration
-bool comply_motion_limits
 
 # This value indicates the computation time from data reception to pose output
 float32 computation_time

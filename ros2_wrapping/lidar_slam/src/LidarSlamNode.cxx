@@ -751,17 +751,17 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       break;
     }
 
-     // Enable/Disable the SLAM process
-      case lidar_slam::msg::SlamCommand::SWITCH_ON_OFF:
-      {
-        if (this->SlamEnabled)
-          RCLCPP_WARN_STREAM(this->get_logger(), "Disabling the SLAM process");
-        else
-          RCLCPP_WARN_STREAM(this->get_logger(), "Enabling again the SLAM process");
+    // Enable/Disable the SLAM process
+    case lidar_slam::msg::SlamCommand::SWITCH_ON_OFF:
+    {
+      if (this->SlamEnabled)
+        RCLCPP_WARN_STREAM(this->get_logger(), "Disabling the SLAM process");
+      else
+        RCLCPP_WARN_STREAM(this->get_logger(), "Enabling again the SLAM process");
 
-        this->SlamEnabled = !this->SlamEnabled;
-        break;
-      }
+      this->SlamEnabled = !this->SlamEnabled;
+      break;
+    }
 
     // Save SLAM keypoints maps to PCD files
     case lidar_slam::msg::SlamCommand::SAVE_KEYPOINTS_MAPS:
@@ -1233,11 +1233,11 @@ void LidarSlamNode::SetSlamParameters()
     this->LidarSlam.SetPoseLimits(pos_array);
   }
 
-  SetSlamParam(int, "slam.confidence.window", ConfidenceWindow)
+  SetSlamParam(int,   "slam.confidence.window", ConfidenceWindow)
   SetSlamParam(float, "slam.confidence.overlap.gap_threshold", OverlapDerivativeThreshold)
   SetSlamParam(float, "slam.confidence.position_error.threshold", PositionErrorThreshold)
-  this->RecoveryTime = this->get_parameter_or("slam/confidence/failure_detector/recovery_time", this->RecoveryTime);
-  SetSlamParam(bool,  "slam/confidence/failure_detector/enable", FailureDetectionEnabled)
+  this->get_parameter("slam.confidence.failure_detector.recovery_time", this->RecoveryTime);
+  SetSlamParam(bool,  "slam.confidence.failure_detector.enable", FailureDetectionEnabled)
 
   // Keyframes
   SetSlamParam(double, "slam.keyframes.distance_threshold", KfDistanceThreshold)
