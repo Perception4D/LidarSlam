@@ -8,6 +8,8 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
+option(BUILD_SLAM_LIB "Build the SLAM library before the ROS2 package" ON)
+
 # Add binobj to increase address capacity on Windows
 if (WIN32)
   add_compile_options(/bigobj)
@@ -73,12 +75,21 @@ if (SUPERBUILD_INSTALL_DIR)
     message(FATAL_ERROR "PCL was built within the superbuild : this would cause runtime issues so the process is aborted.
     Rebuild the superbuild from scratch without PCL (`-DINSTALL_PCL=OFF`) and rebuild the ROS package afterwards.")
   endif()
+  if (NOT BUILD_SLAM_LIB)
+    SET_SB_LIB(LidarSlam "${SUPERBUILD_INSTALL_DIR}/lib/cmake/LidarSlam")
+  endif()
 endif()
 
 
 # Build LidarSlam lib which lies in parent directory
-set(slamlib_from_subdirectory true)
-add_subdirectory(../.. ${CMAKE_BINARY_DIR}/slam)
+if (BUILD_SLAM_LIB)
+  set(slamlib_from_subdirectory true)
+  add_subdirectory(../.. ${CMAKE_BINARY_DIR}/slam)
+  set(LidarSlam_target LidarSlam)
+else()
+  find_package(LidarSlam REQUIRED)
+  set(LidarSlam_target LidarSlam::LidarSlam)
+endif()
 
 # Generate slam interfaces
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -127,7 +138,7 @@ ament_target_dependencies(lidar_slam_node
 )
 
 target_link_libraries(lidar_slam_node
-  LidarSlam
+  ${LidarSlam_target}
   "${cpp_typesupport_target}"
   ${optional_LIBRARIES}
   )
@@ -142,7 +153,7 @@ ament_target_dependencies(aggregation_node
   geometry_msgs
 )
 target_link_libraries(aggregation_node
-  LidarSlam
+  ${LidarSlam_target}
   "${cpp_typesupport_target}"
 )
 
