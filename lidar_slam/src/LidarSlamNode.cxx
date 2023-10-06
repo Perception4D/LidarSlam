@@ -32,6 +32,8 @@
 
 #define BOLD_GREEN(s) "\033[1;32m" << s << "\033[0m"
 
+static const std::vector<std::string> DELIMITERS = {";", ",", " ", "\t"};
+
 // Macro to publish with a cast toward the type of publisher
 // because Ros2, the publisher has a template
 #define publishWithCast(publisher, type_msg, message) \
@@ -272,8 +274,11 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
     // Fill Frames with pointcloud
     this->Frames = {cloudS_ptr};
     this->MultiLidarsCounter.insert(std::make_pair(cloudS_ptr->front().device_id, 1));
+  
+    this->MainLidarId = cloudS_ptr->header.frame_id;
 
     this->StartTime = this->now().seconds();
+
     if (!this->LidarTimePosix)
     {
       // Compute time offset
@@ -525,85 +530,90 @@ void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray&
 }
 
 //------------------------------------------------------------------------------
-void LidarSlamNode::LoadLandmarks(const std::string& path)
+std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& path,
+                                                             unsigned int nbFields,
+                                                             unsigned int nbHeaderLines)
 {
   // Check the file
   if (path.substr(path.find_last_of(".") + 1) != "csv")
   {
-    RCLCPP_ERROR(this->get_logger(), "The landmarks file is not csv : landmarks absolute constraint can not be used");
-    return;
+    RCLCPP_ERROR(this->get_logger(), "The file is not CSV! Cancel loading");
+    return {};
   }
 
   std::ifstream lmFile(path);
   if (lmFile.fail())
   {
-    RCLCPP_ERROR_STREAM(this->get_logger(), "The landmarks csv file " << path << " was not found : landmarks absolute constraint can not be used");
-    return;
+    RCLCPP_ERROR_STREAM(this->get_logger(), "The CSV file " << path << " was not found!");
+    return {};
   }
 
-  const unsigned int fieldsNumber = 43;
   // Check which delimiter is used
   std::string lmStr;
-  std::vector<std::string> delimiters = {";", ",", " ", "\t"};
   std::string delimiter;
   getline (lmFile, lmStr);
   std::vector<std::string> fields;
 
-  for (const auto& del : delimiters)
+  // Get the first data line (after header)
+  for (int i = 0; i <= nbHeaderLines; ++i)
+    std::getline(lmFile, lmStr);
+
+  for (const auto& del : DELIMITERS)
   {
     fields.clear();
     size_t pos = 0;
-    std::string headerLine = lmStr;
-    pos = headerLine.find(del);
+    std::string firstLine = lmStr;
+    pos = firstLine.find(del);
     while (pos != std::string::npos)
     {
-      fields.push_back(headerLine.substr(0, pos));
-      headerLine.erase(0, pos + del.length());
-      pos = headerLine.find(del);
+      fields.push_back(firstLine.substr(0, pos));
+      firstLine.erase(0, pos + del.length());
+      pos = firstLine.find(del);
     }
     // If there is some element after the last delimiter, add it
-    if (!headerLine.substr(0, pos).empty())
-      fields.push_back(headerLine.substr(0, pos));
+    if (!firstLine.substr(0, pos).empty())
+      fields.push_back(firstLine.substr(0, pos));
     // Check that the number of fields is correct
-    if (fields.size() == fieldsNumber)
+    if (fields.size() == nbFields)
     {
       delimiter = del;
       break;
     }
   }
-  if (fields.size() != fieldsNumber)
+  if (fields.size() != nbFields)
   {
-    RCLCPP_WARN_STREAM(this->get_logger(), "The landmarks csv file is ill formed : " << fields.size() << " fields were found (" << fieldsNumber
-                    << " expected), landmarks absolute poses will not be used");
-    return;
+    RCLCPP_WARN_STREAM(this->get_logger(), "The CSV file is ill formed : " << fields.size() << " fields were found ("
+                                            << nbFields << " expected), the loading is cancelled");
+    return {};
   }
 
-  int lineIdx = 1;
-  int ntags = 0;
+  std::vector<std::vector<std::string>> lines;
+
+  int lineIdx = nbHeaderLines;
   do
   {
     size_t pos = 0;
-    std::vector<std::string> lm;
+    std::vector<std::string> sentence;
     while ((pos = lmStr.find(delimiter)) != std::string::npos)
     {
       // Remove potential extra spaces after the delimiter
       unsigned int charIdx = 0;
       while (charIdx < lmStr.size() && lmStr[charIdx] == ' ')
         ++charIdx;
-      lm.push_back(lmStr.substr(charIdx, pos));
+      sentence.push_back(lmStr.substr(charIdx, pos));
       lmStr.erase(0, pos + delimiter.length());
     }
-    lm.push_back(lmStr.substr(0, pos));
-    if (lm.size() != fieldsNumber)
+    sentence.push_back(lmStr.substr(0, pos));
+    if (sentence.size() != nbFields)
     {
-      RCLCPP_WARN_STREAM(this->get_logger(), "landmark on line " + std::to_string(lineIdx) + " is not correct -> Skip");
+      RCLCPP_WARN_STREAM(this->get_logger(), "data on line " + std::to_string(lineIdx) + " of the CSV file is not correct -> Skip");
       ++lineIdx;
       continue;
     }
 
     // Check numerical values in the studied line
     bool numericalIssue = false;
-    for (std::string field : lm)
+    for (std::string field : sentence)
     {
       try
       {
@@ -617,36 +627,86 @@ void LidarSlamNode::LoadLandmarks(const std::string& path)
     }
     if (numericalIssue)
     {
-      // If this is the first line, it might be a header line,
-      // Else, print a warning
-      if (lineIdx > 1)
-        RCLCPP_WARN_STREAM(this->get_logger(), "landmark on line " + std::to_string(lineIdx) + " contains a not numerical value -> Skip");
+      RCLCPP_WARN_STREAM(this->get_logger(), "Data on line " + std::to_string(lineIdx) + " contains a not numerical value -> Skip");
       ++lineIdx;
       continue;
     }
 
+    lines.push_back(sentence);
+    ++lineIdx;
+  }
+  while (std::getline(lmFile, lmStr));
+
+  lmFile.close();
+  return lines;
+}
+
+//------------------------------------------------------------------------------
+std::string LidarSlamNode::ReadPoses(const std::string& path)
+{
+  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 13, 2);
+  if (lines.empty())
+  {
+    RCLCPP_ERROR_STREAM(this->get_logger(), "Cannot read file :" << path << ", poses are not loaded");
+    return "";
+  }
+
+  // Get frame ID
+  std::ifstream lmFile(path);
+  std::string frameID;
+  std::getline(lmFile, frameID);
+  for (const auto& del : DELIMITERS)
+  {
+    if (frameID.find(del) != std::string::npos)
+    {
+      RCLCPP_ERROR_STREAM(this->get_logger(), "Frame ID is not specified in the first line of the CSV file, stop loading");
+      return "";
+    }
+  }
+
+  for (auto& l : lines)
+  {
+    // Build pose measurement
+    LidarSlam::ExternalSensors::PoseMeasurement poseMeas;
+    // Time
+    poseMeas.Time = std::stod(l[0]);
+    // Translation
+    for (int i = 0; i < 3; ++i)
+      poseMeas.Pose(i, 3) = std::stof(l[i + 1]);
+    // Rotation (format is col major to represent the orientation axis)
+    for (int i = 0; i < 3; ++i)
+    {
+      for (int j = 0; j < 3; ++j)
+        poseMeas.Pose.linear()(i, j) = std::stof(l[i + j*3 + 4]);
+    }
+    this->LidarSlam.AddPoseMeasurement(poseMeas);
+  }
+  return frameID;
+}
+
+//------------------------------------------------------------------------------
+void LidarSlamNode::ReadTags(const std::string& path)
+{
+  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 43, 1);
+  for (auto& l : lines)
+  {
     // Build measurement
     // Set landmark id
-    int id = std::stoi(lm[0]);
+    int id = std::stoi(l[0]);
     // Fill pose
     Eigen::Vector6d absolutePose;
-    absolutePose << std::stof(lm[1]), std::stof(lm[2]), std::stof(lm[3]), std::stof(lm[4]), std::stof(lm[5]), std::stof(lm[6]);
+    absolutePose << std::stof(l[1]), std::stof(l[2]), std::stof(l[3]), std::stof(l[4]), std::stof(l[5]), std::stof(l[6]);
     // Fill covariance
     Eigen::Matrix6d absolutePoseCovariance;
     for (int i = 0; i < 6; ++i)
     {
       for (int j = 0; j < 6; ++j)
-        absolutePoseCovariance(i, j) = std::stof(lm[7 + 6 * i + j]);
+        absolutePoseCovariance(i, j) = std::stof(l[7 + 6 * i + j]);
     }
     // Add a new landmark manager for absolute constraint computing
     this->LidarSlam.AddLandmarkManager(id, absolutePose, absolutePoseCovariance);
     RCLCPP_INFO_STREAM(this->get_logger(), "Tag #" << id << " initialized to \n" << absolutePose.transpose());
-    ++ntags;
-    ++lineIdx;
   }
-  while (getline (lmFile, lmStr));
-
-  lmFile.close();
 }
 
 //------------------------------------------------------------------------------
@@ -762,11 +822,67 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       this->SlamEnabled = !this->SlamEnabled;
       break;
     }
+   // Save current trajectory tracking base frame
+    case lidar_slam::msg::SlamCommand::SAVE_TRAJECTORY:
+    {
+      if (msg.string_arg.empty())
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "No path is specified, the trajectory cannot be saved");
+        return;
+      }
+      std::list<LidarSlam::LidarState> states = this->LidarSlam.GetLogStates();
+      if (states.empty())
+      {
+        RCLCPP_WARN_STREAM(this->get_logger(), "No current trajectory logged, nothing will be saved");
+        return;
+      }
+      RCLCPP_INFO_STREAM(this->get_logger(), "Saving current trajectory of base frame as " << msg.string_arg);
+      std::ofstream fout(msg.string_arg);
+      fout << this->TrackingFrameId << "\n";
+      fout << "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
+      for (auto& s : states)
+        fout << s;
+      fout.close();
+      break;
+    }
+
+    // Save current trajectory tracking Lidar
+    case lidar_slam::msg::SlamCommand::SAVE_LIDAR_TRAJECTORY:
+    {
+      if (msg.string_arg.empty())
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "No path is specified, the trajectory cannot be saved");
+        return;
+      }
+      Eigen::Isometry3d baseToLidar;
+      if (!Utils::Tf2LookupTransform(baseToLidar, *this->TfBuffer, this->TrackingFrameId, this->MainLidarId))
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "No transform from base to Lidar : cannot save Lidar trajectory.");
+        return;
+      }
+      std::list<LidarSlam::LidarState> states = this->LidarSlam.GetLogStates();
+      if (states.empty())
+      {
+        RCLCPP_WARN_STREAM(this->get_logger(), "No current trajectory logged, nothing will be saved");
+        return;
+      }
+      RCLCPP_INFO_STREAM(this->get_logger(), "Saving current trajectory of the Lidar sensor as " << msg.string_arg);
+      std::ofstream fout(msg.string_arg);
+      fout << this->MainLidarId << "\n";
+      fout << "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
+      for (auto& s : states)
+      {
+        s.Isometry = s.Isometry * baseToLidar;
+        fout << s;
+      }
+      fout.close();
+      break;
+    }
 
     // Save SLAM keypoints maps to PCD files
     case lidar_slam::msg::SlamCommand::SAVE_KEYPOINTS_MAPS:
     {
-      RCLCPP_INFO_STREAM(this->get_logger(), "Saving keypoints maps to PCD.");
+      RCLCPP_INFO_STREAM(this->get_logger(), "Saving keypoint maps as PCD files in " << msg.string_arg);
       if (this->LidarSlam.GetMapUpdate() == LidarSlam::MappingMode::NONE)
         RCLCPP_WARN(this->get_logger(), "The initially loaded maps were not modified but are saved anyway.");
       int pcdFormatInt;
@@ -825,7 +941,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
         if (!msg.string_arg.empty())
         {
           RCLCPP_INFO_STREAM(this->get_logger(), "Loading the absolute landmark poses");
-          this->LoadLandmarks(msg.string_arg);
+          this->ReadTags(msg.string_arg);
         }
         else if (this->LidarSlam.GetLandmarkConstraintLocal())
           RCLCPP_WARN(this->get_logger(), "No absolute landmark poses are supplied : the last estimated poses will be used");
@@ -872,6 +988,37 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       break;
     }
 
+    case lidar_slam::msg::SlamCommand::CALIBRATE_WITH_POSES:
+    {
+      if (msg.string_arg.empty())
+      {
+        RCLCPP_WARN_STREAM(this->get_logger(), "Cannot calibrate with poses, no file provided");
+        return;
+      }
+      // Clear current pose manager
+      this->LidarSlam.ResetSensor(true, LidarSlam::ExternalSensor::POSE);
+      // Fill external pose manager with poses from a CSV file
+      std::string frameId = this->ReadPoses(msg.string_arg);
+      if (frameId.empty())
+        return;
+      // Calibrate the external poses with current SLAM trajectory
+      this->LidarSlam.CalibrateWithExtPoses();
+      // Get the calibration
+      Eigen::Isometry3d calibration = this->LidarSlam.GetPoseCalibration();
+
+      //Publish new static TF
+      geometry_msgs::msg::TransformStamped tfStamped;
+      tfStamped.header.stamp = this->now();
+      tfStamped.header.frame_id = this->OdometryFrameId;
+      tfStamped.child_frame_id = frameId;
+      tfStamped.transform = Utils::IsometryToTfMsg(calibration);
+      this->StaticTfBroadcaster->sendTransform(tfStamped);
+
+      RCLCPP_INFO_STREAM(this->get_logger(), "Calibration estimated to :\n" << calibration.matrix());
+      // Clean the pose manager in the SLAM
+      this->LidarSlam.ResetSensor(true, LidarSlam::ExternalSensor::POSE);
+      break;
+    }
 
     // Unknown command
     default:
@@ -1314,7 +1461,7 @@ void LidarSlamNode::SetSlamInitialState()
   if (!lmpath.empty())
   {
     RCLCPP_INFO_STREAM(this->get_logger(), "Loading initial landmarks info from CSV.");
-    this->LoadLandmarks(lmpath);
+    this->ReadTags(lmpath);
     this->LidarSlam.SetLandmarkConstraintLocal(false);
   }
   else
