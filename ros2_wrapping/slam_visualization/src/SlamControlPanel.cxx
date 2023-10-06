@@ -49,34 +49,94 @@ void  SlamControlPanel::onInitialize()
 //----------------------------------------------------------------------------
 void SlamControlPanel::CreateLayout()
 {
+  // Reset the SLAM process
   auto resetStateButton = new QPushButton;
   resetStateButton->setText("Reset state");
   connect(resetStateButton, &QPushButton::clicked, this, &SlamControlPanel::ResetSlamState);
 
+  // Disable the update of the maps, they will remain the same
   auto disableMapUpdateButton = new QPushButton;
   disableMapUpdateButton->setText("Disable map update");
   connect(disableMapUpdateButton, &QPushButton::clicked, this, &SlamControlPanel::DisableMapUpdate);
 
+  // Enable the expansion of the maps, keeping the initial one
   auto enableMapExpansionButton = new QPushButton;
   enableMapExpansionButton->setText("Enable map expansion");
-  connect(
-    enableMapExpansionButton, &QPushButton::clicked, this, &SlamControlPanel::EnableMapExpansion);
+  connect(enableMapExpansionButton, &QPushButton::clicked, this, &SlamControlPanel::EnableMapExpansion);
 
+  // Enable the complete update of the maps
   auto enableMapUpdateButton = new QPushButton;
   enableMapUpdateButton->setText("Enable map update");
   connect(enableMapUpdateButton, &QPushButton::clicked, this, &SlamControlPanel::EnableMapUpdate);
 
+  // Turn on/off the SLAM process
+  auto switchOnOffButton = new QPushButton;
+  switchOnOffButton->setText("Switch on/off");
+  connect(switchOnOffButton, &QPushButton::clicked, this, &SlamControlPanel::SwitchOnOff);
+
+  // Save trajectory
+  this->SaveTrajButton = new QPushButton;
+  this->SaveTrajButton->setText("Save trajectory");
+  this->SaveTrajButton->setDisabled(true);
+  connect(this->SaveTrajButton, &QPushButton::clicked, this, &SlamControlPanel::SaveTraj);
+
+  auto trajPathEdit = new QLineEdit;
+  connect(trajPathEdit, &QLineEdit::textChanged, this, &SlamControlPanel::SetTrajPath);
+
+  // Create trajectory space with a button and a line edit to set a path
+  auto trajLayout = new QHBoxLayout;
+  trajLayout->addWidget(this->SaveTrajButton);
+  trajLayout->addWidget(trajPathEdit);
+
+  // Save maps
+  this->SaveMapsButton = new QPushButton;
+  this->SaveMapsButton->setText("Save maps");
+  this->SaveMapsButton->setDisabled(true);
+  connect(this->SaveMapsButton, &QPushButton::clicked, this, &SlamControlPanel::SaveMaps);
+
+  auto mapsPathEdit = new QLineEdit;
+  connect(mapsPathEdit, &QLineEdit::textChanged, this, &SlamControlPanel::SetMapsPath);
+
+  // Create maps space with a button and a line edit to set a path
+  auto mapsLayout = new QHBoxLayout;
+  mapsLayout->addWidget(this->SaveMapsButton);
+  mapsLayout->addWidget(mapsPathEdit);
+
+  // Calibrate with external poses
+  this->CalibrateButton = new QPushButton;
+  this->CalibrateButton->setText("Calibrate");
+  this->CalibrateButton->setDisabled(true);
+  connect(this->CalibrateButton, &QPushButton::clicked, this, &SlamControlPanel::Calibrate);
+
+  auto posesPathEdit = new QLineEdit;
+  connect(posesPathEdit, &QLineEdit::textChanged, this, &SlamControlPanel::SetPosesPath);
+
+  // Create poses space with a button and a line edit to set a path
+  auto calibrateLayout = new QHBoxLayout;
+  calibrateLayout->addWidget(this->CalibrateButton);
+  calibrateLayout->addWidget(posesPathEdit);
+
+  // Create the whole command space
   auto commandLayout = new QVBoxLayout;
   commandLayout->addWidget(resetStateButton);
   commandLayout->addWidget(disableMapUpdateButton);
   commandLayout->addWidget(enableMapExpansionButton);
   commandLayout->addWidget(enableMapUpdateButton);
+  commandLayout->addWidget(switchOnOffButton);
+  commandLayout->addLayout(trajLayout);
+  commandLayout->addLayout(mapsLayout);
+  commandLayout->addLayout(calibrateLayout);
 
   auto commandBox = new QGroupBox;
   commandBox->setLayout(commandLayout);
   commandBox->setTitle("Commands");
 
   // Confidence
+  auto failureLabel = new QLabel{ "SLAM has failed: " };
+  this->FailureValueLabel = new QLabel;
+  this->FailureValueLabel->setTextFormat(Qt::TextFormat::PlainText);
+  failureLabel->setBuddy(this->FailureValueLabel);
+
   auto overlapLabel = new QLabel{ "Overlap:" };
   this->OverlapValueLabel = new QLabel;
   this->OverlapValueLabel->setTextFormat(Qt::TextFormat::PlainText);
@@ -87,18 +147,27 @@ void SlamControlPanel::CreateLayout()
   this->ComplyMotionLimitsValueLabel->setTextFormat(Qt::TextFormat::PlainText);
   complyMotionLimitsLabel->setBuddy(this->ComplyMotionLimitsValueLabel);
 
+  auto stdPositionErrorValueLabel = new QLabel{ "Position error estimated: " };
+  this->StdPositionErrorValueLabel = new QLabel;
+  this->StdPositionErrorValueLabel->setTextFormat(Qt::TextFormat::PlainText);
+  stdPositionErrorValueLabel->setBuddy(this->ComplyMotionLimitsValueLabel);
+
   auto computationTimeLabel = new QLabel{ "Frame computation time: " };
   this->ComputationTimeValueLabel = new QLabel;
   this->ComputationTimeValueLabel->setTextFormat(Qt::TextFormat::PlainText);
   computationTimeLabel->setBuddy(this->ComputationTimeValueLabel);
 
   auto confidenceLayout = new QGridLayout;
-  confidenceLayout->addWidget(overlapLabel, 0, 0, Qt::AlignLeft);
-  confidenceLayout->addWidget(this->OverlapValueLabel, 0, 1, Qt::AlignRight);
-  confidenceLayout->addWidget(complyMotionLimitsLabel, 1, 0, Qt::AlignLeft);
-  confidenceLayout->addWidget(this->ComplyMotionLimitsValueLabel, 1, 1, Qt::AlignRight);
-  confidenceLayout->addWidget(computationTimeLabel, 2, 0, Qt::AlignLeft);
-  confidenceLayout->addWidget(this->ComputationTimeValueLabel, 2, 1, Qt::AlignRight);
+  confidenceLayout->addWidget(failureLabel, 1, 0, Qt::AlignLeft);
+  confidenceLayout->addWidget(this->FailureValueLabel, 1, 1, Qt::AlignRight);
+  confidenceLayout->addWidget(overlapLabel, 2,0, Qt::AlignLeft);
+  confidenceLayout->addWidget(this->OverlapValueLabel, 2, 1, Qt::AlignRight);
+  confidenceLayout->addWidget(complyMotionLimitsLabel, 3, 0, Qt::AlignLeft);
+  confidenceLayout->addWidget(this->ComplyMotionLimitsValueLabel, 3, 1, Qt::AlignRight);
+  confidenceLayout->addWidget(stdPositionErrorValueLabel, 4, 0, Qt::AlignLeft);
+  confidenceLayout->addWidget(this->StdPositionErrorValueLabel, 4, 1, Qt::AlignRight);
+  confidenceLayout->addWidget(computationTimeLabel, 5, 0, Qt::AlignLeft);
+  confidenceLayout->addWidget(this->ComputationTimeValueLabel, 5, 1, Qt::AlignRight);
 
   auto confidenceBox = new QGroupBox;
   confidenceBox->setTitle("Confidence estimator");
@@ -139,6 +208,45 @@ void SlamControlPanel::EnableMapUpdate()
 void SlamControlPanel::SwitchOnOff()
 {
   this->SendCommand(lidar_slam::msg::SlamCommand::SWITCH_ON_OFF);
+}
+
+//----------------------------------------------------------------------------
+void SlamControlPanel::SaveTraj()
+{
+  this->SendCommand(lidar_slam::msg::SlamCommand::SAVE_TRAJECTORY, this->TrajectoryPath);
+}
+
+//----------------------------------------------------------------------------
+void SlamControlPanel::SetTrajPath(const QString &text)
+{
+  this->SaveTrajButton->setDisabled(false);
+  this->TrajectoryPath = text.toStdString();
+}
+
+//----------------------------------------------------------------------------
+void SlamControlPanel::SaveMaps()
+{
+  this->SendCommand(lidar_slam::msg::SlamCommand::SAVE_FILTERED_KEYPOINTS_MAPS, this->MapsPath);
+}
+
+//----------------------------------------------------------------------------
+void SlamControlPanel::SetMapsPath(const QString &text)
+{
+  this->SaveMapsButton->setDisabled(false);
+  this->MapsPath = text.toStdString();
+}
+
+//----------------------------------------------------------------------------
+void SlamControlPanel::Calibrate()
+{
+  this->SendCommand(lidar_slam::msg::SlamCommand::CALIBRATE_WITH_POSES, this->PosesPath);
+}
+
+//----------------------------------------------------------------------------
+void SlamControlPanel::SetPosesPath(const QString &text)
+{
+  this->CalibrateButton->setDisabled(false);
+  this->PosesPath = text.toStdString();
 }
 
 //----------------------------------------------------------------------------
