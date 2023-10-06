@@ -136,6 +136,12 @@ void SlamControlPanel::EnableMapUpdate()
 }
 
 //----------------------------------------------------------------------------
+void SlamControlPanel::SwitchOnOff()
+{
+  this->SendCommand(lidar_slam::msg::SlamCommand::SWITCH_ON_OFF);
+}
+
+//----------------------------------------------------------------------------
 void SlamControlPanel::SendCommand(
   lidar_slam::msg::SlamCommand::_command_type command, lidar_slam::msg::SlamCommand::_string_arg_type arg)
 {
@@ -148,15 +154,25 @@ void SlamControlPanel::SendCommand(
 //----------------------------------------------------------------------------
 void SlamControlPanel::SlamConfidenceCallback(const lidar_slam::msg::Confidence &confidence)
 {
+  QPalette palette1 = this->FailureValueLabel->palette();
+  palette1.setColor(this->FailureValueLabel->foregroundRole(),
+    confidence.failure ? Qt::red : Qt::black);
+
+  this->FailureValueLabel->setPalette(palette1);
+  this->FailureValueLabel->setText(confidence.failure ? "Yes" : "No");
+
   this->OverlapValueLabel->setText(
     QString::number(static_cast<int>(confidence.overlap * 100)) + '%');
 
-  QPalette palette = this->ComplyMotionLimitsValueLabel->palette();
-  palette.setColor(this->ComplyMotionLimitsValueLabel->foregroundRole(),
+  QPalette palette2 = this->ComplyMotionLimitsValueLabel->palette();
+  palette2.setColor(this->ComplyMotionLimitsValueLabel->foregroundRole(),
     confidence.comply_motion_limits ? Qt::black : Qt::red);
 
-  this->ComplyMotionLimitsValueLabel->setPalette(palette);
+  this->ComplyMotionLimitsValueLabel->setPalette(palette2);
   this->ComplyMotionLimitsValueLabel->setText(confidence.comply_motion_limits ? "Yes" : "No");
+
+  this->StdPositionErrorValueLabel->setText(
+    QString::number(confidence.std_position_error) + " m");
 
   this->ComputationTimeValueLabel->setText(
     QString::number(confidence.computation_time * 1000.0) + " ms");
