@@ -11,9 +11,11 @@
       - [Online configuration](#online-configuration)
         - [Reset state](#reset-state)
         - [Map update modes](#map-update-modes)
+        - [Save the current trajectory](#save-the-current-trajectory)
         - [Save maps](#save-maps)
         - [Set pose](#set-pose)
         - [Switch ON/OFF the process](#switch-onoff-the-process)
+        - [Calibrate with external pose sensor](#calibrate-with-external-pose-sensor)
       - [Failure detection](#failure-detection)
   - [Optional external sensors use](#optional-external-sensors-use)
     - [Optional GPS use](#optional-gps-use)
@@ -157,7 +159,7 @@ At any time, the SLAM state can be reset meaning the maps, the trajectory and th
 
 ##### Map update modes
 
-At any time, commands `lidar_slam/SlamCommand/DISABLE_SLAM_MAP_UPDATE`, `lidar_slam/SlamCommand/ENABLE_SLAM_MAP_EXPANSION` and `lidar_slam/SlamCommand/ENABLE_SLAM_MAP_UPDATE` can be published to '*slam_command*' topic as *lidar_slam/msg/SlamCommand* to change SLAM map update mode.
+At any time, commands `lidar_slam/msg/SlamCommand/DISABLE_SLAM_MAP_UPDATE`, `lidar_slam/msg/SlamCommand/ENABLE_SLAM_MAP_EXPANSION` and `lidar_slam/msg/SlamCommand/ENABLE_SLAM_MAP_UPDATE` can be published to '*slam_command*' topic as *lidar_slam/msg/SlamCommand* to change SLAM map update mode.
 - `DISABLE_SLAM_MAP_UPDATE` : when an initial map is loaded, it is kept untouched through the SLAM process.
 - `ENABLE_SLAM_MAP_EXPANSION` : when an initial map is loaded, its points are remained untouched but new points can be added if they lay in an unexplored area
 - `ENABLE_SLAM_MAP_UPDATE` : the map is updated at any time
@@ -167,6 +169,31 @@ _NOTE_ : if no initial map is loaded, ENABLE_SLAM_MAP_EXPANSION and ENABLE_SLAM_
 Example :
 ```bash
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 9"
+```
+
+##### Save the current trajectory
+At any time, the logged poses can be saved in a trajectory CSV file. This file contains several fields to represent the time and the transformation:
+* Time (in seconds)
+* X
+* Y
+* Z
+* rot(0,0)
+* rot(1,0)
+* ...
+* rot(3,3)
+
+**WARNING** Note that the rotation is represented in column major.
+
+The first line of the file contains the frame ID of the pose that is tracked.
+The second line is a header line with the field names.
+
+One can save the trajectory of the base frame :
+```bash
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 14, string_arg: /path/to/traj/traj.csv}"
+```
+or the trajectory of the LiDAR sensor :
+```bash
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 15, string_arg: /path/to/traj/traj.csv}"
 ```
 
 ##### Save maps
@@ -187,9 +214,18 @@ At any time, a pose message (`PoseWithCovarianceStamped`) can be sent through th
 ##### Switch ON/OFF the process
 At any time, the SLAM can be switched ON/OFF using the command message :
 ```bash
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 14"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 13"
 ```
 This disables the sensor messages handling of the node.
+
+##### Calibrate with external pose sensor
+Another command allows to find the calibration transform between the current tracked pose and the pose tracked by an external sensor and stored in a CSV file. This CSV file must have the same format as the one described in [this section](#save-the-current-trajectory).
+
+```bash
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 30, string_arg: /path/to/external/poses.csv}"
+```
+
+This command allows to estimate the calibration and to send a static TF transform between the base frame and the frame specified in the CSV file.
 
 #### Failure detection
 
@@ -250,7 +286,7 @@ To be able to publish local SLAM odometry as GPS coordinates, it is necessary to
 
 If GPS use is enabled, *LidarSlamNode* can try to estimate the transform that links these frames by aligning SLAM and GPS trajectories with rigid ICP matching. The resulting transform is published as a static transform on TF server.
 
-The calibration process can be triggered at any time by publishing the `lidar_slam/SlamCommand/GPS_SLAM_CALIBRATION` command to '*slam_command*' topic.
+The calibration process can be triggered at any time by publishing the `lidar_slam/msg/SlamCommand/GPS_SLAM_CALIBRATION` command to '*slam_command*' topic.
 
 1. NOTE: During this auto-calibration process, GPS position and SLAM should be precise enough to guarantee a robust calibration.
 2. NOTE: As registration is done via ICP without any other prior, the trajectories need to have some turns in order to fully constrain the problem. If the movement is only following a straight line, 1 rotation remains unconstrained, and could lead to serious artefacts.
@@ -268,7 +304,7 @@ ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 0"  # Trigg
 
 Available GPS positions can also be used to optimize the SLAM trajectory by correcting drift error accumulated over time. The GPS positions and their associated covariances can be used as priors to optimize the SLAM pose graph with g2o framework. SLAM maps will also be corrected. The [map/odom calibration](#map-gps--odom-slam-calibration) will also be computed and published as a static TF (but should be more precise than the global ICP calibration process).
 
-PGO can be triggered at any time by publishing the `lidar_slam/SlamCommand/GPS_SLAM_POSE_GRAPH_OPTIMIZATION` command to '*slam_command*' topic.
+PGO can be triggered at any time by publishing the `lidar_slam/msg/SlamCommand/GPS_SLAM_POSE_GRAPH_OPTIMIZATION` command to '*slam_command*' topic.
 
 NOTE: This PGO is not real-time, and should therefore be run when system is not or slowly moving.
 
@@ -283,7 +319,7 @@ ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 20"  # Trig
 
 ##### Setting SLAM pose from GPS pose guess
 
-If you want to run another bag on the same zone to refine the SLAM map or to run localization only with the previously built map, you need to give an approximate new init pose to SLAM if trajectory is not continuous with end pose. You can send `lidar_slam/SlamCommand/SET_SLAM_POSE_FROM_GPS` command to '*slam_command*' topic to use the last received GPS position in a pose guess for SLAM.
+If you want to run another bag on the same zone to refine the SLAM map or to run localization only with the previously built map, you need to give an approximate new init pose to SLAM if trajectory is not continuous with end pose. You can send `lidar_slam/msg/SlamCommand/SET_SLAM_POSE_FROM_GPS` command to '*slam_command*' topic to use the last received GPS position in a pose guess for SLAM.
 
 NOTE: To be able to use this command, SLAM and GPS coordinates must be precisely linked with a valid TF tree. Be sure you already called [pose graph optimization](#slam-pose-graph-optimization-pgo-with-gps-prior) or at least [map/odom calibration](#map-gps--odom-slam-calibration). Moreover, the orientation will be set as odometry frame.
 

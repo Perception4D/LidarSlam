@@ -22,6 +22,7 @@
 #include <QLabel>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
 
@@ -92,6 +93,42 @@ public Q_SLOTS:
    */
   void SwitchOnOff();
 
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Send a SAVE_TRAJECTORY command to the slam node.
+   */
+  void SaveTraj();
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Set the path to save the trajectory
+   */
+  void SetTrajPath(const QString &text);
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Send a SAVE_TRAJECTORY command to the slam node.
+   */
+  void SaveMaps();
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Set the path to save the trajectory
+   */
+  void SetMapsPath(const QString &text);
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Send a SAVE_TRAJECTORY command to the slam node.
+   */
+  void Calibrate();
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Set the path to save the trajectory
+   */
+  void SetPosesPath(const QString &text);
+
 private:
   //----------------------------------------------------------------------------
   /*!
@@ -123,12 +160,20 @@ private:
   QLabel* ComplyMotionLimitsValueLabel = nullptr;
   QLabel* StdPositionErrorValueLabel = nullptr;
   QLabel* ComputationTimeValueLabel = nullptr;
+  QPushButton* SaveTrajButton = nullptr;
+  QPushButton* SaveMapsButton = nullptr;
+  QPushButton* CalibrateButton = nullptr;
 
   // ROS interface
   rclcpp::Node::SharedPtr visualization_node;
   rclcpp::CallbackGroup::SharedPtr SlamCallbackGroup;
   rclcpp::Publisher<lidar_slam::msg::SlamCommand>::SharedPtr CommandPublisher;
   rclcpp::Subscription<lidar_slam::msg::Confidence>::SharedPtr ConfidenceSubscriber;
+
+  // Path storage
+  std::string TrajectoryPath;
+  std::string MapsPath;
+  std::string PosesPath;
 };
 
 } // namespace lidar_visualization.
