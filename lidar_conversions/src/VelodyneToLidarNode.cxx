@@ -53,6 +53,10 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
     return;
   }
 
+  // Fill the map of device_id if the device hasn't already been attributed one
+  if (this->DeviceIdMap.count(cloudV.header.frame_id) == 0)
+    this->DeviceIdMap[cloudV.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
+
   // We compute the rotation duration : to do so, we need to ignore the first frame of the LiDAR,
   // but it doesn't really matter as it is just 100ms ignored
   double currentTimeStamp = cloudV.header.stamp;

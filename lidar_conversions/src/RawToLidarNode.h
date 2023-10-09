@@ -98,7 +98,7 @@ private:
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
 
   // Map to store the device id of each device (in case of multilidar).
-  std::map<std::string, int> DeviceIdMap;
+  std::map<std::string, uint8_t> DeviceIdMap;
 
   // Number of lasers of the LiDAR.
   double NbLasers = 16.;
