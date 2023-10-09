@@ -69,7 +69,7 @@ private:
   rclcpp::Subscription<Pcl2_msg>::SharedPtr Listener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
 
-  std::map<std::string, int> DeviceIdMap;  ///< Map to store the device id of each device (in case of multilidar).
+  std::map<std::string, uint8_t> DeviceIdMap;  ///< Map to store the device id of each device (in case of multilidar).
 
   double NbLasers = 16.; ///< Number of lasers of the LiDAR. Optional as it can be taken from header attribute .height of the PointCloud.
   bool InitEstimParamToDo = true; ///< Flag to initialize the parameters useful for laser_id and time estimations.

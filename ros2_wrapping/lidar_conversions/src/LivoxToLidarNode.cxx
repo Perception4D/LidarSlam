@@ -62,7 +62,7 @@ void LivoxToLidarNode::PointCloud2Callback(const Pcl2_msg& msg_received)
 
   // Fill the map of device_id if the device hasn't already been attributed one
   if (this->DeviceIdMap.count(cloudL.header.frame_id) == 0)
-    this->DeviceIdMap[cloudL.header.frame_id] = this->DeviceIdMap.size();
+    this->DeviceIdMap[cloudL.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
 
   // Init SLAM pointcloud
   CloudS cloudS;

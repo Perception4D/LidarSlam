@@ -55,7 +55,7 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
 
   // Fill the map of device_id if the device hasn't already been attributed one
   if (this->DeviceIdMap.count(cloudRaw.header.frame_id) == 0)
-    this->DeviceIdMap[cloudRaw.header.frame_id] = this->DeviceIdMap.size();
+    this->DeviceIdMap[cloudRaw.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
 
   // We compute the rotation duration : to do so, we need to ignore the first frame of the LiDAR,
   // but it doesn't really matter as it is just 100ms ignored
