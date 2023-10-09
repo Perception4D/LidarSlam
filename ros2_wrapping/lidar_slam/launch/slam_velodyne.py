@@ -76,6 +76,7 @@ def generate_launch_description():
         params_velod_pcl = yaml.safe_load(f)['velodyne_transform_node']['ros__parameters']
 
     params_velod_pcl['calibration']    = LaunchConfiguration('calibration_file_path')
+    params_velod_pcl["model"]          = LaunchConfiguration('model')
     params_velod_pcl["min_range"]      = 0.4
     params_velod_pcl["max_range"]      = 130.0
     params_velod_pcl["organize_cloud"] = False
