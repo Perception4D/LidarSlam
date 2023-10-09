@@ -44,7 +44,7 @@ RawToLidarNode::RawToLidarNode(std::string node_name, const rclcpp::NodeOptions 
 
 //------------------------------------------------------------------------------
 void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
-{
+ {
   CloudXYZ cloudRaw = Utils::InitCloudRaw<CloudXYZ>(msg_received);
   // If input cloud is empty, ignore it
   if (cloudRaw.empty())
@@ -55,13 +55,14 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
 
   // Fill the map of device_id if the device hasn't already been attributed one
   if (this->DeviceIdMap.count(cloudRaw.header.frame_id) == 0)
-    this->DeviceIdMap[cloudRaw.header.frame_id] = this->DeviceIdMap.size();
+    this->DeviceIdMap[cloudRaw.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
 
-  // We compute RPM : to do so, we need to ignore the first frame of the LiDAR, but it doesn't really matter as it is just 100ms ignored
+  // We compute the rotation duration : to do so, we need to ignore the first frame of the LiDAR,
+  // but it doesn't really matter as it is just 100ms ignored
   double currentTimeStamp = cloudRaw.header.stamp;
-  this->Rpm = Utils::EstimateRpm(currentTimeStamp, this->PreviousTimeStamp, this->Rpm, this->PossibleFrequencies);
-  // We now ignore first frame because it has no RPM
-  if (this->Rpm < 0.)
+  this->RotationDuration = Utils::EstimateFrameTime(currentTimeStamp, this->PreviousTimeStamp, this->RotationDuration, this->PossibleFrequencies);
+  // We now ignore first frame because it has no rotation duration
+  if (this->RotationDuration < 0.)
     return;
 
   CloudS cloudS = Utils::InitCloudS<CloudXYZ>(cloudRaw);
@@ -74,7 +75,6 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
     Utils::InitEstimationParameters<PointXYZ>(cloudRaw, nLasers, this->Clusters, this->ClockwiseRotationBool);
     this->InitEstimParamToDo = false;
   }
-  double rotationTime = 1. / (this->Rpm * 60.);
   Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
 
   // Build SLAM pointcloud
@@ -97,7 +97,7 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
     slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
     slamPoint.intensity = 0.;
     slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nLasers, this->Clusters);
-    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, rotationTime, firstPoint, this->ClockwiseRotationBool);
+    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->ClockwiseRotationBool);
 
     cloudS.push_back(slamPoint);
   }
@@ -122,9 +122,9 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
 
   // We compute RPM : to do so, we need to ignore the first frame of the LiDAR, but it doesn't really matter as it is just 100ms ignored
   double currentTimeStamp = cloudRaw.header.stamp;
-  this->Rpm = Utils::EstimateRpm(currentTimeStamp, this->PreviousTimeStamp, this->Rpm, this->PossibleFrequencies);
+  this->RotationDuration = Utils::EstimateFrameTime(currentTimeStamp, this->PreviousTimeStamp, this->RotationDuration, this->PossibleFrequencies);
   // We now ignore first frame because it has no RPM
-  if (this->Rpm < 0.)
+  if (this->RotationDuration < 0.)
     return;
 
   CloudS cloudS = Utils::InitCloudS<CloudXYZI>(cloudRaw);
@@ -137,7 +137,6 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
     Utils::InitEstimationParameters<PointXYZI>(cloudRaw, nLasers, this->Clusters, this->ClockwiseRotationBool);
     this->InitEstimParamToDo = false;
   }
-  double rotationTime = 1. / (this->Rpm * 60.);
   Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
 
   // Build SLAM pointcloud
@@ -160,11 +159,10 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
     slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
     slamPoint.intensity = rawPoint.intensity;
     slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nLasers, this->Clusters);
-    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, rotationTime, firstPoint, this->ClockwiseRotationBool);
+    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->ClockwiseRotationBool);
 
     cloudS.push_back(slamPoint);
   }
-
   PublishMsg(cloudS);
 }
 }  // namespace lidar_conversions

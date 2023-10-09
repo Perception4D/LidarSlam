@@ -98,7 +98,7 @@ private:
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
 
   // Map to store the device id of each device (in case of multilidar).
-  std::map<std::string, int> DeviceIdMap;
+  std::map<std::string, uint8_t> DeviceIdMap;
 
   // Number of lasers of the LiDAR.
   double NbLasers = 16.;
@@ -106,7 +106,7 @@ private:
   // Useful variable to estimate RPM
   // NOTE: to be precise, this RPM estimation requires that each input
   // scan is an entire scan covering excatly 360°
-  double Rpm = -1.;
+  double RotationDuration = -1.;
   double PreviousTimeStamp = -1.;
   const std::vector<double> PossibleFrequencies; ///< Vector of all the possible frequencies of a certain type of LiDAR
 

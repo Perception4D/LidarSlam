@@ -53,11 +53,16 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
     return;
   }
 
-  // We compute RPM : to do so, we need to ignore the first frame of the LiDAR, but it doesn't really matter as it is just 100ms ignored
+  // Fill the map of device_id if the device hasn't already been attributed one
+  if (this->DeviceIdMap.count(cloudV.header.frame_id) == 0)
+    this->DeviceIdMap[cloudV.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
+
+  // We compute the rotation duration : to do so, we need to ignore the first frame of the LiDAR,
+  // but it doesn't really matter as it is just 100ms ignored
   double currentTimeStamp = cloudV.header.stamp;
-  this->Rpm = Utils::EstimateRpm(currentTimeStamp, this->PreviousTimeStamp, this->Rpm, this->PossibleFrequencies);
-  // We now ignore first frame because it has no RPM
-  if (this->Rpm < 0.)
+  this->RotationDuration = Utils::EstimateFrameTime(currentTimeStamp, this->PreviousTimeStamp, this->RotationDuration, this->PossibleFrequencies);
+  // We now ignore first frame because it has no rotation duration
+  if (this->RotationDuration < 0.)
     return;
 
   // Init SLAM pointcloud
@@ -71,7 +76,6 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
     Utils::InitEstimationParameters<PointV>(cloudV, nLasers, this->Clusters, this->ClockwiseRotationBool);
     this->InitEstimParamToDo = false;
   }
-  double rotationTime = 1. / (this->Rpm * 60.);
   Eigen::Vector2d firstPoint = {cloudV[0].x, cloudV[0].y};
 
   // Check if time field looks properly set
@@ -98,7 +102,7 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
     if (isTimeValid)
       slamPoint.time = velodynePoint.time;
     else
-      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, rotationTime, firstPoint, this->ClockwiseRotationBool);
+      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->ClockwiseRotationBool);
 
     cloudS.push_back(slamPoint);
   }

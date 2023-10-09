@@ -68,16 +68,16 @@ private:
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
 
   // Map to store the device id of each device (in case of multilidar).
-  std::map<std::string, int> DeviceIdMap;
+  std::map<std::string, uint8_t> DeviceIdMap;
 
   double NbLasers = 16.; ///< Number of lasers of the LiDAR. Optional as it can be taken from header attribute .height of the PointCloud.
   bool InitEstimParamToDo = true; ///< Flag to initialize the parameters useful for laser_id and time estimations.
   bool ClockwiseRotationBool;  ///< True if the LiDAR rotates clockwise, false otherwise.
 
-  // Useful variable to estimate RPM (itself used to estimate time)
-  // NOTE: to be precise, this RPM estimation requires that each input
+  // Useful variable to estimate the rotation duration (itself used to estimate time)
+  // NOTE: to be precise, this rotation duration estimation requires that each input
   // scan is an entire scan covering excatly 360°
-  double Rpm = -1.;
+  double RotationDuration = -1.;
   double PreviousTimeStamp = -1.;
   const std::vector<double> PossibleFrequencies = {5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20.}; ///< Vector of all the possible frequencies for Velodyne LiDAR
 
