@@ -49,6 +49,12 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
       "lidar_slam/save_pc",
       std::bind(&AggregationNode::SavePointcloudService, this, std::placeholders::_1, std::placeholders::_2));
 
+  // Init service
+  this->RstService = this->create_service<lidar_slam::srv::Reset>(
+      "lidar_slam/reset",
+      std::bind(&AggregationNode::ResetService, this, std::placeholders::_1, std::placeholders::_2));
+
+
   // Init rolling grid with parameters
   this->DenseMap = std::make_shared<LidarSlam::RollingGrid>();
   // Voxel size
@@ -110,6 +116,15 @@ void AggregationNode::SavePointcloudService(
   std::string outputFilePath = outputPrefixPath.string() + "_" + std::to_string(int(this->now().seconds())) + ".pcd";
   LidarSlam::savePointCloudToPCD<PointS>(outputFilePath, *this->Pointcloud, f);
   RCLCPP_INFO_STREAM(this->get_logger(), "Pointcloud saved to " << outputFilePath);
+  res->success = true;
+}
+
+//------------------------------------------------------------------------------
+void AggregationNode::ResetService(const std::shared_ptr<lidar_slam::srv::Reset::Request> req,
+                                   const std::shared_ptr<lidar_slam::srv::Reset::Response> res)
+{
+  this->DenseMap->Reset();
+  RCLCPP_INFO_STREAM(this->get_logger(), "Resetting aggregation");
   res->success = true;
 }
 
