@@ -96,6 +96,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Confidence.msg"
   "msg/SlamCommand.msg"
   "srv/SavePc.srv"
+  "srv/Reset.srv"
   DEPENDENCIES std_msgs
 )
 ament_export_dependencies(rosidl_default_runtime)

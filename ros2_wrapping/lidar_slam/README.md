@@ -472,7 +472,7 @@ Another node called **aggregation_node** is included in the **lidar_slam** packa
 This node can answer to a service called **save_pc** to save the pointcloud on disk as a PCD file. The command should be :
 
 ```bash
-ros2 service call lidar_slam/srv/SavePc "prefix/path/where/to/save/the/cloud" 0
+ros2 service call /lidar_slam/save_pc lidar_slam/srv/SavePc "{output_prefix_path: 'prefix/path/where/to/save/the/cloud', format: 0}"
 ```
 
 To save the pointcloud as a PCD ASCII file at *prefix/path/where/to/save/the/cloud_CurrentTime.pcd*.
@@ -481,4 +481,11 @@ All possible formats are :
 - **Binary** : 1
 - **Binary compressed** : 2
 
-**NOTE** : **aggregation_node** can be directly run from the launch files, adding the argument *aggregation:=true* to the launch command.
+Another service called **reset** allows to reset the ongoing map with current input.
+```bash
+ros2 service call /lidar_slam/reset lidar_slam/srv/Reset
+```
+
+**NOTE** : **aggregation_node** can be directly run from the launch files, adding the argument *aggregate:=true* to the launch command.
+
+**NOTE** : The services are available through the visualization plugin.
