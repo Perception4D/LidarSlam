@@ -112,6 +112,13 @@ public:
 
   //----------------------------------------------------------------------------
   /*!
+   * @brief     Optional external pose callback, adding an external pose to the SLAM
+   * @param[in] msg camera calibration
+   */
+  void ExtPoseCallback(const geometry_msgs::msg::PoseWithCovarianceStamped& poseMsg);
+
+  //----------------------------------------------------------------------------
+  /*!
    * @brief     Set SLAM pose from external guess.
    * @param[in] msg The pose to use.
    *
@@ -290,6 +297,10 @@ protected:
   // In case of failure, duration (in seconds) to come back in time to previous state
   float RecoveryTime = 1.f;
 
+  // Boolean to signal the trajectory was planar and a
+  // degree of liberty is missing when looking for a calibration
+  bool PlanarTrajectory = false;
+
   // Landmarks
   rclcpp::Subscription<apriltag_ros::msg::AprilTagDetectionArray>::SharedPtr LandmarkSub;
   bool PublishTags = false;
@@ -302,6 +313,10 @@ protected:
   // Camera
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr CameraSub;
   rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr CameraInfoSub;
+
+  // External poses
+  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr ExtPoseSub;
+  std::string ExtPoseFrameId;
 };
 
 #endif // LIDAR_SLAM_NODE_H
