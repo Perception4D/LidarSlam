@@ -227,6 +227,12 @@ void vtkSlam::AddLoopDetection()
 }
 
 //-----------------------------------------------------------------------------
+void vtkSlam::ClearLoopDetections()
+{
+  this->SlamAlgo->ClearLoopDetections();
+}
+
+//-----------------------------------------------------------------------------
 void vtkSlam::OptimizeGraph()
 {
   const std::list<LidarSlam::LidarState>& initLidarStates = this->SlamAlgo->GetLogStates();
@@ -2028,7 +2034,7 @@ int vtkSlam::GetLoopDetector()
 void vtkSlam::SetLoopDetector(int detector)
 {
   LidarSlam::LoopClosureDetector loopClosureDetector = static_cast<LidarSlam::LoopClosureDetector>(detector);
-  if (loopClosureDetector != LidarSlam::LoopClosureDetector::NONE   &&
+  if (loopClosureDetector != LidarSlam::LoopClosureDetector::EXTERNAL   &&
       loopClosureDetector != LidarSlam::LoopClosureDetector::TEASERPP)
   {
     vtkErrorMacro(<< "Invalid loop closure detector (" << detector << "), ignoring setting.");
@@ -2045,6 +2051,15 @@ void vtkSlam::SetLoopDetector(int detector)
 //-----------------------------------------------------------------------------
 void vtkSlam::LoadLoopDetectionIndices(const std::string& fileName)
 {
+  if (static_cast<LidarSlam::LoopClosureDetector>(this->GetLoopDetector()) != LidarSlam::LoopClosureDetector::EXTERNAL)
+  {
+    vtkWarningMacro(<< "Loading loop indices from external source is disabled!");
+    return;
+  }
+
+  // Reset loop indices before loading new file
+  this->ClearLoopDetections();
+
   std::string delimiter = " ;,";
   vtkSmartPointer<vtkDelimitedTextReader> reader = Utils::CreateCSVLoader(fileName, delimiter);
   if (!reader)
@@ -2073,6 +2088,8 @@ void vtkSlam::LoadLoopDetectionIndices(const std::string& fileName)
     LidarSlam::LoopClosure::LoopIndices loop(arrayQueryIdx->GetTuple1(i), arrayRevisitedIdx->GetTuple1(i), -1);
     this->SlamAlgo->AddLoopClosureIndices(loop, true);
   }
+
+  PRINT_INFO("Loop closure indices are loaded successfully from external source!");
 
   // Refresh view
   this->ParametersModificationTime.Modified();

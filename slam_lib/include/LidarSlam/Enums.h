@@ -226,8 +226,8 @@ enum PGOConstraint
 //! Type of loop closure detector
 enum class LoopClosureDetector
 {
-  //! No detection is performed
-  NONE = 0,
+  //! Loop indices are provided from external source
+  EXTERNAL = 0,
 
   //! Automatic detector by teaserpp registration
   TEASERPP = 1

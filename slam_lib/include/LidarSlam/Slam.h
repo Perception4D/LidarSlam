@@ -191,9 +191,9 @@ struct Parameters
   // Parameters for the loop closure detection
 
   // Which method to use to detect loop closure
-  // Manual detector: users need to indicate the query frame index and the revisited frame index for loop closure.
+  // EXTERNAL detector: users need to indicate the query frame index and the revisited frame index for loop closure.
   // TEASERPP detector: automatic detection of loop closure by teaser registration
-  LoopClosureDetector Detector = LoopClosureDetector::NONE;
+  LoopClosureDetector Detector = LoopClosureDetector::EXTERNAL;
 
   // When a query frame searches its revisited frame,
   // there is very little possibility that the loop is in the last travel distance.
@@ -740,6 +740,9 @@ public:
 
   // Add indices of a loop into vector LoopDetections
   void AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFrame = false);
+
+  // Reset LoopDetections vector
+  void ClearLoopDetections();
 
   GetStructParamsMacro(Loop, Detector, LoopClosureDetector)
   SetStructParamsMacro(Loop, Detector, LoopClosureDetector)

@@ -257,6 +257,9 @@ void Slam::Reset(bool resetLog)
   this->MotionCheck.Reset();
   this->FailDetect.Reset();
   this->RecoveryTimes.clear();
+
+  // Reset LoopDetections
+  this->ClearLoopDetections();
 }
 
 //-----------------------------------------------------------------------------
@@ -936,9 +939,7 @@ bool Slam::OptimizeGraph()
   if (this->UsePGOConstraints[PGO_EXT_POSE] && this->PoseHasData())
     // Update offset of referential frames with new de-skewed trajectory
     this->PoseManager->UpdateOffset(this->LogStates);
-  // Reset LoopDetections vector after PGO
-  if (this->UsePGOConstraints[LOOP_CLOSURE] && !this->LoopDetections.empty())
-    this->LoopDetections.clear();
+
   // Update the maps from the beginning using the new trajectory
   // Points older than the first logged state remain untouched
   this->UpdateMaps();
@@ -1892,9 +1893,9 @@ bool Slam::DetectLoopClosureIndices(LoopClosure::LoopIndices& loop)
   bool detectionValid = false;
   switch (this->LoopParams.Detector)
   {
-    case LoopClosureDetector::NONE:
+    case LoopClosureDetector::EXTERNAL:
     {
-      PRINT_WARNING("Loop closure detection is disabled!");
+      PRINT_WARNING("Loop closure detection is disabled! Loop indices need to be provided from external source.");
       return false;
     }
     case LoopClosureDetector::TEASERPP:
@@ -1936,9 +1937,16 @@ void Slam::AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFr
 }
 
 //-----------------------------------------------------------------------------
+void Slam::ClearLoopDetections()
+{
+  this->LoopDetections.clear();
+  PRINT_WARNING("The LoopDetections vector is cleared!");
+}
+
+//-----------------------------------------------------------------------------
 std::list<LidarState>::iterator Slam::GetKeyStateIterator(unsigned int& frameIdx)
 {
-  // Get the state iterator
+  // Get the first state iterator whose index is greater than frameIdx
   auto itState = std::upper_bound(this->LogStates.begin(),
                                   this->LogStates.end(),
                                   frameIdx,
@@ -1949,9 +1957,15 @@ std::list<LidarState>::iterator Slam::GetKeyStateIterator(unsigned int& frameIdx
     return this->LogStates.begin();
   }
 
+  // Take the state whose index is closer to frameIdx
+  auto itPrevState = std::prev(itState);
+  if ((frameIdx - itPrevState->Index) < (itState->Index - frameIdx))
+    itState = itPrevState;
+
   if (itState->Index != frameIdx)
     PRINT_WARNING("The frame index #" << frameIdx << " is not found in Logstates "
                   "and is replaced by frame #" << itState->Index << ".");
+
   return itState;
 }
 
