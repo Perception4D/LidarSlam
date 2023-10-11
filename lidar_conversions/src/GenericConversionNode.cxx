@@ -18,6 +18,7 @@
 
 #include "GenericConversionNode.h"
 #include "GenericPoint.h"
+#include <chrono>
 
 #define BOLD_GREEN(s) "\033[1;32m" << s << "\033[0m"
 
@@ -54,7 +55,11 @@ GenericConversionNode::GenericConversionNode(std::string node_name, const rclcpp
 //------------------------------------------------------------------------------
 void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
 {
+  // DEBUG: init time for all callback : to be used only if other timers are off
+  // auto start = std::chrono::high_resolution_clock::now();
+
   CloudXYZ cloudRaw = Utils::InitCloudRaw<CloudXYZ>(msg_received);
+
   // If input cloud is empty, ignore it
   if (cloudRaw.empty())
   {
@@ -166,30 +171,50 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
     } \
   } while(0)
 
-  // Explore optional fields
-  #pragma omp parallel for num_threads(this->NbThreads)
+  // DEBUG: init time for filling vectors of fields values
+  // WARNING: if you want to use this timer to know how long it will take to fill
+  // intensities AND times AND laser_ids, you need to change the field names in the tests
+  auto start_vectors = std::chrono::high_resolution_clock::now();
+
+  // Explore optional fields (if field is x, y or z : ignore it)
+  // #pragma omp parallel for num_threads(this->NbThreads)
   for (const sensor_msgs::msg::PointField& field : msg_received.fields)
   {
     if (field.name == "x" || field.name == "y" || field.name == "z")
       continue;
     // Intensity SlamPoint field
     else if (field.name == "intensity")
+    // DEBUG: to print time of a SWITCH_AND_FILL_FIELD only
+    // {
+    //   auto start_macro = std::chrono::high_resolution_clock::now();
       FIND_TYPE_AND_FILL_ARRAY(I, intensity, intensities);
+    //   auto end_macro = std::chrono::high_resolution_clock::now();
+    //   std::chrono::duration<double> elapsed_macro = end_macro - start_macro;
+    //   std::cout << elapsed_macro.count() << std::endl;
+    // }
     else if (field.name == "reflectivity")
       FIND_TYPE_AND_FILL_ARRAY(Ref, reflectivity, intensities);
     // Laser_id SlamPoint field
-    else if (field.name == "laser_id")
+    //DEBUG: change to "laser_id" if you want to test the time of filling the 3 vectors
+    else if (field.name == "TEST_LASER_ID_NOT_FOUND")
       FIND_TYPE_AND_FILL_ARRAY(Id, laser_id, laser_ids);
-    else if (field.name == "ring")
+    //DEBUG: change to "ring" if you want to test the time of filling the 3 vectors
+    else if (field.name == "TEST_RING_NOT_FOUND")
       FIND_TYPE_AND_FILL_ARRAY(Ring, ring, laser_ids);
     // Time SlamPoint field
-    else if (field.name == "time")
+    //DEBUG: change to "time" if you want to test the time of filling the 3 vectors
+    else if (field.name == "TEST_TIME_NOT_FOUND")
       FIND_TYPE_AND_FILL_ARRAY(Time, time, times);
-    else if (field.name == "t")
+    //DEBUG: change to "t" if you want to test the time of filling the 3 vectors
+    else if (field.name == "TEST_T_NOT_FOUND")
       FIND_TYPE_AND_FILL_ARRAY(T, t, times);
-    else
-      RCLCPP_ERROR_STREAM(this->get_logger(), "Unknown field name : " << field.name);
+    // else
+    //   RCLCPP_ERROR_STREAM(this->get_logger(), "Unknown field name : " << field.name);
   }
+
+  //DEBUG: print time of filling vectors of fields values
+  // auto end_vectors = std::chrono::high_resolution_clock::now();
+  // std::chrono::duration<double> elapsed_vectors = end_vectors - start_vectors;
 
   // Check if time field looks properly set
   bool timeIsValid = false;
@@ -204,8 +229,11 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
 
   uint8_t deviceId = this->DeviceIdMap[cloudRaw.header.frame_id];
 
+  // DEBUG: init time measure for the whole slamcloud building
+  // auto start_slamcloud = std::chrono::high_resolution_clock::now();
+
   // Build SLAM pointcloud
-  #pragma omp parallel for num_threads(this->NbThreads)
+  //#pragma omp parallel for num_threads(this->NbThreads)
   for (unsigned int i = 0; i < cloudRaw.size(); ++i)
   {
     PointXYZ& rawPoint = cloudRaw[i];
@@ -225,11 +253,24 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.z = rawPoint.z;
     slamPoint.device_id = deviceId;
     slamPoint.intensity = intensities.empty() ? 0. : intensities[i];
+
     slamPoint.laser_id = laser_ids.empty() ? Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nbLasers, this->Clusters) : laser_ids[i];
+
     slamPoint.time = (times.empty() || !timeIsValid)? Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise) : times[i];
 
     cloudS.push_back(slamPoint);
   }
+  // WARNING: each timer to be used seperately, by commenting all other timers to avoid side effects
+  //DEBUG: print time of the whole slamcloud building
+  // auto end_slamcloud = std::chrono::high_resolution_clock::now();
+  // std::chrono::duration<double> elapsed_slamcloud = end_slamcloud - start_slamcloud;
+  // std::cout << elapsed_slamcloud.count() << std::endl;  // std::cout << elapsed_slamcloud.count() << std::endl;
+
+  //DEBUG: mesure total time of the callback
+  // auto end = std::chrono::high_resolution_clock::now();;
+  // std::chrono::duration<double> elapsed_all = end - start;
+  // std::cout << elapsed_all.count() << std::endl;
+
   PublishMsg(cloudS);
 }
 
