@@ -7,19 +7,6 @@ string string_arg
 # ==============================================================================
 # Commands description :
 
-# Run GPS/SLAM calibration from recorded GPS positions and SLAM poses.
-# An ICP will match the SLAM trajectory to GPS', trying to estimate the best
-# global rigid transform to apply to SLAM trajectory to git GPS trajectory.
-# This resulting transform is published on tf2 server as a static TF, linking
-# SLAM odometry frame to GPS world/map frame.
-uint8 GPS_SLAM_CALIBRATION = 0
-
-# Force SLAM pose to be reset to last acquired GPS pose.
-# NOTE: SLAM node use of GPS must be enabled.
-# NOTE: Pose graph optimization or GPS/SLAM calibration may have been already
-#       executed in order to match GPS and SLAM coordinates systems.
-uint8 SET_SLAM_POSE_FROM_GPS = 2
-
 # Disable/enable SLAM maps update with new frames keypoints. This can be useful
 # if we want to keep the pose graph optimized SLAM map
 # or any initially loaded map untouched

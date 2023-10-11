@@ -187,10 +187,6 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
     RCLCPP_INFO_STREAM(this->get_logger(), "Using LiDAR frames on topic '" << lidarTopics[lidarTopicId] << "'");
   }
 
-  // Set SLAM pose from external guess
-  this->SetPoseSub = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>("set_slam_pose", 1,
-                                                                                              std::bind(&LidarSlamNode::SetPoseCallback, this, std::placeholders::_1));
-
   // SLAM commands
   this->SlamCommandSub = this->create_subscription<lidar_slam::msg::SlamCommand>("slam_command", 1,
                                                                                             std::bind(&LidarSlamNode::SlamCommandCallback, this, std::placeholders::_1));
@@ -478,9 +474,9 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
     if (!this->UseExtSensor[LidarSlam::GPS])
       return;
 
-    // Transform to apply to points represented in GPS frame to express them in base frame
+    // Calibration
     Eigen::Isometry3d baseToGps;
-    if (Utils::Tf2LookupTransform(baseToGps, *this->TfBuffer, this->TrackingFrameId, gpsMsg.header.frame_id, gpsMsg.header.stamp))
+    if (Utils::Tf2LookupTransform(baseToGps, *this->TfBuffer, this->TrackingFrameId, "gps", gpsMsg.header.stamp))
     {
       RCLCPP_INFO(this->get_logger(), "Adding GPS info");
       // Get gps pose
@@ -787,51 +783,6 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
   // Parse command
   switch(msg.command)
   {
-    // Set SLAM pose from last received GPS pose
-    // NOTE : This function should only be called after PGO or SLAM/GPS calib have been triggered.
-    case lidar_slam::msg::SlamCommand::GPS_SLAM_CALIBRATION:
-    {
-      if (!this->UseExtSensor[LidarSlam::GPS] || !this->LidarSlam.GpsHasData())
-      {
-        RCLCPP_ERROR_STREAM(this->get_logger(), "Cannot set SLAM pose from GPS"
-                         "Please check that 'external_sensors.gps.enable' private parameter is set to 'true'."
-                         "and that GPS data have been received.");
-        return;
-      }
-      // TODO MR !260
-      // this->LidarSlam.CalibrateWithGps();
-      RCLCPP_WARN_STREAM(this->get_logger(), "SLAM pose set using GPS pose to :\n" << this->LidarSlam.GetLastState().Isometry.matrix());
-      // Broadcast new calibration offset (GPS reference frame (i.e. generally UTM) to odom)
-      this->BroadcastGpsOffset();
-      break;
-    }
-
-    // Set SLAM pose from last received GPS pose
-    // NOTE : This function should only be called after PGO or SLAM/GPS calib have been triggered.
-    case lidar_slam::msg::SlamCommand::SET_SLAM_POSE_FROM_GPS:
-    {
-      if (!this->UseExtSensor[LidarSlam::GPS] || !this->LidarSlam.GpsHasData())
-      {
-        RCLCPP_ERROR_STREAM(this->get_logger(), "Cannot set SLAM pose from GPS"
-                          "Please check that 'external_sensors.gps/enable' private parameter is set to 'true'."
-                          "and that GPS data have been received.");
-        return;
-      }
-
-      LidarSlam::ExternalSensors::GpsMeasurement& meas = this->LastGpsMeas;
-      // Get position of Lidar in UTM
-      Eigen::Vector3d position = this->LidarSlam.GetGpsCalibration().inverse() * meas.Position;
-      // Get position of Lidar in odometry frame
-      position = this->LidarSlam.GetGpsOffset() * position;
-      // Orientation is supposed to be close to odometry frame
-      // Warning : this hypothesis can be totally wrong and lead to bad registrations
-      Eigen::Isometry3d pose = this->LidarSlam.GetLogStates().front().Isometry;
-      pose.translation() = position;
-      this->LidarSlam.SetTworld(pose);
-      RCLCPP_WARN_STREAM(this->get_logger(), "SLAM pose set from GPS pose to :\n" << pose.matrix());
-      break;
-    }
-
     // Disable SLAM maps update
     case lidar_slam::msg::SlamCommand::DISABLE_SLAM_MAP_UPDATE:
     {
@@ -1568,8 +1519,8 @@ void LidarSlamNode::BroadcastGpsOffset()
   Eigen::Isometry3d offset = this->LidarSlam.GetGpsOffset().inverse();
   geometry_msgs::msg::TransformStamped tfStamped;
   tfStamped.header.stamp = this->GpsLastTime;
-  tfStamped.header.frame_id = this->GpsFrameId;
-  tfStamped.child_frame_id = this->OdometryFrameId;
+  tfStamped.header.frame_id = this->OdometryFrameId;
+  tfStamped.child_frame_id = this->GpsFrameId;
   tfStamped.transform = Utils::IsometryToTfMsg(offset);
   this->StaticTfBroadcaster->sendTransform(tfStamped);
 }
