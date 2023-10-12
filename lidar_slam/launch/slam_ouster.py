@@ -133,32 +133,37 @@ def generate_launch_description():
     condition=IfCondition(LaunchConfiguration("aggregate")),
   )
 
-  # Moving base coordinates systems description                                         tf_FROM_to_TO
+  # Base link to Ouster frame version 1
   tf_base_to_os_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_lidar",
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
                "--frame-id", "base_link", "--child-frame-id", "laser_sensor_frame"],
   )
+  tf_base_to_laser_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_laser",
+    arguments=["--x", "0", "--y", "0", "--z", "0",
+               "--roll", "0", "--pitch", "0", "--yaw", "0",
+               "--frame-id", "base_link", "--child-frame-id", "laser_data_frame"],
+    )
 
-  # Moving base coordinates systems description                                     tf_FROM_to_TO
+  # Base link to Ouster frame version 2
+  tf_base_to_os_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_lidar",
+    arguments=["--x", "0", "--y", "0", "--z", "0",
+               "--roll", "0", "--pitch", "0", "--yaw", "0",
+               "--frame-id", "base_link", "--child-frame-id", "os_sensor"],
+  )
+
+  # Base link to gps frame
   gps_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_gps",
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
                "--frame-id", "base_link", "--child-frame-id", "gps"],
   )
 
-  # Default transformation for Odom frame
+  # Init odom to base_link frame
   odom_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_odom_to_base",
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
                "--frame-id", "odom", "--child-frame-id", "base_link"],
-    )
-
-  # Moving base coordinates systems description                                         tf_FROM_to_TO
-  tf_base_to_laser_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_laser",
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "laser_data_frame"],
     )
 
   ld.add_action(rviz_node)
