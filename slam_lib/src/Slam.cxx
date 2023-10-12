@@ -2546,7 +2546,7 @@ void Slam::UndistortWithLogStates(PointCloud::Ptr pcIn, PointCloud::Ptr pcOut,
 
   Interpolation::Trajectory motionInterpo(this->Interpolation, ctrlPoses);
 
-  // If interpolation is unusable, don't undistorted
+  // If interpolation is unusable, don't undistort
   if (!motionInterpo.CanInterpolate())
   {
     PRINT_WARNING("Cannot perform undistortion with logged states");
