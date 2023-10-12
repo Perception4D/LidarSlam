@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(slam_visualization
-    VERSION 0.1.0)
+project(slam_visualization VERSION 2.1.0)
 
 set(CMAKE_CXX_STANDARD 14)
 if (NOT CMAKE_BUILD_TYPE)
