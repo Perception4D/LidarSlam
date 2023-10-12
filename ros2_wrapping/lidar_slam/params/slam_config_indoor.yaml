@@ -299,6 +299,13 @@
         #          *SlamCommand::ENABLE_SLAM_MAP_UPDATE
         # to 'slam_command' topic at startup.
         update_maps: 2
+        # How to extract a submap to reduce the search:
+        #  0) Extract the bounding box of the current frame.
+        #     This makes submap extraction fast but more points might be implied in the search.
+        #  1) Extract the profile of the current frame (implied voxels + direct neighboring voxels)
+        #     This makes the submap extraction heavier but less points might be implied in the search.
+        #     This is generally a bit longer (<3ms) but can solve some local minima issues.
+        submap_extraction_mode: 0
         leaf_size:
           edges: 0.2             # [m] Resolution used to downsample the edges map with a VoxelGrid filter.
           intensity_edges: 0.2   # [m] Resolution used to downsample the edges map with a VoxelGrid filter.

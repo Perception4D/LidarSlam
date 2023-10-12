@@ -1425,7 +1425,18 @@ void LidarSlamNode::SetSlamParameters()
     }
     this->LidarSlam.SetMapUpdate(mapUpdate);
   }
-
+  int submapMode;
+  if (this->get_parameter("slam.voxel_grid.submap_extraction_mode", submapMode))
+  {
+    LidarSlam::PreSearchMode submap = static_cast<LidarSlam::PreSearchMode>(submapMode);
+    if (submap != LidarSlam::PreSearchMode::BOUNDING_BOX &&
+        submap != LidarSlam::PreSearchMode::PROFILE)
+    {
+      RCLCPP_ERROR_STREAM(this->get_logger(), "Invalid submap mode (" << submapMode << "). Setting it to 'BOUNDING_BOX'.");
+      submap = LidarSlam::PreSearchMode::BOUNDING_BOX;
+    }
+    this->LidarSlam.SetSubmapMode(submap);
+  }
   double size;
   if (this->get_parameter("slam.voxel_grid.leaf_size.edges", size) && this->LidarSlam.KeypointTypeEnabled(LidarSlam::EDGE))
     this->LidarSlam.SetVoxelGridLeafSize(LidarSlam::EDGE, size);
