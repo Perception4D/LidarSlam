@@ -435,7 +435,7 @@ Ensure all *LidarSlam* dependencies are respected. Specific dependencies are lis
 
 | Dependency | Tested Version    |
 | :--------: | :------------:    |
-| ParaView   | 5.4, 5.6 and 5.9  |
+| ParaView   | 5.11.0            |
 
 Be careful to use and link to the same libraries as ParaView/LidarView's (especially with VTK, Eigen, PCL, Ceres, nanoflann, etc.). Otherwise, if different flags or modules were enabled, some troubles may arise at build time, or it could lead to version mismatch and segfault at runtime.
 
@@ -466,6 +466,6 @@ Currently, all features are not available in ParaView plugin. Features such as G
 
 ### Use SLAM in LidarView
 
-This *LidarSlamPlugin* is natively included in [LidarView](https://www.paraview.org/lidarview/). For more detailed information on how to enable and use SLAM filter in LidarView, see [paraview_wrapping/Plugin/doc/How_to_SLAM_with_LidarView.md](paraview_wrapping/Plugin/doc/How_to_SLAM_with_LidarView.md).
+This *LidarSlamPlugin* is natively included in [LidarView](https://lidarview.kitware.com/). For more detailed information on how to enable and use SLAM filter in LidarView, see [paraview_wrapping/Plugin/doc/How_to_SLAM_with_LidarView.md](paraview_wrapping/Plugin/doc/How_to_SLAM_with_LidarView.md).
 
 Pre-built binaries of LidarView with this SLAM plugin are available for download [here](https://gitlab.kitware.com/LidarView/lidarview/-/releases).
