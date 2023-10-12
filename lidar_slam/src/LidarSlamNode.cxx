@@ -895,7 +895,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       if (this->LidarSlam.GetMapUpdate() == LidarSlam::MappingMode::NONE)
         RCLCPP_WARN(this->get_logger(), "The initially loaded maps were not modified but are saved anyway.");
       int pcdFormatInt;
-      this->get_parameter_or<int>("maps/export_pcd_format", pcdFormatInt, static_cast<int>(LidarSlam::PCDFormat::BINARY_COMPRESSED));
+      this->get_parameter_or<int>("maps.export_pcd_format", pcdFormatInt, static_cast<int>(LidarSlam::PCDFormat::BINARY_COMPRESSED));
       LidarSlam::PCDFormat pcdFormat = static_cast<LidarSlam::PCDFormat>(pcdFormatInt);
       if (pcdFormat != LidarSlam::PCDFormat::ASCII &&
           pcdFormat != LidarSlam::PCDFormat::BINARY &&
@@ -913,7 +913,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
     {
       RCLCPP_INFO_STREAM(this->get_logger(), "Saving keypoints submaps to PCD.");
       int pcdFormatInt;
-      this->get_parameter_or<int>("maps/export_pcd_format", pcdFormatInt, static_cast<int>(LidarSlam::PCDFormat::BINARY_COMPRESSED));
+      this->get_parameter_or<int>("maps.export_pcd_format", pcdFormatInt, static_cast<int>(LidarSlam::PCDFormat::BINARY_COMPRESSED));
       LidarSlam::PCDFormat pcdFormat = static_cast<LidarSlam::PCDFormat>(pcdFormatInt);
       if (pcdFormat != LidarSlam::PCDFormat::ASCII &&
           pcdFormat != LidarSlam::PCDFormat::BINARY &&
