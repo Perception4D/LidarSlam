@@ -591,12 +591,23 @@ public:
   double GetWheelOdomWeight() const;
   void SetWheelOdomWeight(double weight);
 
-  bool GetWheelOdomRelative() const;
-  void SetWheelOdomRelative(bool relative);
+  float GetWheelOdomSaturationDistance() const;
+  void SetWheelOdomSaturationDistance(float dist);
+
+  SetMacro(WheelOdomRelative, bool)
+  GetMacro(WheelOdomRelative, bool)
+
+  void SetWheelOdomCalibration(const Eigen::Isometry3d& calib);
+  Eigen::Isometry3d GetWheelOdomCalibration() const;
+
+  void SetWheelOdomReference(const Eigen::Vector3d& ref);
+  Eigen::Vector3d GetWheelOdomReference() const;
 
   void AddWheelOdomMeasurement(const ExternalSensors::WheelOdomMeasurement& om);
 
   bool WheelOdomHasData() const {return this->WheelOdomManager && this->WheelOdomManager->HasData();}
+
+  bool WheelOdomCanBeUsedLocally() const;
 
   // Gravity from IMU
   double GetGravityWeight() const;
@@ -1076,6 +1087,9 @@ private:
   // The odometry measurements must be filled from outside this lib
   // using External Sensors interface
   std::shared_ptr<ExternalSensors::WheelOdometryManager> WheelOdomManager;
+  // Whether the wheel odometer constraint apply relatively to the first pose
+  // or between successive poses
+  bool WheelOdomRelative = false;
 
   // IMU managers
   // Gravity manager

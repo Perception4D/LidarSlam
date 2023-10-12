@@ -90,6 +90,8 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   // Use external poses in local optimization or in graph optimization
   this->UseExtSensor[LidarSlam::ExternalSensor::POSE] = priv_nh.param("external_sensors/external_poses/enable", false);
   this->LidarSlam.EnablePGOConstraint(LidarSlam::PGOConstraint::EXT_POSE, this->UseExtSensor[LidarSlam::ExternalSensor::POSE]);
+  // Use wheel encoder in local optimization
+  this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] = priv_nh.param("external_sensors/wheel_encoder/enable", false);
 
   // ***************************************************************************
   // Init ROS publishers
@@ -184,7 +186,8 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   // Init logging of landmark data and/or Camera data
   if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ||
       this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] ||
-      this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
+      this->UseExtSensor[LidarSlam::ExternalSensor::POSE] ||
+      this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM])
   {
     // Create an external independent spinner to get the landmarks and/or camera info in a parallel way
 
@@ -220,6 +223,16 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
                                                                            this, boost::placeholders::_1));
       ops.callback_queue = &this->ExternalQueue;
       this->ExtPoseSub = nh.subscribe(ops);
+    }
+
+    if (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM])
+    {
+      ros::SubscribeOptions ops;
+      ops.initByFullCallbackType<std_msgs::Float64>("wheel_odom", 10,
+                                                    boost::bind(&LidarSlamNode::WheelOdomCallback,
+                                                    this, boost::placeholders::_1));
+      ops.callback_queue = &this->ExternalQueue;
+      this->WheelOdomSub = nh.subscribe(ops);
     }
 
     this->ExternalSpinnerPtr = std::make_shared<ros::AsyncSpinner>(ros::AsyncSpinner(this->LidarSlam.GetNbThreads(), &this->ExternalQueue));
@@ -398,7 +411,7 @@ void LidarSlamNode::ImageCallback(const sensor_msgs::Image& imageMsg)
     ROS_INFO_STREAM("Camera image added with time "
                     << std::fixed << std::setprecision(9)
                     << image.Time);
-  }
+}
   #else
   static_cast<void>(imageMsg);
   ROS_WARN_STREAM("cv_bridge was not found so images cannot be processed, camera will not be used");
@@ -523,6 +536,37 @@ void LidarSlamNode::GpsCallback(const nav_msgs::Odometry& gpsMsg)
   }
   else
     ROS_WARN_STREAM("The transform between the GPS and the tracking frame was not found -> GPS info ignored");
+}
+
+//------------------------------------------------------------------------------
+void LidarSlamNode::WheelOdomCallback(const std_msgs::Float64& odomMsg)
+{
+  double rcpTime = ros::Time::now().toSec();
+
+  /// TODO refact with a type "sensor message" with header frame and time
+  if (!this->SlamEnabled)
+    return;
+
+  if (!this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM])
+    return;
+
+  // Transform between base link and the wheel encoder
+  Eigen::Isometry3d baseToWheel;
+  if (Utils::Tf2LookupTransform(baseToWheel, this->TfBuffer, this->TrackingFrameId, this->WheelFrameId))
+  {
+    if (!this->LidarSlam.WheelOdomCanBeUsedLocally())
+      this->LidarSlam.SetWheelOdomCalibration(baseToWheel);
+
+    // Add wheel odometer measurement to measurements list
+    LidarSlam::ExternalSensors::WheelOdomMeasurement measure;
+    measure.Time = rcpTime;
+    measure.Distance = odomMsg.data;
+    this->LidarSlam.AddWheelOdomMeasurement(measure);
+
+    ROS_INFO_STREAM("Wheel encoder measure added with time "
+                    << std::fixed << std::setprecision(9)
+                    << measure.Time);
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -1394,9 +1438,21 @@ void LidarSlamNode::SetSlamParameters()
   SetSlamParam(float,  "external_sensors/landmark_detector/saturation_distance", LandmarkSaturationDistance)
   SetSlamParam(bool,   "external_sensors/landmark_detector/position_only", LandmarkPositionOnly)
   this->PublishTags    = this->PrivNh.param("external_sensors/landmark_detector/publish_tags", false);
-  SetSlamParam(float,   "external_sensors/camera/weight", CameraWeight)
-  SetSlamParam(float,   "external_sensors/camera/saturation_distance", CameraSaturationDistance)
+  SetSlamParam(float,  "external_sensors/camera/weight", CameraWeight)
+  SetSlamParam(float,  "external_sensors/camera/saturation_distance", CameraSaturationDistance)
   this->PlanarTrajectory = this->PrivNh.param("external_sensors/calibration/planar_trajectory", this->PlanarTrajectory);
+  SetSlamParam(double, "external_sensors/wheel_encoder/weight", WheelOdomWeight)
+  SetSlamParam(bool,   "external_sensors/wheel_encoder/relative", WheelOdomRelative)
+  SetSlamParam(double, "external_sensors/wheel_encoder/saturation_distance", WheelOdomSaturationDistance)
+  std::vector<double> wheelOdomRef;
+  if (this->PrivNh.getParam("external_sensors/wheel_encoder/reference", wheelOdomRef) &&
+      wheelOdomRef.size() == 3 &&
+      !this->LidarSlam.GetWheelOdomRelative())
+  {
+    Eigen::Vector3d ref = Eigen::Vector3d(wheelOdomRef[0], wheelOdomRef[1], wheelOdomRef[2]);
+    if (ref.norm() > 1e-6)
+      this->LidarSlam.SetWheelOdomReference(ref);
+  }
 
   // Graph parameters
   SetSlamParam(std::string, "graph/g2o_file_name", G2oFileName)

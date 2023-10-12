@@ -123,6 +123,16 @@ external_sensors:
     enable: false            # [bool] To receive and use the external poses in SLAM (local opt or pose graph opt)
     weight: 0.               # [float] Weight to apply to the constraint built on external poses
 
+  # Wheel encoder appliable for ground wheels for translation
+  # only motion or if relative mode is ON or with cable for any transformation
+  wheel_encoder:
+    enable: false            # [bool] To receive and use a wheel encoder (distance measurement)
+    relative: false          # [bool] To set the constraint from reference or from previous frame
+    weight: 0.               # [float] Weight to apply onto the wheel encoder constraint in the front end optimization
+    saturation_distance: 0.5 # [m] Spatial distance threshold to discard the measurement in SLAM optimization
+    reference: [0., 0., 0.]  # [m, m, m] Reference point for the odometry measure
+                             # Do not set if relative mode is true, [0.,0.,0.] deactivates the feature
+
 graph:
   g2o_file_name: ""    # [string] File where to store the g2o log info (viewable with g2o_viewer tool)
   publish_path: false  # [bool] If true, publish optimized SLAM trajectory to 'pgo_slam_path' latched topic

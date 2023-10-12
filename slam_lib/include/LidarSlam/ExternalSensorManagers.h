@@ -457,14 +457,18 @@ public:
   void Reset(bool resetMeas = false);
 
   //Setters/Getters
-  GetSensorMacro(PreviousPose, Eigen::Isometry3d)
-  SetSensorMacro(PreviousPose, const Eigen::Isometry3d&)
+  // ---------------------------------------------------------------------------
+  // Set the reference frame using the base pose at a specific time
+  void SetReference(const Eigen::Isometry3d& basePose, double lidarTime);
+  // Set the reference frame using a reference point from the wheel encoder
+  // Representation is in wheel encoder frame
+  void SetReference(const Eigen::Vector3d& refPoint = {0., 0., 0.});
+  GetSensorMacro(RefPose, Eigen::Isometry3d);
 
-  GetSensorMacro(Relative, bool)
-  SetSensorMacro(Relative, bool)
+  // Overload to reset reference pose as well
+  void SetCalibration(const Eigen::Isometry3d& calib);
 
-  GetSensorMacro(RefDistance, double)
-  SetSensorMacro(RefDistance, double)
+  bool IsInitialized() {return this->RefInitialized;}
 
   // Compute the interpolated measure to be synchronized with SLAM output (at lidarTime)
   bool ComputeSynchronizedMeasure(double lidarTime, WheelOdomMeasurement& synchMeas, bool trackTime = true) override;
@@ -473,12 +477,18 @@ public:
   bool ComputeConstraint(double lidarTime) override;
 
 private:
-  // Members used when using the relative distance with last estimated pose
-  Eigen::Isometry3d PreviousPose = Eigen::Isometry3d::Identity();
-  double RefDistance = FLT_MAX;
-  // Boolean to indicate whether to compute an absolute constraint (since first frame)
-  // or relative constraint (since last acquired frame)
-  bool Relative = false;
+  // Reference pose from which the distance is computed
+  Eigen::Isometry3d RefPose = Eigen::Isometry3d::Identity();
+  // Reference measure corresponding to the reference pose
+  WheelOdomMeasurement RefMeas;
+  // Storage for last estimated measure to avoid search
+  WheelOdomMeasurement LastSynchMeas;
+  // Check if RefPose has been initialized (mandatory to build a constraint)
+  bool RefInitialized = false;
+  // Optional : initial transform between the first
+  // wheel encoder pose and the reference pose
+  // It should be a translation
+  Eigen::Isometry3d RefOffsetInit = Eigen::Isometry3d::Identity();
 };
 
 // ---------------------------------------------------------------------------

@@ -30,8 +30,11 @@ namespace ExternalSensors
 void WheelOdometryManager::Reset(bool resetMeas)
 {
   this->SensorManager::Reset(resetMeas);
-  this->SetRefDistance(FLT_MAX);
-  this->PreviousPose = Eigen::Isometry3d::Identity();
+  this->RefPose = Eigen::Isometry3d::Identity();
+  this->RefMeas = {0., 0.};
+  this->LastSynchMeas = {0., 0.};
+  this->RefInitialized = false;
+  this->ResetResidual();
 }
 
 // ---------------------------------------------------------------------------
@@ -56,39 +59,87 @@ bool WheelOdometryManager::ComputeSynchronizedMeasure(double lidarTime, WheelOdo
 }
 
 // ---------------------------------------------------------------------------
+void WheelOdometryManager::SetReference(const Eigen::Isometry3d& basePose, double lidarTime)
+{
+  this->RefPose = basePose * this->Calibration * this->RefOffsetInit;
+
+  // Update reference measure
+
+  // Case 1 : reference measure has not change
+  if (std::abs(this->RefMeas.Time - lidarTime) < 1e-6)
+    this->RefInitialized = true;
+
+  // Case 2 : reference measure is the last estimated one
+  else if (std::abs(this->LastSynchMeas.Time - lidarTime) < 1e-6)
+  {
+    this->RefMeas = this->LastSynchMeas;
+    this->RefInitialized = true;
+  }
+
+  else
+  {
+    // Case 3 : reference measure has never been estimated
+    // Compute synchronized measure for reference
+    WheelOdomMeasurement synchMeas; // Virtual measure with synchronized timestamp
+    if (!ComputeSynchronizedMeasure(lidarTime, synchMeas))
+    {
+      this->RefInitialized = false;
+      return;
+    }
+    this->RefMeas = synchMeas;
+    this->RefInitialized = true;
+  }
+
+  if (this->Verbose)
+    PRINT_INFO("Wheel encoder : reference pose set to :\n" << basePose.matrix());
+}
+
+// ---------------------------------------------------------------------------
+void WheelOdometryManager::SetReference(const Eigen::Vector3d& refPointInit)
+{
+  this->RefOffsetInit.setIdentity();
+  this->RefOffsetInit.translation() = refPointInit;
+  this->RefPose = this->Calibration * this->RefOffsetInit;
+  // As the reference is set as initialization in this case,
+  // The measurement is supposed to be exactly the norm of refPointInit
+  this->RefMeas = WheelOdomMeasurement();
+  this->RefInitialized = true;
+}
+
+// ---------------------------------------------------------------------------
+void WheelOdometryManager::SetCalibration(const Eigen::Isometry3d& calib)
+{
+  this->RefPose = this->RefPose * this->RefOffsetInit.inverse() * this->Calibration.inverse() * calib * this->RefOffsetInit;
+  this->Calibration = calib;
+}
+
+// ---------------------------------------------------------------------------
 bool WheelOdometryManager::ComputeConstraint(double lidarTime)
 {
   this->ResetResidual();
 
-  // Compute synchronized measures
-  WheelOdomMeasurement synchMeas; // Virtual measure with synchronized timestamp
-  if (!ComputeSynchronizedMeasure(lidarTime, synchMeas))
-    return false;
-
-  // Build odometry residual
-  // If there is no memory of previous poses
-  // The current measure is taken as reference
-  if (this->RefDistance > 1e9)
+  if (!this->RefInitialized)
   {
-    if (this->Verbose)
-      PRINT_INFO("No previous wheel odometry measure : no constraint added to optimization")
-    // Update reference distance for next frames
-    this->RefDistance = synchMeas.Distance;
+    PRINT_INFO("Wheel encoder : reference was not set : no constraint has been computed")
     return false;
   }
 
-  // If there is memory of a previous pose
-  double distDiff = std::abs(synchMeas.Distance - this->RefDistance);
-  this->Residual.Cost = CeresCostFunctions::OdometerDistanceResidual::Create(this->PreviousPose.translation(), distDiff);
-  this->Residual.Robustifier.reset(new ceres::ScaledLoss(NULL, this->Weight, ceres::TAKE_OWNERSHIP));
-  if(this->Verbose && !this->Relative)
-    PRINT_INFO("Adding absolute wheel odometry residual : " << distDiff << " m travelled since first frame.")
-  if (this->Verbose && this->Relative)
-    PRINT_INFO("Adding relative wheel odometry residual : " << distDiff << " m travelled since last frame.")
+  // Compute synchronized measures
+  if (!this->ComputeSynchronizedMeasure(lidarTime, this->LastSynchMeas))
+    return false;
 
-  // Update reference distance if relative mode enabled
-  if (this->Relative)
-    this->RefDistance = synchMeas.Distance;
+  // Compute distance measured from reference pose
+  double distDiff = std::abs(this->LastSynchMeas.Distance - this->RefMeas.Distance);
+  this->Residual.Cost = CeresCostFunctions::OdometerDistanceResidual::Create(this->RefPose.translation(),
+                                                                             this->Calibration,
+                                                                             distDiff);
+  this->Residual.Robustifier.reset(new ceres::ScaledLoss(NULL, this->Weight, ceres::TAKE_OWNERSHIP));
+
+  if (this->Verbose)
+    PRINT_INFO(std::setprecision(2)
+               << "Adding wheel encoder residual : "
+               << distDiff << " m travelled since position : "
+               << this->RefPose.translation().transpose());
 
   return true;
 }
