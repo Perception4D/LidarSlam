@@ -107,7 +107,8 @@ private:
   // NOTE: to be precise, this RPM estimation requires that each input
   // scan is an entire scan covering excatly 360°
   double RotationDuration = -1.;
-  double PreviousTimeStamp = -1.;
+  double RotationDurationPrior = -1.;
+  double PrevFrameTime = -1.;
   const std::vector<double> PossibleFrequencies; ///< Vector of all the possible frequencies of a certain type of LiDAR
 
   bool RotSenseAndClustersEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations

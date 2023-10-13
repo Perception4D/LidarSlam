@@ -57,11 +57,28 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
   if (this->DeviceIdMap.count(cloudRaw.header.frame_id) == 0)
     this->DeviceIdMap[cloudRaw.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
 
-  // We compute the rotation duration : to do so, we need to ignore the first frame of the LiDAR,
-  // but it doesn't really matter as it is just 100ms ignored
-  double currentTimeStamp = cloudRaw.header.stamp;
-  this->RotationDuration = Utils::EstimateFrameTime(currentTimeStamp, this->PreviousTimeStamp, this->RotationDuration, this->PossibleFrequencies);
-  // We now ignore first frame because it has no rotation duration
+  // Rotation duration is estimated to be used in time estimation if needed
+  double currFrameTime = Utils::PclStampToSec(cloudRaw.header.stamp);
+  double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
+  this->PrevFrameTime = currFrameTime;
+
+  // If the rotation duration has not been estimated
+  if (this->RotationDuration < 0.)
+  {
+    // Check if this duration is possible
+    if (Utils::CheckRotationDuration(diffTimePrevFrame, this->PossibleFrequencies))
+    {
+      // Check a confirmation of the frame duration to avoid outliers (frames dropped)
+      // For the first frame, RotationDurationPrior is -1, this condition won't be fulfilled
+      // For the second frame, RotationDurationPrior is absurd, this condition won't be fulfilled
+      // First real intempt occurs at the 3rd frame
+      if (std::abs(diffTimePrevFrame - this->RotationDurationPrior) < 5e-3) // 5ms threshold
+        this->RotationDuration = (diffTimePrevFrame + this->RotationDurationPrior) / 2.;
+      this->RotationDurationPrior = diffTimePrevFrame;
+      RCLCPP_INFO_STREAM(this->get_logger(), std::setprecision(12) << "Difference between successive frames is :" << diffTimePrevFrame);
+    }
+  }
+
   if (this->RotationDuration < 0.)
     return;
 
@@ -120,12 +137,27 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
   if (this->DeviceIdMap.count(cloudRaw.header.frame_id) == 0)
     this->DeviceIdMap[cloudRaw.header.frame_id] = this->DeviceIdMap.size();
 
-  // We compute RPM : to do so, we need to ignore the first frame of the LiDAR, but it doesn't really matter as it is just 100ms ignored
-  double currentTimeStamp = cloudRaw.header.stamp;
-  this->RotationDuration = Utils::EstimateFrameTime(currentTimeStamp, this->PreviousTimeStamp, this->RotationDuration, this->PossibleFrequencies);
-  // We now ignore first frame because it has no RPM
+  // Rotation duration is estimated to be used in time estimation if needed
+  double currFrameTime = Utils::PclStampToSec(cloudRaw.header.stamp);
+  double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
+  this->PrevFrameTime = currFrameTime;
+
+  // If the rotation duration has not been estimated
   if (this->RotationDuration < 0.)
-    return;
+  {
+    // Check if this duration is possible
+    if (Utils::CheckRotationDuration(diffTimePrevFrame, this->PossibleFrequencies))
+    {
+      // Check a confirmation of the frame duration to avoid outliers (frames dropped)
+      // For the first frame, RotationDurationPrior is -1, this condition won't be fulfilled
+      // For the second frame, RotationDurationPrior is absurd, this condition won't be fulfilled
+      // First real intempt occurs at the 3rd frame
+      if (std::abs(diffTimePrevFrame - this->RotationDurationPrior) < 5e-3) // 5ms threshold
+        this->RotationDuration = (diffTimePrevFrame + this->RotationDurationPrior) / 2.;
+      this->RotationDurationPrior = diffTimePrevFrame;
+      RCLCPP_INFO_STREAM(this->get_logger(), std::setprecision(12) << "Difference between successive frames is :" << diffTimePrevFrame);
+    }
+  }
 
   CloudS cloudS = Utils::InitCloudS<CloudXYZI>(cloudRaw);
 

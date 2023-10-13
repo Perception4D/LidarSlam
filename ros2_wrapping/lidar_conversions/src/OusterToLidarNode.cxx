@@ -60,11 +60,28 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   if (this->DeviceIdMap.count(cloudO.header.frame_id) == 0)
     this->DeviceIdMap[cloudO.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
 
-  // We compute the rotation duration : to do so, we need to ignore the first frame of the LiDAR, but it doesn't really matter as it is just 100ms ignored
-  // However, we chose to ignore the first frame after having initialized estimation parameters (see below)
-  double currentTimeStamp = cloudO.header.stamp;
-  this->RotationDuration = Utils::EstimateFrameTime(currentTimeStamp, this->PreviousTimeStamp, this->RotationDuration, this->PossibleFrequencies);
-  // We now ignore first frame because it has no rotation duration
+  // Rotation duration is estimated to be used in time estimation if needed
+  double currFrameTime = Utils::PclStampToSec(cloudO.header.stamp);
+  double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
+  this->PrevFrameTime = currFrameTime;
+
+  // If the rotation duration has not been estimated
+  if (this->RotationDuration < 0.)
+  {
+    // Check if this duration is possible
+    if (Utils::CheckRotationDuration(diffTimePrevFrame, this->PossibleFrequencies))
+    {
+      // Check a confirmation of the frame duration to avoid outliers (frames dropped)
+      // For the first frame, RotationDurationPrior is -1, this condition won't be fulfilled
+      // For the second frame, RotationDurationPrior is absurd, this condition won't be fulfilled
+      // First real intempt occurs at the 3rd frame
+      if (std::abs(diffTimePrevFrame - this->RotationDurationPrior) < 5e-3) // 5ms threshold
+        this->RotationDuration = (diffTimePrevFrame + this->RotationDurationPrior) / 2.;
+      this->RotationDurationPrior = diffTimePrevFrame;
+      RCLCPP_INFO_STREAM(this->get_logger(), std::setprecision(12) << "Difference between successive frames is :" << diffTimePrevFrame);
+    }
+  }
+
   if (this->RotationDuration < 0.)
     return;
 
@@ -81,8 +98,10 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   }
 
   // Check if time field looks properly set
-  bool timeIsValid = cloudO.back().t - cloudO.front().t > 1e-8 &&
-                     cloudO.back().t - cloudO.front().t < 2. * this->RotationDuration;
+  double duration = cloudO.back().t - cloudO.front().t;
+  double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
+
+  bool timeIsValid = duration > 1e-8 && duration * factor < 2. * this->RotationDuration;
 
   if (!timeIsValid)
     RCLCPP_WARN_STREAM(this->get_logger(), "Invalid 'time' field, it will be built from azimuth advancement.");
@@ -106,7 +125,7 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
 
     // Use time field if available, else estimate it from azimuth advancement
     if (timeIsValid)
-      slamPoint.time = ousterPoint.t;
+      slamPoint.time = factor * ousterPoint.t;
     else
       slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 

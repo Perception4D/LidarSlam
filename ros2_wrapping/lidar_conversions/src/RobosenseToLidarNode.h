@@ -79,7 +79,8 @@ private:
   // NOTE: to be precise, this rotation duration estimation requires that each input
   // scan is an entire scan covering excatly 360°
   double RotationDuration = -1.;
-  double PreviousTimeStamp = -1.;
+  double RotationDurationPrior = -1.;
+  double PrevFrameTime = -1.;
   const std::vector<double> PossibleFrequencies = {5., 10., 20.}; ///< Vector of all the possible frequencies for robosense LiDAR
 
   // Useful variable to estimate laser_id
