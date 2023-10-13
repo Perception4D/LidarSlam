@@ -50,8 +50,8 @@ public:
    * @param node_name Name of the node created
    * @param[in] options Options of the node, default no options
    */
-  RobosenseToLidarNode(std::string node_name,
-                        const rclcpp::NodeOptions options = rclcpp::NodeOptions());
+  RobosenseToLidarNode(const std::string node_name,
+                       const rclcpp::NodeOptions options = rclcpp::NodeOptions());
 
   //----------------------------------------------------------------------------
   /*!
@@ -72,8 +72,8 @@ private:
   std::map<std::string, uint8_t> DeviceIdMap;  ///< Map to store the device id of each device (in case of multilidar).
 
   double NbLasers = 16.; ///< Number of lasers of the LiDAR. Optional as it can be taken from header attribute .height of the PointCloud.
-  bool InitEstimParamToDo = true; ///< Flag to initialize the parameters useful for laser_id and time estimations.
-  bool ClockwiseRotationBool;  ///< True if the LiDAR rotates clockwise, false otherwise.
+  bool RotSenseAndClustersEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations.
+  bool RotationIsClockwise;  ///< True if the LiDAR rotates clockwise, false otherwise.
 
   // Useful variable to estimate rotation duration (itself used to estimate time)
   // NOTE: to be precise, this rotation duration estimation requires that each input

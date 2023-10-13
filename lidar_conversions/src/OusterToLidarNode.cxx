@@ -71,21 +71,23 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   // Init SLAM pointcloud
   CloudS cloudS = Utils::InitCloudS<CloudO>(cloudO);
 
-  const double nLasers = (cloudO.height >= 8 && cloudO.height <= 128) ? static_cast<double>(cloudO.height) : this->NbLasers;
+  const int nbLasers = (cloudO.height >= 8 && cloudO.height <= 128) ? static_cast<double>(cloudO.height) : this->NbLasers;
 
-  // Init of parameters useful for laser_id and time estimations
-  if (this->InitEstimParamToDo)
+  // Estimate the rotation sense
+  if (!this->RotationSenseEstimated)
   {
-    Utils::InitEstimationParameters<PointO>(cloudO, nLasers, this->Clusters, this->ClockwiseRotationBool);
-    this->InitEstimParamToDo = false;
+    this->RotationIsClockwise = Utils::IsRotationClockwise<PointO>(cloudO, nbLasers);
+    this->RotationSenseEstimated = true;
   }
-  
-  Eigen::Vector2d firstPoint = {cloudO[0].x, cloudO[0].y};
 
   // Check if time field looks properly set
-  bool isTimeValid = cloudO.back().t - cloudO.front().t > 1e-8;
-  if (!isTimeValid)
+  bool timeIsValid = cloudO.back().t - cloudO.front().t > 1e-8 &&
+                     cloudO.back().t - cloudO.front().t < 2. * this->RotationDuration;
+
+  if (!timeIsValid)
     RCLCPP_WARN_STREAM(this->get_logger(), "Invalid 'time' field, it will be built from azimuth advancement.");
+
+  Eigen::Vector2d firstPoint = {cloudO[0].x, cloudO[0].y};
 
   // Build SLAM pointcloud
   for (const PointO& ousterPoint : cloudO)
@@ -103,19 +105,19 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.laser_id = ousterPoint.ring;
 
     // Use time field if available, else estimate it from azimuth advancement
-    if (isTimeValid)
+    if (timeIsValid)
       slamPoint.time = ousterPoint.t;
     else
-      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->ClockwiseRotationBool);
+      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 
     cloudS.push_back(slamPoint);
   }
 
   //conversion to msg
-  Pcl2_msg msg_sended;
-  pcl::toROSMsg(cloudS, msg_sended);
+  Pcl2_msg toPublish;
+  pcl::toROSMsg(cloudS, toPublish);
 
-  this->Talker->publish(msg_sended);
+  this->Talker->publish(toPublish);
 }
 
 }  // end of namespace lidar_conversions

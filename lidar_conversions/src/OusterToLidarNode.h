@@ -50,8 +50,8 @@ public:
    * @param node_name name of the node created
    * @param[in] options Options of the node, default no options
    */
-  OusterToLidarNode(std::string node_name,
-                    rclcpp::NodeOptions options = rclcpp::NodeOptions());
+  OusterToLidarNode(const std::string node_name,
+                    const rclcpp::NodeOptions options = rclcpp::NodeOptions());
 
   //----------------------------------------------------------------------------
   /*!
@@ -72,8 +72,8 @@ private:
   std::map<std::string, uint8_t> DeviceIdMap;
 
   double NbLasers = 64;  ///< Minimal number of lasers in the LiDAR
-  bool InitEstimParamToDo = true; ///< Flag to initialize the parameters useful for laser_id and time estimations.
-  bool ClockwiseRotationBool;  ///< True if the LiDAR rotates clockwise, false otherwise.
+  bool RotationSenseEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations.
+  bool RotationIsClockwise;  ///< True if the LiDAR rotates clockwise, false otherwise.
 
   // Useful variable to estimate RotationDuration (itself used to estimate time)
   // NOTE: to be precise, this RotationDuration estimation requires that each input

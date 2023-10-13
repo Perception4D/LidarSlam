@@ -68,20 +68,23 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
   // Init SLAM pointcloud
   CloudS cloudS = Utils::InitCloudS<CloudV>(cloudV);
 
-  const double nLasers = (cloudV.height >= 8 && cloudV.height <=128) ? static_cast<double>(cloudV.height) : this->NbLasers;
+  const int nbLasers = (cloudV.height >= 8 && cloudV.height <=128) ? static_cast<double>(cloudV.height) : this->NbLasers;
 
-  // Init of parameters useful for laser_id and time estimations
-  if (this->InitEstimParamToDo)
+  // Estimate the rotation sense
+  if (!this->RotationSenseEstimated)
   {
-    Utils::InitEstimationParameters<PointV>(cloudV, nLasers, this->Clusters, this->ClockwiseRotationBool);
-    this->InitEstimParamToDo = false;
+    this->RotationIsClockwise = Utils::IsRotationClockwise<PointV>(cloudV, nbLasers);
+    this->RotationSenseEstimated = true;
   }
-  Eigen::Vector2d firstPoint = {cloudV[0].x, cloudV[0].y};
 
   // Check if time field looks properly set
-  bool isTimeValid = cloudV.back().time - cloudV.front().time > 1e-8;
-  if (!isTimeValid)
+  bool timeIsValid = cloudV.back().time - cloudV.front().time > 1e-8 &&
+                     cloudV.back().time - cloudV.front().time < 2. * this->RotationDuration;
+
+  if (!timeIsValid)
     RCLCPP_WARN_STREAM(this->get_logger(), "Invalid 'time' field, it will be built from azimuth advancement.");
+
+  Eigen::Vector2d firstPoint = {cloudV[0].x, cloudV[0].y};
 
   // Build SLAM pointcloud
   for (const PointV& velodynePoint : cloudV)
@@ -99,10 +102,10 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.laser_id = velodynePoint.ring;
 
     // Use time field if available, else estimate it from azimuth advancement
-    if (isTimeValid)
+    if (timeIsValid)
       slamPoint.time = velodynePoint.time;
     else
-      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->ClockwiseRotationBool);
+      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 
     cloudS.push_back(slamPoint);
   }
