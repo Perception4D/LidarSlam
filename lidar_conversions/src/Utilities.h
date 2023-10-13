@@ -123,41 +123,26 @@ inline bool CheckRotationDuration(double rotationDuration, std::vector<double> p
 
 //------------------------------------------------------------------------------
 /*!
- * @brief Estimate the duration of a rotation in seconds
- * @return rotation duration of the lidar
- * @param currentTimestamp Timestamp of current frame
- * @param previousTimestamp Timestamp of previous frame
- * @param previousRotationDuration Rotation duration of the lidar computed from all previous frames
- * @param possibleFrequencies Vector of all the possible frequencies (specicfic to the type of LiDAR)
+ * @brief Convert PCL timestamp (in microseconds) to seconds
+ * @param pclStampUs PCL timestamp, in microseconds
+ * @return Timestamp in seconds
  */
-inline double EstimateFrameTime(double currentTimeStamp, double& previousTimeStamp, double& previousRotationDuration, std::vector<double> possibleFrequencies)
+inline constexpr double PclStampToSec(uint64_t pclStampUs)
 {
-  if (previousTimeStamp < 0.)
-  {
-    previousTimeStamp = currentTimeStamp;
-    return -1.; // Indicates that it's the first frame
-  }
-  else if (previousRotationDuration < 0.)
-  {
-    double rotationDurationFirst = (currentTimeStamp - previousTimeStamp) / 1e6; // /1e6 to convert micros to s
-    if (!CheckRotationDuration(rotationDurationFirst, possibleFrequencies))
-      return -1.;
-    previousRotationDuration = rotationDurationFirst;
-    previousTimeStamp = currentTimeStamp;
-    return rotationDurationFirst;
-  }
-  else
-  {
-    double rotationDurationCurr = (currentTimeStamp - previousTimeStamp) / 1e6;
-    if (!CheckRotationDuration(rotationDurationCurr, possibleFrequencies) ||
-        std::abs(rotationDurationCurr - previousRotationDuration) > 0.005)
-      return previousRotationDuration;
+  return pclStampUs * 1e-6;
+}
 
-    double averagedRotationDuration = (rotationDurationCurr + previousRotationDuration) / 2.;
-    previousRotationDuration = averagedRotationDuration;
-    previousTimeStamp = currentTimeStamp;
-    return averagedRotationDuration;
-  }
+//------------------------------------------------------------------------------
+/*!
+ * @brief Get the factor between points time and frame time
+ * @return factor to scale point time to frame time : frame.Time = point.Time * factor
+ * @param duration difference between first point and last point of frame
+ * @param rotationDuration difference between one frame and the following one
+ */
+inline double GetTimeFactor(double duration, double rotationDuration)
+{
+  int power = std::round(std::log10(rotationDuration)) - std::round(std::log10(duration));
+  return std::pow(10, power);
 }
 
 //------------------------------------------------------------------------------
