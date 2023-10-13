@@ -111,6 +111,12 @@ public Q_SLOTS:
    */
   void Calibrate();
 
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Send a LOAD_LOOP_INDICES command to the slam node.
+   */
+  void LoadLoopIndices();
+
 private:
   //----------------------------------------------------------------------------
   /*!
