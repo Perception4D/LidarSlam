@@ -52,8 +52,8 @@ public:
    * @param node_name Name of the node created
    * @param options Options of the node, default no options
    */
-  LivoxToLidarNode(std::string node_name,
-                        const rclcpp::NodeOptions options = rclcpp::NodeOptions());
+  LivoxToLidarNode(const std::string node_name,
+                   const rclcpp::NodeOptions options = rclcpp::NodeOptions());
 
   //----------------------------------------------------------------------------
   /*!

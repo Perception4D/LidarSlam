@@ -67,13 +67,13 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
 
   CloudS cloudS = Utils::InitCloudS<CloudXYZ>(cloudRaw);
 
-  const double nLasers = (cloudRaw.height >= 8 && cloudRaw.height <=128) ? static_cast<double>(cloudRaw.height) : this->NbLasers;
+  const int nbLasers = (cloudRaw.height >= 8 && cloudRaw.height <=128) ? static_cast<double>(cloudRaw.height) : this->NbLasers;
 
   // Init of parameters useful for laser_id and time estimations
-  if (this->InitEstimParamToDo)
+  if (!this->RotSenseAndClustersEstimated)
   {
-    Utils::InitEstimationParameters<PointXYZ>(cloudRaw, nLasers, this->Clusters, this->ClockwiseRotationBool);
-    this->InitEstimParamToDo = false;
+    Utils::InitEstimationParameters<PointXYZ>(cloudRaw, nbLasers, this->Clusters, this->RotationIsClockwise);
+    this->RotSenseAndClustersEstimated = true;
   }
   Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
 
@@ -96,8 +96,8 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
     slamPoint.z = rawPoint.z;
     slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
     slamPoint.intensity = 0.;
-    slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nLasers, this->Clusters);
-    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->ClockwiseRotationBool);
+    slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nbLasers, this->Clusters);
+    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 
     cloudS.push_back(slamPoint);
   }
@@ -129,13 +129,13 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
 
   CloudS cloudS = Utils::InitCloudS<CloudXYZI>(cloudRaw);
 
-  const double nLasers = (cloudRaw.height >= 8 && cloudRaw.height <=128) ? static_cast<double>(cloudRaw.height) : this->NbLasers;
+  const int nbLasers = (cloudRaw.height >= 8 && cloudRaw.height <=128) ? static_cast<double>(cloudRaw.height) : this->NbLasers;
 
   // Init of parameters useful for laser_id and time estimations
-  if (this->InitEstimParamToDo)
+  if (!this->RotSenseAndClustersEstimated)
   {
-    Utils::InitEstimationParameters<PointXYZI>(cloudRaw, nLasers, this->Clusters, this->ClockwiseRotationBool);
-    this->InitEstimParamToDo = false;
+    Utils::InitEstimationParameters<PointXYZI>(cloudRaw, nbLasers, this->Clusters, this->RotationIsClockwise);
+    this->RotSenseAndClustersEstimated = true;
   }
   Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
 
@@ -158,8 +158,8 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
     slamPoint.z = rawPoint.z;
     slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
     slamPoint.intensity = rawPoint.intensity;
-    slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nLasers, this->Clusters);
-    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->ClockwiseRotationBool);
+    slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nbLasers, this->Clusters);
+    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 
     cloudS.push_back(slamPoint);
   }
