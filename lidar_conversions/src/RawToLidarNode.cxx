@@ -94,6 +94,8 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
   }
   Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
 
+  uint8_t deviceId = this->DeviceIdMap[cloudRaw.header.frame_id];
+
   // Build SLAM pointcloud
   #pragma omp parallel for
   for (const PointXYZ& rawPoint : cloudRaw)
@@ -111,7 +113,7 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
     slamPoint.x = rawPoint.x;
     slamPoint.y = rawPoint.y;
     slamPoint.z = rawPoint.z;
-    slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
+    slamPoint.device_id = deviceId;
     slamPoint.intensity = 0.;
     slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nbLasers, this->Clusters);
     slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
@@ -171,6 +173,8 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
   }
   Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
 
+  uint8_t deviceId = this->DeviceIdMap[cloudRaw.header.frame_id];
+
   // Build SLAM pointcloud
   #pragma omp parallel for
   for (const PointXYZI& rawPoint : cloudRaw)
@@ -188,7 +192,7 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
     slamPoint.x = rawPoint.x;
     slamPoint.y = rawPoint.y;
     slamPoint.z = rawPoint.z;
-    slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
+    slamPoint.device_id = deviceId;
     slamPoint.intensity = rawPoint.intensity;
     slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nbLasers, this->Clusters);
     slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
