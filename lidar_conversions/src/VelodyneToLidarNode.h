@@ -22,6 +22,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <velodyne_point.h>
 #include <LidarSlam/LidarPoint.h>
+#include <lidar_conversions/srv/estim_sense.hpp>
 #include "Utilities.h"
 
 namespace lidar_conversions
@@ -59,13 +60,23 @@ public:
    */
   void Callback(const Pcl2_msg& msg_received);
 
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Service to re-estimate the rotation sense of the LiDAR.
+   * @param request Service request
+   * @param response Service response
+   */
+  void EstimSenseService(const std::shared_ptr<lidar_conversions::srv::EstimSense::Request> request,
+                         const std::shared_ptr<lidar_conversions::srv::EstimSense::Response> response);
+
 private:
 
   //----------------------------------------------------------------------------
 
-  // ROS node handles, subscriber and publisher
+  // ROS node handles, subscriber, publisher and service
   rclcpp::Subscription<Pcl2_msg>::SharedPtr Listener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
+  rclcpp::Service<lidar_conversions::srv::EstimSense>::SharedPtr EstimService;
 
   // Map to store the device id of each device (in case of multilidar).
   std::unordered_map<std::string, uint8_t> DeviceIdMap;

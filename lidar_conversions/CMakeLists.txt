@@ -24,6 +24,8 @@ endif()
 find_package(pcl_conversions REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(livox_ros_driver REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 
 ###########
 ## Build ##
@@ -40,6 +42,18 @@ include_directories(
   "./external_include"
 )
 
+# Generate slam interfaces
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/EstimParams.srv"
+  "srv/EstimSense.srv"
+  DEPENDENCIES std_msgs
+)
+ament_export_dependencies(rosidl_default_runtime)
+
+# Generate C++ code to use custom interfaces in the same package
+rosidl_get_typesupport_target(cpp_typesupport_target
+  ${PROJECT_NAME} "rosidl_typesupport_cpp")
+
 # Velodyne Lidar
 add_executable(velodyne_conversion_node src/VelodyneToLidarNode.cxx)
 
@@ -48,11 +62,17 @@ set (conversion_dependencies
   ${pcl_ros_target}
   pcl_conversions
   sensor_msgs
+  std_msgs
+  std_srvs
 )
 
 #link dependencies to target
 ament_target_dependencies(velodyne_conversion_node
   ${conversion_dependencies}
+)
+
+target_link_libraries(velodyne_conversion_node
+  "${cpp_typesupport_target}"
 )
 
 # Ouster Lidar
@@ -63,12 +83,20 @@ ament_target_dependencies(ouster_conversion_node
   ${conversion_dependencies}
 )
 
+target_link_libraries(ouster_conversion_node
+  "${cpp_typesupport_target}"
+)
+
 # Robosense RSLidar
 add_executable(robosense_conversion_node src/RobosenseToLidarNode.cxx)
 
 #link dependencies to target
 ament_target_dependencies(robosense_conversion_node
   ${conversion_dependencies}
+)
+
+target_link_libraries(robosense_conversion_node
+  "${cpp_typesupport_target}"
 )
 
 # Livox mid100 Lidar
@@ -86,6 +114,10 @@ add_executable(raw_conversion_node src/RawToLidarNode.cxx)
 #link dependencies to target
 ament_target_dependencies(raw_conversion_node
   ${conversion_dependencies}
+)
+
+target_link_libraries(raw_conversion_node
+  "${cpp_typesupport_target}"
 )
 
 #############

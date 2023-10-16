@@ -23,6 +23,7 @@
 #include <pcl/point_types.h>
 #include <LidarSlam/LidarPoint.h>
 #include "Utilities.h"
+#include <lidar_conversions/srv/estim_params.hpp>
 #include <unordered_map>
 #include <random>
 
@@ -89,13 +90,23 @@ public:
    */
   void CallbackXYZI(const Pcl2_msg& msg_received);
 
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Service to re-compute the estimation parameters of the conversion node.
+   * @param request Service request
+   * @param response Service response
+   */
+  void EstimParamsService(const std::shared_ptr<lidar_conversions::srv::EstimParams::Request> req,
+                          const std::shared_ptr<lidar_conversions::srv::EstimParams::Response> res);
+
 private:
   //----------------------------------------------------------------------------
 
-  // ROS node handles, subscriber and publisher
+  // ROS node handles, subscriber, publisher and service
   rclcpp::Subscription<Pcl2_msg>::SharedPtr ListenerXYZ;
   rclcpp::Subscription<Pcl2_msg>::SharedPtr ListenerXYZI;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
+  rclcpp::Service<lidar_conversions::srv::EstimParams>::SharedPtr EstimService;
 
   // Map to store the device id of each device (in case of multilidar).
   std::unordered_map<std::string, uint8_t> DeviceIdMap;

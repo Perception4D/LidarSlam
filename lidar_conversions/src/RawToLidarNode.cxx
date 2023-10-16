@@ -39,6 +39,11 @@ RawToLidarNode::RawToLidarNode(std::string node_name, const rclcpp::NodeOptions 
   this->ListenerXYZI = this->create_subscription<Pcl2_msg>("/xyzi_lidar_points", 1,
                                         std::bind(&RawToLidarNode::CallbackXYZI, this, std::placeholders::_1));
 
+  // Init ROS service
+  this->EstimService = this->create_service<lidar_conversions::srv::EstimParams>(
+      "lidar_conversions/estim_params",
+      std::bind(&RawToLidarNode::EstimParamsService, this, std::placeholders::_1, std::placeholders::_2));
+
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("Raw LiDAR data converter is ready !"));
 }
 
@@ -201,6 +206,17 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
   }
   PublishMsg(cloudS);
 }
+
+//------------------------------------------------------------------------------
+void RawToLidarNode::EstimParamsService(
+  const std::shared_ptr<lidar_conversions::srv::EstimParams::Request> req,
+  const std::shared_ptr<lidar_conversions::srv::EstimParams::Response> res)
+{
+  this->RotSenseAndClustersEstimated = false;
+  RCLCPP_INFO_STREAM(this->get_logger(), "Estimation parameters will be re-estimated with next frames.");
+  res->success = true;
+}
+
 }  // namespace lidar_conversions
 
 //------------------------------------------------------------------------------

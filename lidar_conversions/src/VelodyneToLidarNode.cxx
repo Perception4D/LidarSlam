@@ -36,6 +36,11 @@ VelodyneToLidarNode::VelodyneToLidarNode(std::string node_name, const rclcpp::No
   this->Listener = this->create_subscription<Pcl2_msg>("velodyne_points", 1,
                                             std::bind(&VelodyneToLidarNode::Callback, this, std::placeholders::_1));
 
+  // Init ROS service
+  this->EstimService = this->create_service<lidar_conversions::srv::EstimSense>(
+      "lidar_conversions/estim_sense",
+      std::bind(&VelodyneToLidarNode::EstimSenseService, this, std::placeholders::_1, std::placeholders::_2));
+
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN( "Velodyne data converter is ready !"));
 }
 
@@ -135,6 +140,16 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
   pcl::toROSMsg(cloudS, msg_sent);
 
   this->Talker->publish(msg_sent);
+}
+
+//------------------------------------------------------------------------------
+void VelodyneToLidarNode::EstimSenseService(
+  const std::shared_ptr<lidar_conversions::srv::EstimSense::Request> req,
+  const std::shared_ptr<lidar_conversions::srv::EstimSense::Response> res)
+{
+  this->RotationSenseEstimated = false;
+  RCLCPP_INFO_STREAM(this->get_logger(), "Rotation sense will be re-estimated with next frames.");
+  res->success = true;
 }
 
 }  // end of namespace lidar_conversions
