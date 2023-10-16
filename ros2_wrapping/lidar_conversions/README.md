@@ -25,13 +25,31 @@ Currently, this package implements the following nodes :
 
 ## Usage
 
-Direct usage :
+### Direct usage :
 
 ```bash
-rosrun lidar_conversions velodyne_conversion_node
+ros2 run lidar_conversions velodyne_conversion_node
 ```
 
-Example of launchfile for a multi-lidar setup:
+### Direct usage with user invention to compute estimation parameters again (in case laser_id and/or time look unusual) :
+To be done in two seperate terminals:
+
+1:
+```bash
+ros2 run lidar_conversions velodyne_conversion_node
+```
+
+2:
+- if you want to compute estimation parameters again for Velodyne or Ouster :
+```bash
+ros2 service call lidar_conversions/estim_sense lidar_conversions/srv/EstimSense
+```
+- if you want to compute estimation parameters again for any other node (Robosense, Livox, Raw) :
+```bash
+ros2 service call lidar_conversions/estim_params lidar_conversions/srv/EstimParams
+```
+
+### Example of launchfile for a multi-lidar setup:
 
 ```xml
 <launch>

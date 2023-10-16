@@ -38,9 +38,15 @@ OusterToLidarNode::OusterToLidarNode(std::string node_name, const rclcpp::NodeOp
   // Put reliability to the same mode than Ouster Driver
   custom_qos_profile.reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
 
-  // Init ROS subscrib
+  // Init ROS subscriber
   this->Listener = this->create_subscription<Pcl2_msg>("/ouster/points", custom_qos_profile,
                                         std::bind(&OusterToLidarNode::Callback, this, std::placeholders::_1));
+
+  // Init ROS service
+  this->EstimService = this->create_service<lidar_conversions::srv::EstimSense>(
+      "lidar_conversions/estim_sense",
+      std::bind(&OusterToLidarNode::EstimSenseService, this, std::placeholders::_1, std::placeholders::_2));
+
 
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("Ouster data converter is ready !"));
 }
@@ -139,6 +145,16 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   pcl::toROSMsg(cloudS, toPublish);
 
   this->Talker->publish(toPublish);
+}
+
+//------------------------------------------------------------------------------
+void OusterToLidarNode::EstimSenseService(
+  const std::shared_ptr<lidar_conversions::srv::EstimSense::Request> req,
+  const std::shared_ptr<lidar_conversions::srv::EstimSense::Response> res)
+{
+  this->RotationSenseEstimated = false;
+  RCLCPP_INFO_STREAM(this->get_logger(), "Rotation sense will be re-estimated with next frames.");
+  res->success = true;
 }
 
 }  // end of namespace lidar_conversions

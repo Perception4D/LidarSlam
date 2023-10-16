@@ -42,6 +42,10 @@ RobosenseToLidarNode::RobosenseToLidarNode(std::string node_name, const rclcpp::
   this->Listener = this->create_subscription<Pcl2_msg>("rslidar_points", 1,
                               std::bind(&RobosenseToLidarNode::Callback, this, std::placeholders::_1));
 
+  // Init ROS service
+  this->EstimService = this->create_service<lidar_conversions::srv::EstimParams>(
+      "lidar_conversions/estim_params",
+      std::bind(&RobosenseToLidarNode::EstimParamsService, this, std::placeholders::_1, std::placeholders::_2));
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("RSLidar data converter is ready !"));
 }
 
@@ -139,6 +143,16 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
 
     this->Talker->publish(msg_sended);
   }
+}
+
+//------------------------------------------------------------------------------
+void RobosenseToLidarNode::EstimParamsService(
+  const std::shared_ptr<lidar_conversions::srv::EstimParams::Request> req,
+  const std::shared_ptr<lidar_conversions::srv::EstimParams::Response> res)
+{
+  this->RotSenseAndClustersEstimated = false;
+  RCLCPP_INFO_STREAM(this->get_logger(), "Estimation parameters will be re-estimated with next frames.");
+  res->success = true;
 }
 
 }  // end of namespace lidar_conversions
