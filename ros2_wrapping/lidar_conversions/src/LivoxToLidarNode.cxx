@@ -74,6 +74,8 @@ void LivoxToLidarNode::PointCloud2Callback(const Pcl2_msg& msg_received)
   // Helper to estimate frameAdvancement in case time field is invalid
   Utils::SpinningFrameAdvancementEstimator frameAdvancementEstimator;
 
+  uint8_t deviceId = this->DeviceIdMap[cloudL.header.frame_id];
+
   // Build SLAM pointcloud
   double prevTime = -0.1;
   for (const PointL& livoxPoint : cloudL)
@@ -88,7 +90,7 @@ void LivoxToLidarNode::PointCloud2Callback(const Pcl2_msg& msg_received)
     slamPoint.z = livoxPoint.z;
     slamPoint.intensity = livoxPoint.intensity;
     slamPoint.laser_id = 0;
-    slamPoint.device_id = this->DeviceIdMap[cloudL.header.frame_id];
+    slamPoint.device_id = deviceId;
 
     slamPoint.time = prevTime + 0.1/300000.; // Supposing 10 Hz and 300 000 points
     prevTime = slamPoint.time;

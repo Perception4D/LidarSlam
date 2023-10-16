@@ -108,6 +108,8 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
 
   Eigen::Vector2d firstPoint = {cloudO[0].x, cloudO[0].y};
 
+  uint8_t deviceId = this->DeviceIdMap[cloudO.header.frame_id];
+
   // Build SLAM pointcloud
   for (const PointO& ousterPoint : cloudO)
   {
@@ -120,7 +122,7 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.y = ousterPoint.y;
     slamPoint.z = ousterPoint.z;
     slamPoint.intensity = ousterPoint.reflectivity;
-    slamPoint.device_id = this->DeviceIdMap[cloudO.header.frame_id];
+    slamPoint.device_id = deviceId;
     slamPoint.laser_id = ousterPoint.ring;
 
     // Use time field if available, else estimate it from azimuth advancement
