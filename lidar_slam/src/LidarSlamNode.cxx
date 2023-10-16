@@ -25,6 +25,8 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <nav_msgs/msg/path.hpp>
 
+#include <iomanip>
+
 #ifdef USE_CV_BRIDGE
 #include <cv_bridge/cv_bridge.h>
 #endif
@@ -1558,6 +1560,56 @@ void LidarSlamNode::SetSlamParameters()
       this->LidarSlam.SetVoxelGridSamplingMode(k, sampling);
     }
   }
+
+  RCLCPP_WARN_STREAM(this->get_logger(), "Please review the following parameters setting:");
+
+  // Display external sensor information
+  RCLCPP_INFO_STREAM(this->get_logger(), std::setw(19) << "Sensor            |"
+                     << std::setw(13) << " is enabled |"
+                     << std::setw(22) << " can be used locally |"
+                     << std::setw(22) << " can be used for PGO |");
+  RCLCPP_INFO_STREAM(this->get_logger(), std::setw(19) << "Camera            |"
+                     << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] ? " ON |" : " OFF |")
+                     << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] &&
+                     this->LidarSlam.GetCameraWeight() > 1e-6 ? " YES |" : " NO |")
+                     << std::setw(22) << " NO |");
+  RCLCPP_INFO_STREAM(this->get_logger(), std::setw(19) << "Landmark detector |"
+                     << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ? " ON |" : " OFF |")
+                     << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] &&
+                     this->LidarSlam.GetLandmarkWeight() > 1e-6 ? " YES |" : "  NO |")
+                     << std::setw(22) << ((this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] &&
+                     this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LANDMARK)) ? " YES |" : " NO |"));
+  RCLCPP_INFO_STREAM(this->get_logger(), std::setw(19) << "Pose sensor       |"
+                     << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::POSE] ? " ON |" : " OFF |")
+                     << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::POSE] &&
+                     this->LidarSlam.GetPoseWeight() > 1e-6 ? " YES |" : "  NO |")
+                     << std::setw(22) << ((this->UseExtSensor[LidarSlam::ExternalSensor::POSE] &&
+                     this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE)) ? " YES |" : " NO |"));
+  RCLCPP_INFO_STREAM(this->get_logger(), std::setw(19) << "GPS               |"
+                     << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::GPS] ? " ON |" : " OFF |")
+                     << std::setw(22) << " NO |"
+                     << std::setw(22) << ((this->UseExtSensor[LidarSlam::ExternalSensor::GPS] &&
+                     this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS)) ? " YES |" : " NO |"));
+  // to do add wheel encoder info if wheel encoder is merged before loop closure
+
+  // Check if or not one pgo constraint is enabled at least
+  if (!this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE) &&
+      !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LANDMARK) &&
+      !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE) &&
+      !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS))
+  {
+    RCLCPP_INFO_STREAM(this->get_logger(), "Pose graph optimization is not enabled.");
+    return;
+  }
+  RCLCPP_INFO_STREAM(this->get_logger(), "Loop closure constraint is "
+                     << (this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE) ? "enabled " : "disabled ")
+                     <<"for pose graph");
+  if (this->LidarSlam.GetLoggingTimeout() > 0.2)
+    RCLCPP_INFO_STREAM(this->get_logger(), "Logging timeout is set to " << this->LidarSlam.GetLoggingTimeout() << "s. "
+                                           "Pose graph optimization can be applied on this time window.");
+  else
+    RCLCPP_INFO_STREAM(this->get_logger(), "Logging timeout is set to " << this->LidarSlam.GetLoggingTimeout() << "s. "
+                                           "Please set a convenient value to use pose graph optimization!");
 }
 
 //------------------------------------------------------------------------------
