@@ -89,21 +89,6 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
   this->SetSlamParameters();
   this->SetSlamInitialState();
 
-  // Use GPS data for GPS/SLAM calibration or Pose Graph Optimization.
-  this->get_parameter_or<bool>("external_sensors.gps.enable", this->UseExtSensor[LidarSlam::ExternalSensor::GPS], false);
-  this->LidarSlam.EnablePGOConstraint(LidarSlam::PGOConstraint::GPS, this->UseExtSensor[LidarSlam::ExternalSensor::GPS]);
-
-  // Use tags data for local optimization.
-  this->get_parameter_or<bool>("external_sensors.landmark_detector.enable", this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR], false);
-  this->LidarSlam.EnablePGOConstraint(LidarSlam::PGOConstraint::LANDMARK, this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR]);
-
-  // Use camera rgb images in local optimization.
-  this->get_parameter_or<bool>("external_sensors.camera.enable", this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA], false);
-
-  // Use external poses in local optimization or in graph optimization
-  this->get_parameter_or<bool>("external_sensors.external_poses.enable", this->UseExtSensor[LidarSlam::ExternalSensor::POSE], false);
-  this->LidarSlam.EnablePGOConstraint(LidarSlam::PGOConstraint::EXT_POSE, this->UseExtSensor[LidarSlam::ExternalSensor::POSE]);
-
   // ***************************************************************************
   // Init ROS publishers
 
@@ -150,9 +135,9 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
 
   initPublisher(CONFIDENCE, "slam_confidence", lidar_slam::msg::Confidence, "output.confidence", true, 1, false);
 
-  if (this->UseExtSensor[LidarSlam::ExternalSensor::GPS] ||
-      this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ||
-      this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
+  if (this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS) ||
+      this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LANDMARK) ||
+      this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE))
     initPublisher(PGO_PATH, "pgo_slam_path", nav_msgs::msg::Path, "graph.publish_path", false, 1, true);
 
   // Set frequency of output pose (all poses are published at the end of the frames process)
@@ -1417,20 +1402,50 @@ void LidarSlamNode::SetSlamParameters()
   this->get_parameter_or<bool>("external_sensors.lidar_is_posix", this->LidarTimePosix, true);
   SetSlamParam(float,   "external_sensors.time_offset", SensorTimeOffset)
   this->SensorTimeOffset = this->LidarSlam.GetSensorTimeOffset();
+  this->get_parameter<bool>("external_sensors.calibration.planar_trajectory", this->PlanarTrajectory);
+
+  // Use GPS data for GPS/SLAM calibration or Pose Graph Optimization.
+  this->get_parameter_or<bool>("external_sensors.gps.enable", this->UseExtSensor[LidarSlam::ExternalSensor::GPS], false);
+
+  // Use tags data for local optimization.
+  this->get_parameter_or<bool>("external_sensors.landmark_detector.enable", this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR], false);
   SetSlamParam(float,  "external_sensors.landmark_detector.weight", LandmarkWeight)
   SetSlamParam(float,  "external_sensors.landmark_detector.saturation_distance", LandmarkSaturationDistance)
   SetSlamParam(bool,   "external_sensors.landmark_detector.position_only", LandmarkPositionOnly)
   this->get_parameter_or<bool>("external_sensors.landmark_detector.publish_tags", this->PublishTags, false);
+
+  // Use camera rgb images in local optimization.
+  this->get_parameter_or<bool>("external_sensors.camera.enable", this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA], false);
   SetSlamParam(float,  "external_sensors.camera.weight", CameraWeight)
   SetSlamParam(float,  "external_sensors.camera.saturation_distance", CameraSaturationDistance)
-  this->get_parameter<bool>("external_sensors.calibration.planar_trajectory", this->PlanarTrajectory);
-  SetSlamParam(float,  "external_sensors.external_poses.weight", PoseWeight)
 
+  // Use external poses in local optimization or in graph optimization
+  this->get_parameter_or<bool>("external_sensors.external_poses.enable", this->UseExtSensor[LidarSlam::ExternalSensor::POSE], false);
+  SetSlamParam(float,  "external_sensors.external_poses.weight", PoseWeight)
 
   // Graph parameters
   SetSlamParam(std::string, "graph.g2o_file_name", G2oFileName)
   SetSlamParam(float,       "graph.covariance_scale", CovarianceScale)
   SetSlamParam(int,         "graph.iterations_nb", NbGraphIterations)
+
+  // Set PGO Constraint
+  auto enablePGOConstraint = [this](const LidarSlam::PGOConstraint& pgoType, const LidarSlam::ExternalSensor& checkExtSensorType = LidarSlam::ExternalSensor::nbExternalSensors)
+  {
+    bool enabled = false;
+    std::string name = LidarSlam::PGOConstraintNames.at(pgoType);
+    if (this->get_parameter<bool>("graph.constraint." + name, enabled))
+      this->LidarSlam.EnablePGOConstraint(pgoType, enabled);
+
+    // Check whether the relevant sensor is enabled when a pgo is enabled (except loop closure)
+    if (pgoType == LidarSlam::PGOConstraint::LOOP_CLOSURE)
+      return;
+    if (!this->UseExtSensor[checkExtSensorType] && enabled)
+      RCLCPP_WARN_STREAM(this->get_logger(), name << " constraint is ON for PGO but the sensor is disabled");
+  };
+  enablePGOConstraint(LidarSlam::PGOConstraint::LOOP_CLOSURE);
+  enablePGOConstraint(LidarSlam::PGOConstraint::LANDMARK, LidarSlam::ExternalSensor::LANDMARK_DETECTOR);
+  enablePGOConstraint(LidarSlam::PGOConstraint::GPS,      LidarSlam::ExternalSensor::GPS);
+  enablePGOConstraint(LidarSlam::PGOConstraint::EXT_POSE, LidarSlam::ExternalSensor::POSE);
 
   // Confidence estimators
   // Overlap
