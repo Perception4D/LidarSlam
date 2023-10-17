@@ -12,6 +12,7 @@ from launch.substitutions import TextSubstitution, LaunchConfiguration
 def generate_launch_description():
 
   lidar_slam_share_path = get_package_share_directory('lidar_slam')
+  lidar_conversion_share_path = get_package_share_directory('lidar_conversions')
 
   ###############
   ## ARGUMENTS ##
@@ -32,9 +33,6 @@ def generate_launch_description():
     DeclareLaunchArgument("device_ip", default_value=""),
     DeclareLaunchArgument("port", default_value=TextSubstitution(text="2368")),
     DeclareLaunchArgument("pcap", default_value=""),
-    #! /!\ rpm and timestamp_first_packet are also used to generate approximate point-wise timestamps as 'time' field is not usable.
-    DeclareLaunchArgument("rpm", default_value=TextSubstitution(text="600."), description="Velodyne sensor spinning speed."),
-    DeclareLaunchArgument("timestamp_first_packet", default_value="false", description="If Velodyne timestamping is based on the first or last packet of each scan."),
     DeclareLaunchArgument("aggregate", default_value="false", description="Run aggregation node"),
   ])
 
@@ -100,13 +98,13 @@ def generate_launch_description():
   ##########
 
   # Velodyne points conversion
+  with open(os.path.join(lidar_conversion_share_path, 'params', "conversion_config.yaml"), 'r') as f:
+    params_conversion = yaml.safe_load(f)['/lidar_conversions']['ros__parameters']
+  # Manualy override conversions parameters from parameter file
+  params_conversion['use_sim_time'] = LaunchConfiguration("use_sim_time")
   velodyne_conversion_node = Node(
     package="lidar_conversions", executable="velodyne_conversion_node", name="velodyne_conversion", output="screen",
-    parameters=[{
-      "use_sim_time": LaunchConfiguration("use_sim_time"),
-      "rpm": LaunchConfiguration("rpm"),
-      "timestamp_first_packet": LaunchConfiguration("timestamp_first_packet"),
-    }],
+    parameters=[params_conversion],
   )
 
   # LiDAR SLAM : compute TF slam_init -> velodyne

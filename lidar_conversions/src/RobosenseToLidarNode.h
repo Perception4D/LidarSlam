@@ -92,10 +92,13 @@ private:
   double RotationDuration = -1.;
   double RotationDurationPrior = -1.;
   double PrevFrameTime = -1.;
-  const std::vector<double> PossibleFrequencies = {5., 10., 20.}; ///< Vector of all the possible frequencies for robosense LiDAR
+  std::vector<double> PossibleFrequencies = {5., 10., 20.}; ///< Vector of all the possible frequencies for robosense LiDAR
 
   // Useful variable to estimate laser_id
   std::vector<Utils::Cluster> Clusters;
+
+  // Number of threads to use for the conversion
+  int NbThreads = 1;
 };
 
 }  // end of namespace lidar_conversions

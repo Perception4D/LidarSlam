@@ -29,6 +29,12 @@ RawToLidarNode::RawToLidarNode(std::string node_name, const rclcpp::NodeOptions 
   // Get number of lasers
   this->get_parameter("nb_lasers", this->NbLasers);
 
+  // Get possible frequencies
+  this->get_parameter("possible_frequencies", this->PossibleFrequencies);
+
+  // Get number of threads
+  this->get_parameter("nb_threads", this->NbThreads);
+
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
@@ -94,7 +100,7 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
   // Init of parameters useful for laser_id and time estimations
   if (!this->RotSenseAndClustersEstimated)
   {
-    Utils::InitEstimationParameters<PointXYZ>(cloudRaw, nbLasers, this->Clusters, this->RotationIsClockwise);
+    Utils::InitEstimationParameters<PointXYZ>(cloudRaw, nbLasers, this->Clusters, this->RotationIsClockwise, this->NbThreads);
     this->RotSenseAndClustersEstimated = true;
   }
   Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
@@ -102,7 +108,7 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
   uint8_t deviceId = this->DeviceIdMap[cloudRaw.header.frame_id];
 
   // Build SLAM pointcloud
-  #pragma omp parallel for
+  #pragma omp parallel for num_threads(this->NbThreads)
   for (const PointXYZ& rawPoint : cloudRaw)
   {
     // Remove no return points by checking unvalid values (NaNs or zeros)
@@ -173,7 +179,7 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
   // Init of parameters useful for laser_id and time estimations
   if (!this->RotSenseAndClustersEstimated)
   {
-    Utils::InitEstimationParameters<PointXYZI>(cloudRaw, nbLasers, this->Clusters, this->RotationIsClockwise);
+    Utils::InitEstimationParameters<PointXYZI>(cloudRaw, nbLasers, this->Clusters, this->RotationIsClockwise, this->NbThreads);
     this->RotSenseAndClustersEstimated = true;
   }
   Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
@@ -181,7 +187,7 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
   uint8_t deviceId = this->DeviceIdMap[cloudRaw.header.frame_id];
 
   // Build SLAM pointcloud
-  #pragma omp parallel for
+  #pragma omp parallel for (this->NbThreads)
   for (const PointXYZI& rawPoint : cloudRaw)
   {
     // Remove no return points by checking unvalid values (NaNs or zeros)

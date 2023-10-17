@@ -22,18 +22,18 @@
 
 namespace lidar_conversions
 {
-namespace
-{
-  // Mapping between RSLidar laser id and vertical laser id
-  // TODO add laser ID mappings for RS32, RSBPEARL and RSBPEARL_MINI ?
-  const std::array<uint16_t, 16> LASER_ID_MAPPING_RS16 = {0, 1, 2, 3, 4, 5, 6, 7, 15, 14, 13, 12, 11, 10, 9, 8};
-}
 
 RobosenseToLidarNode::RobosenseToLidarNode(std::string node_name, const rclcpp::NodeOptions options)
   : Node(node_name, options)
 {
   // Get number of lasers
   this->get_parameter("nb_lasers", this->NbLasers);
+
+    // Get possible frequencies
+  this->get_parameter("possible_frequencies", this->PossibleFrequencies);
+
+  // Get number of threads
+  this->get_parameter("nb_threads", this->NbThreads);
 
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
@@ -99,7 +99,7 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
   // Init of parameters useful for laser_id and time estimations
   if (!this->RotSenseAndClustersEstimated)
   {
-    Utils::InitEstimationParameters<PointRS>(cloudRS, nbLasers, this->Clusters, this->RotationIsClockwise);
+    Utils::InitEstimationParameters<PointRS>(cloudRS, nbLasers, this->Clusters, this->RotationIsClockwise, this->NbThreads);
     this->RotSenseAndClustersEstimated = true;
   }
 
@@ -108,6 +108,7 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
   uint8_t deviceId = this->DeviceIdMap[cloudRS.header.frame_id];
 
   // Build SLAM pointcloud
+  #pragma omp parallel for num_threads(this->NbThreads)
   for (unsigned int i = 0; i < cloudRS.size(); ++i)
   {
     const PointRS& rsPoint = cloudRS[i];

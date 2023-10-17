@@ -29,6 +29,12 @@ VelodyneToLidarNode::VelodyneToLidarNode(std::string node_name, const rclcpp::No
   // Get number of lasers
   this->get_parameter("nb_lasers", this->NbLasers);
 
+  // Get possible frequencies
+  this->get_parameter("possible_frequencies", this->PossibleFrequencies);
+
+  // Get number of threads
+  this->get_parameter("nb_threads", this->NbThreads);
+
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
@@ -113,6 +119,7 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
   Eigen::Vector2d firstPoint = {cloudV[0].x, cloudV[0].y};
 
   // Build SLAM pointcloud
+  #pragma omp parallel for num_threads(this->NbThreads)
   for (const PointV& velodynePoint : cloudV)
   {
     // Remove no return points by checking unvalid values (NaNs or zeros)

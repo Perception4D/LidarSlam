@@ -120,7 +120,7 @@ private:
   double RotationDuration = -1.;
   double RotationDurationPrior = -1.;
   double PrevFrameTime = -1.;
-  const std::vector<double> PossibleFrequencies; ///< Vector of all the possible frequencies of a certain type of LiDAR
+  std::vector<double> PossibleFrequencies; ///< Vector of all the possible frequencies of a certain type of LiDAR
 
   bool RotSenseAndClustersEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations
 
@@ -129,6 +129,9 @@ private:
 
   // Useful variable to estimate laser_id
   std::vector<Utils::Cluster> Clusters;
+
+  // Number of threads to use for the conversion
+  int NbThreads = 1;
 };
 
 }  // end of namespace lidar_conversions

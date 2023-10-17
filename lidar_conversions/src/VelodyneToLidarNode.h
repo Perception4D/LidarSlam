@@ -91,10 +91,13 @@ private:
   double RotationDuration = -1.;
   double RotationDurationPrior = -1.;
   double PrevFrameTime = -1.;
-  const std::vector<double> PossibleFrequencies = {5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20.}; ///< Vector of all the possible frequencies for Velodyne LiDAR
+  std::vector<double> PossibleFrequencies = {5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20.}; ///< Vector of all the possible frequencies for Velodyne LiDAR
 
   // Useful variable to estimate laser_id
   std::vector<Utils::Cluster> Clusters;
+
+  // Number of threads to use for the conversion
+  int NbThreads = 1;
 };
 
 }  // end of namespace lidar_conversions

@@ -53,22 +53,13 @@ ros2 service call lidar_conversions/estim_params lidar_conversions/srv/EstimPara
 
 ```xml
 <launch>
-  <!-- LiDAR pointclouds conversions.
-       The 'rpm' and 'timestamp_first_packet' parameters are only used to
-       generate approximate point-wise timestamps if 'time' field is not usable.
-       These 2 parameters should be set to the same values as ROS Velodyne/RSLidar drivers'. -->
+  <ros2param from="/lidar_conversions" command="load" file="$(find lidar_conversions)/params/conversion_config.yaml"/>
 
   <node name="velodyne_conversion" pkg="lidar_conversions" type="velodyne_conversion_node" output="screen">
-    <param name="device_id" value="0"/>
-    <param name="rpm" value="600."/>
-    <param name="timestamp_first_packet" value="false"/>
     <remap from="lidar_points" to="velodyne_lidar_points"/>
   </node>
 
   <node name="robosense_conversion" pkg="lidar_conversions" type="robosense_conversion_node" output="screen">
-    <rosparam param="laser_id_mapping">[0, 1, 2, 3, 4, 5, 6, 7, 15, 14, 13, 12, 11, 10, 9, 8]</rosparam>
-    <param name="device_id" value="1"/>
-    <param name="rpm" value="600."/>
     <remap from="lidar_points" to="robosense_lidar_points"/>
   </node>
 </launch>
