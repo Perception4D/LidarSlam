@@ -153,7 +153,7 @@ inline double GetTimeFactor(double duration, double rotationDuration)
  * @param nbLasers Number of lasers of the lidar
  */
 template <typename PointType>
-inline void ClusterizeVerticalAngles(const pcl::PointCloud<PointType>& cloudRaw, int nbLasers, std::vector<Cluster>& clusters)
+inline void ClusterizeVerticalAngles(const pcl::PointCloud<PointType>& cloudRaw, int nbLasers, std::vector<Cluster>& clusters, int nbThreads)
 {
   std::vector<double> verticalAngles;
   verticalAngles.reserve(cloudRaw.size());
@@ -170,7 +170,7 @@ inline void ClusterizeVerticalAngles(const pcl::PointCloud<PointType>& cloudRaw,
   double clusterWidth = (maxAngle - minAngle) / double(nbLasers);
 
   clusters.resize(nbLasers);
-  #pragma omp parallel for
+  #pragma omp parallel for num_threads(nbThreads)
   for (size_t idxCluster = 0; idxCluster < nbLasers; ++idxCluster)
     clusters[idxCluster].Mean = minAngle + idxCluster * clusterWidth;
 
@@ -330,9 +330,10 @@ template<typename PointT>
 inline void InitEstimationParameters(const pcl::PointCloud<PointT>& cloudRaw,
                                      int nbLasers,
                                      std::vector<Cluster>& clusters,
-                                     bool& rotationIsClockwise)
+                                     bool& rotationIsClockwise,
+                                     int nbThreads = 1)
 {
-  Utils::ClusterizeVerticalAngles<PointT>(cloudRaw, nbLasers, clusters);
+  Utils::ClusterizeVerticalAngles<PointT>(cloudRaw, nbLasers, clusters, nbThreads);
   rotationIsClockwise = Utils::IsRotationClockwise<PointT>(cloudRaw, nbLasers);
 }
 

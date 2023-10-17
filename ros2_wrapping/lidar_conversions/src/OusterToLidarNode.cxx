@@ -30,6 +30,12 @@ OusterToLidarNode::OusterToLidarNode(std::string node_name, const rclcpp::NodeOp
   // Get number of lasers
   this->get_parameter("nb_lasers", this->NbLasers);
 
+  // Get possible frequencies
+  this->get_parameter("possible_frequencies", this->PossibleFrequencies);
+
+  // Get number of threads
+  this->get_parameter("nb_threads", this->NbThreads);
+
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
@@ -117,6 +123,7 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   uint8_t deviceId = this->DeviceIdMap[cloudO.header.frame_id];
 
   // Build SLAM pointcloud
+  #pragma omp parallel for num_threads(this->NbThreads)
   for (const PointO& ousterPoint : cloudO)
   {
     // Remove no return points by checking unvalid values (NaNs or zeros)
