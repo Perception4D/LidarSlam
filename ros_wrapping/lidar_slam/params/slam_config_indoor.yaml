@@ -73,11 +73,9 @@ external_sensors:
                       # and between two measures to interpolate
                       # /!\ For landmarks this parameter is also used to define a maximum time without seeing a tag
                       # to reset the absolute pose with new observation (only in the case no poses were initially needed).
-  lidar_is_posix: true # lidar timestamp in data header is POSIX
-                       # as we expect external sensor timestamps to be POSIX, we can directly
-                       # use header timestamp to synchronize data.
-                       # If not, we use message reception time as reference.
-  time_offset: 0.      # [s] Offset to apply on external sensor time data to get lidar time
+  use_header_time: false # [bool] Use the time from the header messages
+                         # If false, ROS time from message reception is used
+  time_offset: 0.        # [s] Offset to apply on external sensor time data to get lidar time
   calibration:
     planar_trajectory: false # [bool] Notify that the trajectory to use to calibrate
                              # is planar so a degree of liberty is missing

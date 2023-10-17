@@ -266,10 +266,10 @@ protected:
                                                                       {LidarSlam::ExternalSensor::POSE,              false},
                                                                       {LidarSlam::ExternalSensor::CAMERA,            false}};
 
-  // If lidar time contained in the header is not POSIX
-  // The offset between network reception time
-  // and Lidar time is computed
-  bool LidarTimePosix = true;
+  // Choose whether to use the time coming from the sensors' messages header
+  // or the time of the message reception to synchronize the sensors
+  // It is always better to use the times provided by the sensors themselves when possible.
+  bool UseHeaderTime = true;
   // Offset to apply to external sensors to get lidar time
   float SensorTimeOffset = 0.;
 
