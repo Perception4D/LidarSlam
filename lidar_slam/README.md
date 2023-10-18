@@ -121,6 +121,14 @@ These launch files will start :
 * (optional) The Lidar drivers if required (see velodyne_driver and os_driver parameters),
 * (optional) GPS/UTM conversions nodes to publish SLAM pose as a GPS coordinate in WGS84 format (if `gps` arg is enabled). This uses the prior that full GPS pose and GPS/LiDAR calibration are correctly known and set (see [GPS/SLAM calibration](#gpsslam-calibration) section below for more info).
 
+#### Choosing a domain ID
+
+If you have several computers running ROS2 on a same network, there could be some interference between different groups of computers. You can manage the communication of ROS 2 nodes by setting the domain ID. ROS 2 nodes on the same domain can freely discover and send messages to each other, while ROS 2 nodes on different domains cannot. The value of domain ID is between 0 and 101, inclusive. The default value is 0 for all ROS 2 nodes. You can set it by:
+
+```bash
+ros2 launch lidar_slam slam_launch_file.py domain_id:=1 # in 1st shell
+ROS_DOMAIN_ID=1 ros2 bag play --clock <my_bag_file>  # in 2nd shell
+```
 
 ### More advanced usage
 
