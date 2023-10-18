@@ -30,12 +30,12 @@
 namespace LidarSlam
 {
 
-/** \brief A point structure representing Euclidean xyz coordinates, time, intensity, laser_id, device_id and label.
+/** \brief A point structure representing Euclidean xyz coordinates, time, intensity, laser_id and label.
   * \ingroup common
   */
 struct LidarPoint
 {
-  inline LidarPoint (const LidarPoint &p) : x(p.x), y(p.y), z(p.z), time(p.time), intensity(p.intensity), laser_id(p.laser_id), device_id(p.device_id), label(p.label)
+  inline LidarPoint (const LidarPoint &p) : x(p.x), y(p.y), z(p.z), time(p.time), intensity(p.intensity), laser_id(p.laser_id), label(p.label)
   {
     data[3] = 1.0f;
   }
@@ -47,11 +47,10 @@ struct LidarPoint
     time = p.time;
     intensity = p.intensity;
     laser_id = p.laser_id;
-    device_id = p.device_id;
     label = p.label;
     return *this;
   }
-  inline LidarPoint () : x(0.0f), y(0.0f), z(0.0f), time(0.0), intensity(0.0f), laser_id(0), device_id(0), label(0)
+  inline LidarPoint () : x(0.0f), y(0.0f), z(0.0f), time(0.0), intensity(0.0f), laser_id(0), label(0)
   {
     data[3] = 1.0f;
   }
@@ -60,7 +59,6 @@ struct LidarPoint
   double time;
   float intensity;
   std::uint16_t laser_id;
-  std::uint8_t device_id;
   std::uint8_t label;
 
   friend std::ostream& operator << (std::ostream& os, const LidarPoint& p);
@@ -77,7 +75,6 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (LidarSlam::LidarPoint,
                                    (double, time, time)
                                    (float, intensity, intensity)
                                    (std::uint16_t, laser_id, laser_id)
-                                   (std::uint8_t, device_id, device_id)
                                    (std::uint8_t, label, label)
 )
 

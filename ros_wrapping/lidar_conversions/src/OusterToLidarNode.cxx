@@ -32,9 +32,6 @@ OusterToLidarNode::OusterToLidarNode(ros::NodeHandle& nh, ros::NodeHandle& priv_
   // Get laser ID mapping
   this->PrivNh.param("laser_id_mapping", this->LaserIdMapping, this->LaserIdMapping);
 
-  //  Get LiDAR id
-  this->PrivNh.param("device_id", this->DeviceId, this->DeviceId);
-
   //  Get LiDAR spinning speed and first timestamp option
   this->PrivNh.param("rpm", this->Rpm, this->Rpm);
   this->PrivNh.param("timestamp_first_packet", this->TimestampFirstPacket, this->TimestampFirstPacket);
@@ -84,7 +81,6 @@ void OusterToLidarNode::Callback(const CloudV& cloudO)
     slamPoint.z = ousterPoint.z;
     slamPoint.intensity = ousterPoint.reflectivity;
     slamPoint.laser_id = useLaserIdMapping ? this->LaserIdMapping[ousterPoint.ring] : ousterPoint.ring;
-    slamPoint.device_id = this->DeviceId;
 
     // Build approximate point-wise timestamp from azimuth angle
     // 'frameAdvancement' is 0 for first point, and should match 1 for last point

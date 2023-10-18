@@ -87,7 +87,6 @@ The SLAM node subscribes to one or several input pointclouds topics ((default si
 - **time** (`double`) : time offset to add to the pointcloud header timestamp to get approximate point-wise acquisition timestamp
 - **intensity** (`float`) : intensity/reflectivity of the point
 - **laser_id** (`uint16`) : numeric identifier of the laser ring that shot this point. The lowest/bottom laser ring should be 0, and it should increase upward.
-- **device_id** (`uint8`) : numeric identifier of the LiDAR device/sensor. This id should be the same for all points of the cloud acquired by the same sensor.
 - **label** (`uint8`) : optional input, not yet used.
 
 If your LiDAR driver does not output such data, you can use the `lidar_conversions` nodes.
