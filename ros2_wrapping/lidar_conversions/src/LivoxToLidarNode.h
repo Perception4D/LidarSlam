@@ -52,8 +52,8 @@ public:
    * @param node_name Name of the node created
    * @param options Options of the node, default no options
    */
-  LivoxToLidarNode(std::string node_name,
-                        const rclcpp::NodeOptions options = rclcpp::NodeOptions());
+  LivoxToLidarNode(const std::string node_name,
+                   const rclcpp::NodeOptions options = rclcpp::NodeOptions());
 
   //----------------------------------------------------------------------------
   /*!
@@ -77,7 +77,7 @@ private:
   rclcpp::Subscription<LivoxCustomMsg>::SharedPtr LivoxMsgListener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
 
-  std::map<std::string, uint8_t> DeviceIdMap;  ///< Map to store the device id of each device (in case of multilidar).
+  std::unordered_map<std::string, uint8_t> DeviceIdMap;  ///< Map to store the device id of each device (in case of multilidar).
 
   bool IsPcl2 = false;
 };

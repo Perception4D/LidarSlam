@@ -23,6 +23,7 @@
 #include <pcl/point_types.h>
 #include <LidarSlam/LidarPoint.h>
 #include "Utilities.h"
+#include <lidar_conversions/srv/estim_params.hpp>
 #include <unordered_map>
 #include <random>
 
@@ -55,8 +56,8 @@ public:
    * @param node_name name of the node created
    * @param[in] options Options of the node, default no options
    */
-  RawToLidarNode(std::string node_name,
-                rclcpp::NodeOptions options = rclcpp::NodeOptions());
+  RawToLidarNode(const std::string node_name,
+                 const rclcpp::NodeOptions options = rclcpp::NodeOptions());
 
   //------------------------------------------------------------------------------
   /*!
@@ -89,16 +90,26 @@ public:
    */
   void CallbackXYZI(const Pcl2_msg& msg_received);
 
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Service to re-compute the estimation parameters of the conversion node.
+   * @param request Service request
+   * @param response Service response
+   */
+  void EstimParamsService(const std::shared_ptr<lidar_conversions::srv::EstimParams::Request> req,
+                          const std::shared_ptr<lidar_conversions::srv::EstimParams::Response> res);
+
 private:
   //----------------------------------------------------------------------------
 
-  // ROS node handles, subscriber and publisher
+  // ROS node handles, subscriber, publisher and service
   rclcpp::Subscription<Pcl2_msg>::SharedPtr ListenerXYZ;
   rclcpp::Subscription<Pcl2_msg>::SharedPtr ListenerXYZI;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
+  rclcpp::Service<lidar_conversions::srv::EstimParams>::SharedPtr EstimService;
 
   // Map to store the device id of each device (in case of multilidar).
-  std::map<std::string, uint8_t> DeviceIdMap;
+  std::unordered_map<std::string, uint8_t> DeviceIdMap;
 
   // Number of lasers of the LiDAR.
   double NbLasers = 16.;
@@ -107,16 +118,20 @@ private:
   // NOTE: to be precise, this RPM estimation requires that each input
   // scan is an entire scan covering excatly 360°
   double RotationDuration = -1.;
-  double PreviousTimeStamp = -1.;
-  const std::vector<double> PossibleFrequencies; ///< Vector of all the possible frequencies of a certain type of LiDAR
+  double RotationDurationPrior = -1.;
+  double PrevFrameTime = -1.;
+  std::vector<double> PossibleFrequencies; ///< Vector of all the possible frequencies of a certain type of LiDAR
 
-  bool InitEstimParamToDo = true; ///< Flag to initialize the parameters useful for laser_id and time estimations
+  bool RotSenseAndClustersEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations
 
   // Useful variable to estimate time
-  bool ClockwiseRotationBool;  ///< True if the LiDAR rotates clockwise, false otherwise.
+  bool RotationIsClockwise;  ///< True if the LiDAR rotates clockwise, false otherwise.
 
   // Useful variable to estimate laser_id
   std::vector<Utils::Cluster> Clusters;
+
+  // Number of threads to use for the conversion
+  int NbThreads = 1;
 };
 
 }  // end of namespace lidar_conversions

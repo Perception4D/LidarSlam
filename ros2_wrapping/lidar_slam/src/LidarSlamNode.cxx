@@ -274,7 +274,7 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
     // Fill Frames with pointcloud
     this->Frames = {cloudS_ptr};
     this->MultiLidarsCounter.insert(std::make_pair(cloudS_ptr->front().device_id, 1));
-  
+
     this->MainLidarId = cloudS_ptr->header.frame_id;
 
     this->StartTime = this->now().seconds();
@@ -1123,22 +1123,22 @@ void LidarSlamNode::PublishOutput()
     }
 
   // Keypoints maps
-  publishPointCloud(EDGES_MAP,  this->LidarSlam.GetMap(LidarSlam::EDGE));
-  publishPointCloud(INTENSITY_EDGES_MAP,  this->LidarSlam.GetMap(LidarSlam::INTENSITY_EDGE));
-  publishPointCloud(PLANES_MAP, this->LidarSlam.GetMap(LidarSlam::PLANE));
-  publishPointCloud(BLOBS_MAP,  this->LidarSlam.GetMap(LidarSlam::BLOB));
+  publishPointCloud(EDGES_MAP,           this->LidarSlam.GetMap(LidarSlam::EDGE));
+  publishPointCloud(INTENSITY_EDGES_MAP, this->LidarSlam.GetMap(LidarSlam::INTENSITY_EDGE));
+  publishPointCloud(PLANES_MAP,          this->LidarSlam.GetMap(LidarSlam::PLANE));
+  publishPointCloud(BLOBS_MAP,           this->LidarSlam.GetMap(LidarSlam::BLOB));
 
   // Keypoints submaps
-  publishPointCloud(EDGES_SUBMAP,  this->LidarSlam.GetTargetSubMap(LidarSlam::EDGE));
-  publishPointCloud(INTENSITY_EDGES_SUBMAP,  this->LidarSlam.GetTargetSubMap(LidarSlam::INTENSITY_EDGE));
-  publishPointCloud(PLANES_SUBMAP, this->LidarSlam.GetTargetSubMap(LidarSlam::PLANE));
-  publishPointCloud(BLOBS_SUBMAP,  this->LidarSlam.GetTargetSubMap(LidarSlam::BLOB));
+  publishPointCloud(EDGES_SUBMAP,           this->LidarSlam.GetTargetSubMap(LidarSlam::EDGE));
+  publishPointCloud(INTENSITY_EDGES_SUBMAP, this->LidarSlam.GetTargetSubMap(LidarSlam::INTENSITY_EDGE));
+  publishPointCloud(PLANES_SUBMAP,          this->LidarSlam.GetTargetSubMap(LidarSlam::PLANE));
+  publishPointCloud(BLOBS_SUBMAP,           this->LidarSlam.GetTargetSubMap(LidarSlam::BLOB));
 
   // Current keypoints
-  publishPointCloud(EDGE_KEYPOINTS,  this->LidarSlam.GetKeypoints(LidarSlam::EDGE));
-  publishPointCloud(INTENSITY_EDGE_KEYPOINTS,  this->LidarSlam.GetKeypoints(LidarSlam::INTENSITY_EDGE));
-  publishPointCloud(PLANE_KEYPOINTS, this->LidarSlam.GetKeypoints(LidarSlam::PLANE));
-  publishPointCloud(BLOB_KEYPOINTS,  this->LidarSlam.GetKeypoints(LidarSlam::BLOB));
+  publishPointCloud(EDGE_KEYPOINTS,           this->LidarSlam.GetKeypoints(LidarSlam::EDGE));
+  publishPointCloud(INTENSITY_EDGE_KEYPOINTS, this->LidarSlam.GetKeypoints(LidarSlam::INTENSITY_EDGE));
+  publishPointCloud(PLANE_KEYPOINTS,          this->LidarSlam.GetKeypoints(LidarSlam::PLANE));
+  publishPointCloud(BLOB_KEYPOINTS,           this->LidarSlam.GetKeypoints(LidarSlam::BLOB));
 
   // Registered aggregated (and optionally undistorted) input scans points
   publishPointCloud(SLAM_REGISTERED_POINTS, this->LidarSlam.GetRegisteredFrame());

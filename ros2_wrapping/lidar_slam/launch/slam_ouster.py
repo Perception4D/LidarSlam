@@ -13,6 +13,7 @@ from launch.substitutions import LaunchConfiguration
 def generate_launch_description():
 
   lidar_slam_share_path = get_package_share_directory('lidar_slam')
+  lidar_conversion_share_path = get_package_share_directory('lidar_conversions')
 
   ###############
   ## ARGUMENTS ##
@@ -29,9 +30,6 @@ def generate_launch_description():
     DeclareLaunchArgument("driver_parameter_file", default_value=os.path.join(lidar_slam_share_path, 'params', "ouster_driver_parameters.yaml"),
                           description="Path to the file containing Ouster driver parameters"),
     DeclareLaunchArgument("metadata_in", default_value=os.path.join(lidar_slam_share_path, 'params', "metadata_OS1_64_1024x10.json"), description="Configuration file for Ouster data to replay"),
-    # /!\ rpm and timestamp_first_packet are also used to generate approximate point-wise timestamps as 'time' field is not usable. -->
-    DeclareLaunchArgument("rpm", default_value="600.", description="Ouster sensor spinning speed."),
-    DeclareLaunchArgument("timestamp_first_packet", default_value="false", description="If Ouster timestamping is based on the first or last packet of each scan."),
     DeclareLaunchArgument("aggregate", default_value="false", description="Run aggregation node"),
   ])
 
@@ -87,13 +85,13 @@ def generate_launch_description():
   ##########
 
   # Ouster points conversion
+  with open(os.path.join(lidar_conversion_share_path, 'params', "conversion_config.yaml"), 'r') as f:
+    params_conversion = yaml.safe_load(f)['/lidar_conversions']['ros__parameters']
+  # Manualy override conversions parameters from parameter file
+  params_conversion['use_sim_time'] = LaunchConfiguration("use_sim_time")
   ouster_conversion_node = Node(
     name="ouster_conversion", package="lidar_conversions", executable="ouster_conversion_node", output="screen",
-    parameters=[{
-      "rpm": LaunchConfiguration("rpm"),
-      "timestamp_first_packet": LaunchConfiguration("timestamp_first_packet"),
-      "use_sim_time": LaunchConfiguration("replay"),
-    }],
+    parameters=[params_conversion],
   )
 
   # LiDAR SLAM : compute TF slam_init -> velodyne
@@ -133,32 +131,37 @@ def generate_launch_description():
     condition=IfCondition(LaunchConfiguration("aggregate")),
   )
 
-  # Moving base coordinates systems description                                         tf_FROM_to_TO
+  # Base link to Ouster frame version 1
   tf_base_to_os_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_lidar",
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
                "--frame-id", "base_link", "--child-frame-id", "laser_sensor_frame"],
   )
+  tf_base_to_laser_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_laser",
+    arguments=["--x", "0", "--y", "0", "--z", "0",
+               "--roll", "0", "--pitch", "0", "--yaw", "0",
+               "--frame-id", "base_link", "--child-frame-id", "laser_data_frame"],
+    )
 
-  # Moving base coordinates systems description                                     tf_FROM_to_TO
+  # Base link to Ouster frame version 2
+  tf_base_to_os_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_lidar",
+    arguments=["--x", "0", "--y", "0", "--z", "0",
+               "--roll", "0", "--pitch", "0", "--yaw", "0",
+               "--frame-id", "base_link", "--child-frame-id", "os_sensor"],
+  )
+
+  # Base link to gps frame
   gps_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_gps",
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
                "--frame-id", "base_link", "--child-frame-id", "gps"],
   )
 
-  # Default transformation for Odom frame
+  # Init odom to base_link frame
   odom_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_odom_to_base",
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
                "--frame-id", "odom", "--child-frame-id", "base_link"],
-    )
-
-  # Moving base coordinates systems description                                         tf_FROM_to_TO
-  tf_base_to_laser_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_laser",
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "laser_data_frame"],
     )
 
   ld.add_action(rviz_node)

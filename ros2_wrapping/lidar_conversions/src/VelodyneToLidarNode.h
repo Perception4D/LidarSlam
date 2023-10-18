@@ -22,6 +22,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <velodyne_point.h>
 #include <LidarSlam/LidarPoint.h>
+#include <lidar_conversions/srv/estim_sense.hpp>
 #include "Utilities.h"
 
 namespace lidar_conversions
@@ -49,7 +50,7 @@ public:
    * @param[in] name_node Name of the node used to init publisher/subscribers and log messages
    * @param[in] options Options of the node, default no options
    */
-  VelodyneToLidarNode(std::string node_name = "velodyne_conversion",
+  VelodyneToLidarNode(const std::string node_name = "velodyne_conversion",
                       const rclcpp::NodeOptions options = rclcpp::NodeOptions());
 
   //----------------------------------------------------------------------------
@@ -59,30 +60,44 @@ public:
    */
   void Callback(const Pcl2_msg& msg_received);
 
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Service to re-estimate the rotation sense of the LiDAR.
+   * @param request Service request
+   * @param response Service response
+   */
+  void EstimSenseService(const std::shared_ptr<lidar_conversions::srv::EstimSense::Request> request,
+                         const std::shared_ptr<lidar_conversions::srv::EstimSense::Response> response);
+
 private:
 
   //----------------------------------------------------------------------------
 
-  // ROS node handles, subscriber and publisher
+  // ROS node handles, subscriber, publisher and service
   rclcpp::Subscription<Pcl2_msg>::SharedPtr Listener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
+  rclcpp::Service<lidar_conversions::srv::EstimSense>::SharedPtr EstimService;
 
   // Map to store the device id of each device (in case of multilidar).
-  std::map<std::string, uint8_t> DeviceIdMap;
+  std::unordered_map<std::string, uint8_t> DeviceIdMap;
 
   double NbLasers = 16.; ///< Number of lasers of the LiDAR. Optional as it can be taken from header attribute .height of the PointCloud.
-  bool InitEstimParamToDo = true; ///< Flag to initialize the parameters useful for laser_id and time estimations.
-  bool ClockwiseRotationBool;  ///< True if the LiDAR rotates clockwise, false otherwise.
+  bool RotationSenseEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations.
+  bool RotationIsClockwise;  ///< True if the LiDAR rotates clockwise, false otherwise.
 
   // Useful variable to estimate the rotation duration (itself used to estimate time)
   // NOTE: to be precise, this rotation duration estimation requires that each input
   // scan is an entire scan covering excatly 360°
   double RotationDuration = -1.;
-  double PreviousTimeStamp = -1.;
-  const std::vector<double> PossibleFrequencies = {5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20.}; ///< Vector of all the possible frequencies for Velodyne LiDAR
+  double RotationDurationPrior = -1.;
+  double PrevFrameTime = -1.;
+  std::vector<double> PossibleFrequencies = {5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20.}; ///< Vector of all the possible frequencies for Velodyne LiDAR
 
   // Useful variable to estimate laser_id
   std::vector<Utils::Cluster> Clusters;
+
+  // Number of threads to use for the conversion
+  int NbThreads = 1;
 };
 
 }  // end of namespace lidar_conversions

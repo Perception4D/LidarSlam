@@ -73,8 +73,8 @@ void RobosenseToLidarNode::Callback(const CloudRS& cloudRS)
   cloudS.is_dense = true;
 
   // Helpers to estimate point-wise fields
-  const unsigned int nLasers = cloudRS.height;
-  const unsigned int pointsPerRing = cloudRS.size() / nLasers;
+  const unsigned int nbLasers = cloudRS.height;
+  const unsigned int pointsPerRing = cloudRS.size() / nbLasers;
   const bool useLaserIdMapping = !this->LaserIdMapping.empty();
 
   // Build SLAM pointcloud
@@ -106,7 +106,7 @@ void RobosenseToLidarNode::Callback(const CloudRS& cloudRS)
     // CHECK this operation for other sensors than RS16
     uint16_t laser_id = i / cloudRS.width;
     slamPoint.laser_id = useLaserIdMapping ? this->LaserIdMapping[laser_id] :
-                                             (nLasers == 16) ? LASER_ID_MAPPING_RS16[laser_id] : laser_id;
+                                             (nbLasers == 16) ? LASER_ID_MAPPING_RS16[laser_id] : laser_id;
 
     // Build approximate point-wise timestamp from point id.
     // 'frame advancement' is 0 for first point, and should match 1 for last point

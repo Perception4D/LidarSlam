@@ -30,6 +30,12 @@ OusterToLidarNode::OusterToLidarNode(std::string node_name, const rclcpp::NodeOp
   // Get number of lasers
   this->get_parameter("nb_lasers", this->NbLasers);
 
+  // Get possible frequencies
+  this->get_parameter("possible_frequencies", this->PossibleFrequencies);
+
+  // Get number of threads
+  this->get_parameter("nb_threads", this->NbThreads);
+
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
@@ -38,9 +44,15 @@ OusterToLidarNode::OusterToLidarNode(std::string node_name, const rclcpp::NodeOp
   // Put reliability to the same mode than Ouster Driver
   custom_qos_profile.reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
 
-  // Init ROS subscrib
+  // Init ROS subscriber
   this->Listener = this->create_subscription<Pcl2_msg>("/ouster/points", custom_qos_profile,
                                         std::bind(&OusterToLidarNode::Callback, this, std::placeholders::_1));
+
+  // Init ROS service
+  this->EstimService = this->create_service<lidar_conversions::srv::EstimSense>(
+      "lidar_conversions/estim_sense",
+      std::bind(&OusterToLidarNode::EstimSenseService, this, std::placeholders::_1, std::placeholders::_2));
+
 
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("Ouster data converter is ready !"));
 }
@@ -60,34 +72,58 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   if (this->DeviceIdMap.count(cloudO.header.frame_id) == 0)
     this->DeviceIdMap[cloudO.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
 
-  // We compute the rotation duration : to do so, we need to ignore the first frame of the LiDAR, but it doesn't really matter as it is just 100ms ignored
-  // However, we chose to ignore the first frame after having initialized estimation parameters (see below)
-  double currentTimeStamp = cloudO.header.stamp;
-  this->RotationDuration = Utils::EstimateFrameTime(currentTimeStamp, this->PreviousTimeStamp, this->RotationDuration, this->PossibleFrequencies);
-  // We now ignore first frame because it has no rotation duration
+  // Rotation duration is estimated to be used in time estimation if needed
+  double currFrameTime = Utils::PclStampToSec(cloudO.header.stamp);
+  double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
+  this->PrevFrameTime = currFrameTime;
+
+  // If the rotation duration has not been estimated
+  if (this->RotationDuration < 0.)
+  {
+    // Check if this duration is possible
+    if (Utils::CheckRotationDuration(diffTimePrevFrame, this->PossibleFrequencies))
+    {
+      // Check a confirmation of the frame duration to avoid outliers (frames dropped)
+      // For the first frame, RotationDurationPrior is -1, this condition won't be fulfilled
+      // For the second frame, RotationDurationPrior is absurd, this condition won't be fulfilled
+      // First real intempt occurs at the 3rd frame
+      if (std::abs(diffTimePrevFrame - this->RotationDurationPrior) < 5e-3) // 5ms threshold
+        this->RotationDuration = (diffTimePrevFrame + this->RotationDurationPrior) / 2.;
+      this->RotationDurationPrior = diffTimePrevFrame;
+      RCLCPP_INFO_STREAM(this->get_logger(), std::setprecision(12) << "Difference between successive frames is :" << diffTimePrevFrame);
+    }
+  }
+
   if (this->RotationDuration < 0.)
     return;
 
   // Init SLAM pointcloud
   CloudS cloudS = Utils::InitCloudS<CloudO>(cloudO);
 
-  const double nLasers = (cloudO.height >= 8 && cloudO.height <= 128) ? static_cast<double>(cloudO.height) : this->NbLasers;
+  const int nbLasers = (cloudO.height >= 8 && cloudO.height <= 128) ? static_cast<double>(cloudO.height) : this->NbLasers;
 
-  // Init of parameters useful for laser_id and time estimations
-  if (this->InitEstimParamToDo)
+  // Estimate the rotation sense
+  if (!this->RotationSenseEstimated)
   {
-    Utils::InitEstimationParameters<PointO>(cloudO, nLasers, this->Clusters, this->ClockwiseRotationBool);
-    this->InitEstimParamToDo = false;
+    this->RotationIsClockwise = Utils::IsRotationClockwise<PointO>(cloudO, nbLasers);
+    this->RotationSenseEstimated = true;
   }
-  
-  Eigen::Vector2d firstPoint = {cloudO[0].x, cloudO[0].y};
 
   // Check if time field looks properly set
-  bool isTimeValid = cloudO.back().t - cloudO.front().t > 1e-8;
-  if (!isTimeValid)
+  double duration = cloudO.back().t - cloudO.front().t;
+  double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
+
+  bool timeIsValid = duration > 1e-8 && duration * factor < 2. * this->RotationDuration;
+
+  if (!timeIsValid)
     RCLCPP_WARN_STREAM(this->get_logger(), "Invalid 'time' field, it will be built from azimuth advancement.");
 
+  Eigen::Vector2d firstPoint = {cloudO[0].x, cloudO[0].y};
+
+  uint8_t deviceId = this->DeviceIdMap[cloudO.header.frame_id];
+
   // Build SLAM pointcloud
+  #pragma omp parallel for num_threads(this->NbThreads)
   for (const PointO& ousterPoint : cloudO)
   {
     // Remove no return points by checking unvalid values (NaNs or zeros)
@@ -99,23 +135,33 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.y = ousterPoint.y;
     slamPoint.z = ousterPoint.z;
     slamPoint.intensity = ousterPoint.reflectivity;
-    slamPoint.device_id = this->DeviceIdMap[cloudO.header.frame_id];
+    slamPoint.device_id = deviceId;
     slamPoint.laser_id = ousterPoint.ring;
 
     // Use time field if available, else estimate it from azimuth advancement
-    if (isTimeValid)
-      slamPoint.time = ousterPoint.t;
+    if (timeIsValid)
+      slamPoint.time = factor * ousterPoint.t;
     else
-      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->ClockwiseRotationBool);
+      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 
     cloudS.push_back(slamPoint);
   }
 
   //conversion to msg
-  Pcl2_msg msg_sended;
-  pcl::toROSMsg(cloudS, msg_sended);
+  Pcl2_msg toPublish;
+  pcl::toROSMsg(cloudS, toPublish);
 
-  this->Talker->publish(msg_sended);
+  this->Talker->publish(toPublish);
+}
+
+//------------------------------------------------------------------------------
+void OusterToLidarNode::EstimSenseService(
+  const std::shared_ptr<lidar_conversions::srv::EstimSense::Request> req,
+  const std::shared_ptr<lidar_conversions::srv::EstimSense::Response> res)
+{
+  this->RotationSenseEstimated = false;
+  RCLCPP_INFO_STREAM(this->get_logger(), "Rotation sense will be re-estimated with next frames.");
+  res->success = true;
 }
 
 }  // end of namespace lidar_conversions

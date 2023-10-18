@@ -23,6 +23,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <os_point.h>
 #include <LidarSlam/LidarPoint.h>
+#include <lidar_conversions/srv/estim_sense.hpp>
 #include "Utilities.h"
 
 namespace lidar_conversions
@@ -50,8 +51,8 @@ public:
    * @param node_name name of the node created
    * @param[in] options Options of the node, default no options
    */
-  OusterToLidarNode(std::string node_name,
-                    rclcpp::NodeOptions options = rclcpp::NodeOptions());
+  OusterToLidarNode(const std::string node_name,
+                    const rclcpp::NodeOptions options = rclcpp::NodeOptions());
 
   //----------------------------------------------------------------------------
   /*!
@@ -60,30 +61,45 @@ public:
    */
   void Callback(const Pcl2_msg& msg_received);
 
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Service to re-estimate the rotation sense of the LiDAR.
+    * @param request Service request
+    * @param response Service response
+   */
+  void EstimSenseService(const std::shared_ptr<lidar_conversions::srv::EstimSense::Request> request,
+                         const std::shared_ptr<lidar_conversions::srv::EstimSense::Response> response);
+
+
 private:
 
   //----------------------------------------------------------------------------
 
-  // ROS node handles, subscriber and publisher
+  // ROS node handles, subscriber, publisher and service
   rclcpp::Subscription<Pcl2_msg>::SharedPtr Listener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
+  rclcpp::Service<lidar_conversions::srv::EstimSense>::SharedPtr EstimService;
 
   // Map to store the device id of each device (in case of multilidar).
-  std::map<std::string, uint8_t> DeviceIdMap;
+  std::unordered_map<std::string, uint8_t> DeviceIdMap;
 
-  double NbLasers = 64;  ///< Minimal number of lasers in the LiDAR
-  bool InitEstimParamToDo = true; ///< Flag to initialize the parameters useful for laser_id and time estimations.
-  bool ClockwiseRotationBool;  ///< True if the LiDAR rotates clockwise, false otherwise.
+  double NbLasers = 64.;  ///< Minimal number of lasers in the LiDAR
+  bool RotationSenseEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations.
+  bool RotationIsClockwise;  ///< True if the LiDAR rotates clockwise, false otherwise.
 
   // Useful variable to estimate RotationDuration (itself used to estimate time)
   // NOTE: to be precise, this RotationDuration estimation requires that each input
   // scan is an entire scan covering excatly 360°
   double RotationDuration = -1.;
-  double PreviousTimeStamp = -1.;
-  const std::vector<double> PossibleFrequencies; ///< Vector of all the possible frequencies for Ouster LiDAR
+  double RotationDurationPrior = -1.;
+  double PrevFrameTime = -1.;
+  std::vector<double> PossibleFrequencies; ///< Vector of all the possible frequencies for Ouster LiDAR
 
   // Useful variable to estimate laser_id
   std::vector<Utils::Cluster> Clusters;
+
+  // Number of threads to use for the conversion
+  int NbThreads = 1;
 };
 
 }  // end of namespace lidar_conversions

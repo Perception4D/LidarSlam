@@ -29,12 +29,23 @@ VelodyneToLidarNode::VelodyneToLidarNode(std::string node_name, const rclcpp::No
   // Get number of lasers
   this->get_parameter("nb_lasers", this->NbLasers);
 
+  // Get possible frequencies
+  this->get_parameter("possible_frequencies", this->PossibleFrequencies);
+
+  // Get number of threads
+  this->get_parameter("nb_threads", this->NbThreads);
+
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
   // Init ROS subscriber
   this->Listener = this->create_subscription<Pcl2_msg>("velodyne_points", 1,
                                             std::bind(&VelodyneToLidarNode::Callback, this, std::placeholders::_1));
+
+  // Init ROS service
+  this->EstimService = this->create_service<lidar_conversions::srv::EstimSense>(
+      "lidar_conversions/estim_sense",
+      std::bind(&VelodyneToLidarNode::EstimSenseService, this, std::placeholders::_1, std::placeholders::_2));
 
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN( "Velodyne data converter is ready !"));
 }
@@ -57,33 +68,58 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
   if (this->DeviceIdMap.count(cloudV.header.frame_id) == 0)
     this->DeviceIdMap[cloudV.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
 
-  // We compute the rotation duration : to do so, we need to ignore the first frame of the LiDAR,
-  // but it doesn't really matter as it is just 100ms ignored
-  double currentTimeStamp = cloudV.header.stamp;
-  this->RotationDuration = Utils::EstimateFrameTime(currentTimeStamp, this->PreviousTimeStamp, this->RotationDuration, this->PossibleFrequencies);
-  // We now ignore first frame because it has no rotation duration
+  // Rotation duration is estimated to be used in time estimation if needed
+  double currFrameTime = Utils::PclStampToSec(cloudV.header.stamp);
+  double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
+  this->PrevFrameTime = currFrameTime;
+
+  // If the rotation duration has not been estimated
+  if (this->RotationDuration < 0.)
+  {
+    // Check if this duration is possible
+    if (Utils::CheckRotationDuration(diffTimePrevFrame, this->PossibleFrequencies))
+    {
+      // Check a confirmation of the frame duration to avoid outliers (frames dropped)
+      // For the first frame, RotationDurationPrior is -1, this condition won't be fulfilled
+      // For the second frame, RotationDurationPrior is absurd, this condition won't be fulfilled
+      // First real intempt occurs at the 3rd frame
+      if (std::abs(diffTimePrevFrame - this->RotationDurationPrior) < 5e-3) // 5ms threshold
+        this->RotationDuration = (diffTimePrevFrame + this->RotationDurationPrior) / 2.;
+      this->RotationDurationPrior = diffTimePrevFrame;
+      RCLCPP_INFO_STREAM(this->get_logger(), std::setprecision(12) << "Difference between successive frames is :" << diffTimePrevFrame);
+    }
+  }
+
   if (this->RotationDuration < 0.)
     return;
 
   // Init SLAM pointcloud
   CloudS cloudS = Utils::InitCloudS<CloudV>(cloudV);
 
-  const double nLasers = (cloudV.height >= 8 && cloudV.height <=128) ? static_cast<double>(cloudV.height) : this->NbLasers;
+  const int nbLasers = (cloudV.height >= 8 && cloudV.height <=128) ? static_cast<double>(cloudV.height) : this->NbLasers;
 
-  // Init of parameters useful for laser_id and time estimations
-  if (this->InitEstimParamToDo)
+  // Estimate the rotation sense
+  if (!this->RotationSenseEstimated)
   {
-    Utils::InitEstimationParameters<PointV>(cloudV, nLasers, this->Clusters, this->ClockwiseRotationBool);
-    this->InitEstimParamToDo = false;
+    this->RotationIsClockwise = Utils::IsRotationClockwise<PointV>(cloudV, nbLasers);
+    this->RotationSenseEstimated = true;
   }
-  Eigen::Vector2d firstPoint = {cloudV[0].x, cloudV[0].y};
 
   // Check if time field looks properly set
-  bool isTimeValid = cloudV.back().time - cloudV.front().time > 1e-8;
-  if (!isTimeValid)
+  double duration = cloudV.back().time - cloudV.front().time;
+  double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
+
+  bool timeIsValid = duration > 1e-8 && duration < 2. * this->RotationDuration;
+
+  uint8_t deviceId = this->DeviceIdMap[cloudV.header.frame_id];
+
+  if (!timeIsValid)
     RCLCPP_WARN_STREAM(this->get_logger(), "Invalid 'time' field, it will be built from azimuth advancement.");
 
+  Eigen::Vector2d firstPoint = {cloudV[0].x, cloudV[0].y};
+
   // Build SLAM pointcloud
+  #pragma omp parallel for num_threads(this->NbThreads)
   for (const PointV& velodynePoint : cloudV)
   {
     // Remove no return points by checking unvalid values (NaNs or zeros)
@@ -95,23 +131,32 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.y = velodynePoint.y;
     slamPoint.z = velodynePoint.z;
     slamPoint.intensity = velodynePoint.intensity;
-    slamPoint.device_id = this->DeviceIdMap[cloudV.header.frame_id];
+    slamPoint.device_id = deviceId;
     slamPoint.laser_id = velodynePoint.ring;
 
     // Use time field if available, else estimate it from azimuth advancement
-    if (isTimeValid)
-      slamPoint.time = velodynePoint.time;
+    if (timeIsValid)
+      slamPoint.time = factor * velodynePoint.time;
     else
-      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->ClockwiseRotationBool);
+      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 
     cloudS.push_back(slamPoint);
   }
-
   //convertion PointCloud to msg
   Pcl2_msg msg_sent;
   pcl::toROSMsg(cloudS, msg_sent);
 
   this->Talker->publish(msg_sent);
+}
+
+//------------------------------------------------------------------------------
+void VelodyneToLidarNode::EstimSenseService(
+  const std::shared_ptr<lidar_conversions::srv::EstimSense::Request> req,
+  const std::shared_ptr<lidar_conversions::srv::EstimSense::Response> res)
+{
+  this->RotationSenseEstimated = false;
+  RCLCPP_INFO_STREAM(this->get_logger(), "Rotation sense will be re-estimated with next frames.");
+  res->success = true;
 }
 
 }  // end of namespace lidar_conversions

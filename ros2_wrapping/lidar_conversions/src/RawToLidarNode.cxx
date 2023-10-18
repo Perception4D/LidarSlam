@@ -29,6 +29,12 @@ RawToLidarNode::RawToLidarNode(std::string node_name, const rclcpp::NodeOptions 
   // Get number of lasers
   this->get_parameter("nb_lasers", this->NbLasers);
 
+  // Get possible frequencies
+  this->get_parameter("possible_frequencies", this->PossibleFrequencies);
+
+  // Get number of threads
+  this->get_parameter("nb_threads", this->NbThreads);
+
   // Init ROS publisher
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
@@ -38,6 +44,11 @@ RawToLidarNode::RawToLidarNode(std::string node_name, const rclcpp::NodeOptions 
 
   this->ListenerXYZI = this->create_subscription<Pcl2_msg>("/xyzi_lidar_points", 1,
                                         std::bind(&RawToLidarNode::CallbackXYZI, this, std::placeholders::_1));
+
+  // Init ROS service
+  this->EstimService = this->create_service<lidar_conversions::srv::EstimParams>(
+      "lidar_conversions/estim_params",
+      std::bind(&RawToLidarNode::EstimParamsService, this, std::placeholders::_1, std::placeholders::_2));
 
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("Raw LiDAR data converter is ready !"));
 }
@@ -57,28 +68,47 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
   if (this->DeviceIdMap.count(cloudRaw.header.frame_id) == 0)
     this->DeviceIdMap[cloudRaw.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
 
-  // We compute the rotation duration : to do so, we need to ignore the first frame of the LiDAR,
-  // but it doesn't really matter as it is just 100ms ignored
-  double currentTimeStamp = cloudRaw.header.stamp;
-  this->RotationDuration = Utils::EstimateFrameTime(currentTimeStamp, this->PreviousTimeStamp, this->RotationDuration, this->PossibleFrequencies);
-  // We now ignore first frame because it has no rotation duration
+  // Rotation duration is estimated to be used in time estimation if needed
+  double currFrameTime = Utils::PclStampToSec(cloudRaw.header.stamp);
+  double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
+  this->PrevFrameTime = currFrameTime;
+
+  // If the rotation duration has not been estimated
+  if (this->RotationDuration < 0.)
+  {
+    // Check if this duration is possible
+    if (Utils::CheckRotationDuration(diffTimePrevFrame, this->PossibleFrequencies))
+    {
+      // Check a confirmation of the frame duration to avoid outliers (frames dropped)
+      // For the first frame, RotationDurationPrior is -1, this condition won't be fulfilled
+      // For the second frame, RotationDurationPrior is absurd, this condition won't be fulfilled
+      // First real intempt occurs at the 3rd frame
+      if (std::abs(diffTimePrevFrame - this->RotationDurationPrior) < 5e-3) // 5ms threshold
+        this->RotationDuration = (diffTimePrevFrame + this->RotationDurationPrior) / 2.;
+      this->RotationDurationPrior = diffTimePrevFrame;
+      RCLCPP_INFO_STREAM(this->get_logger(), std::setprecision(12) << "Difference between successive frames is :" << diffTimePrevFrame);
+    }
+  }
+
   if (this->RotationDuration < 0.)
     return;
 
   CloudS cloudS = Utils::InitCloudS<CloudXYZ>(cloudRaw);
 
-  const double nLasers = (cloudRaw.height >= 8 && cloudRaw.height <=128) ? static_cast<double>(cloudRaw.height) : this->NbLasers;
+  const int nbLasers = (cloudRaw.height >= 8 && cloudRaw.height <=128) ? static_cast<double>(cloudRaw.height) : this->NbLasers;
 
   // Init of parameters useful for laser_id and time estimations
-  if (this->InitEstimParamToDo)
+  if (!this->RotSenseAndClustersEstimated)
   {
-    Utils::InitEstimationParameters<PointXYZ>(cloudRaw, nLasers, this->Clusters, this->ClockwiseRotationBool);
-    this->InitEstimParamToDo = false;
+    Utils::InitEstimationParameters<PointXYZ>(cloudRaw, nbLasers, this->Clusters, this->RotationIsClockwise, this->NbThreads);
+    this->RotSenseAndClustersEstimated = true;
   }
   Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
 
+  uint8_t deviceId = this->DeviceIdMap[cloudRaw.header.frame_id];
+
   // Build SLAM pointcloud
-  #pragma omp parallel for
+  #pragma omp parallel for num_threads(this->NbThreads)
   for (const PointXYZ& rawPoint : cloudRaw)
   {
     // Remove no return points by checking unvalid values (NaNs or zeros)
@@ -94,10 +124,10 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
     slamPoint.x = rawPoint.x;
     slamPoint.y = rawPoint.y;
     slamPoint.z = rawPoint.z;
-    slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
+    slamPoint.device_id = deviceId;
     slamPoint.intensity = 0.;
-    slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nLasers, this->Clusters);
-    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->ClockwiseRotationBool);
+    slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nbLasers, this->Clusters);
+    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 
     cloudS.push_back(slamPoint);
   }
@@ -120,27 +150,44 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
   if (this->DeviceIdMap.count(cloudRaw.header.frame_id) == 0)
     this->DeviceIdMap[cloudRaw.header.frame_id] = this->DeviceIdMap.size();
 
-  // We compute RPM : to do so, we need to ignore the first frame of the LiDAR, but it doesn't really matter as it is just 100ms ignored
-  double currentTimeStamp = cloudRaw.header.stamp;
-  this->RotationDuration = Utils::EstimateFrameTime(currentTimeStamp, this->PreviousTimeStamp, this->RotationDuration, this->PossibleFrequencies);
-  // We now ignore first frame because it has no RPM
+  // Rotation duration is estimated to be used in time estimation if needed
+  double currFrameTime = Utils::PclStampToSec(cloudRaw.header.stamp);
+  double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
+  this->PrevFrameTime = currFrameTime;
+
+  // If the rotation duration has not been estimated
   if (this->RotationDuration < 0.)
-    return;
+  {
+    // Check if this duration is possible
+    if (Utils::CheckRotationDuration(diffTimePrevFrame, this->PossibleFrequencies))
+    {
+      // Check a confirmation of the frame duration to avoid outliers (frames dropped)
+      // For the first frame, RotationDurationPrior is -1, this condition won't be fulfilled
+      // For the second frame, RotationDurationPrior is absurd, this condition won't be fulfilled
+      // First real intempt occurs at the 3rd frame
+      if (std::abs(diffTimePrevFrame - this->RotationDurationPrior) < 5e-3) // 5ms threshold
+        this->RotationDuration = (diffTimePrevFrame + this->RotationDurationPrior) / 2.;
+      this->RotationDurationPrior = diffTimePrevFrame;
+      RCLCPP_INFO_STREAM(this->get_logger(), std::setprecision(12) << "Difference between successive frames is :" << diffTimePrevFrame);
+    }
+  }
 
   CloudS cloudS = Utils::InitCloudS<CloudXYZI>(cloudRaw);
 
-  const double nLasers = (cloudRaw.height >= 8 && cloudRaw.height <=128) ? static_cast<double>(cloudRaw.height) : this->NbLasers;
+  const int nbLasers = (cloudRaw.height >= 8 && cloudRaw.height <=128) ? static_cast<double>(cloudRaw.height) : this->NbLasers;
 
   // Init of parameters useful for laser_id and time estimations
-  if (this->InitEstimParamToDo)
+  if (!this->RotSenseAndClustersEstimated)
   {
-    Utils::InitEstimationParameters<PointXYZI>(cloudRaw, nLasers, this->Clusters, this->ClockwiseRotationBool);
-    this->InitEstimParamToDo = false;
+    Utils::InitEstimationParameters<PointXYZI>(cloudRaw, nbLasers, this->Clusters, this->RotationIsClockwise, this->NbThreads);
+    this->RotSenseAndClustersEstimated = true;
   }
   Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
 
+  uint8_t deviceId = this->DeviceIdMap[cloudRaw.header.frame_id];
+
   // Build SLAM pointcloud
-  #pragma omp parallel for
+  #pragma omp parallel for (this->NbThreads)
   for (const PointXYZI& rawPoint : cloudRaw)
   {
     // Remove no return points by checking unvalid values (NaNs or zeros)
@@ -156,15 +203,26 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
     slamPoint.x = rawPoint.x;
     slamPoint.y = rawPoint.y;
     slamPoint.z = rawPoint.z;
-    slamPoint.device_id = this->DeviceIdMap[cloudRaw.header.frame_id];
+    slamPoint.device_id = deviceId;
     slamPoint.intensity = rawPoint.intensity;
-    slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nLasers, this->Clusters);
-    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->ClockwiseRotationBool);
+    slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nbLasers, this->Clusters);
+    slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 
     cloudS.push_back(slamPoint);
   }
   PublishMsg(cloudS);
 }
+
+//------------------------------------------------------------------------------
+void RawToLidarNode::EstimParamsService(
+  const std::shared_ptr<lidar_conversions::srv::EstimParams::Request> req,
+  const std::shared_ptr<lidar_conversions::srv::EstimParams::Response> res)
+{
+  this->RotSenseAndClustersEstimated = false;
+  RCLCPP_INFO_STREAM(this->get_logger(), "Estimation parameters will be re-estimated with next frames.");
+  res->success = true;
+}
+
 }  // namespace lidar_conversions
 
 //------------------------------------------------------------------------------

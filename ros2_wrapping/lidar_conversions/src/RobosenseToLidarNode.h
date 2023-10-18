@@ -23,6 +23,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_types.h>
 #include <LidarSlam/LidarPoint.h>
+#include <lidar_conversions/srv/estim_params.hpp>
 #include "Utilities.h"
 
 namespace lidar_conversions
@@ -50,8 +51,8 @@ public:
    * @param node_name Name of the node created
    * @param[in] options Options of the node, default no options
    */
-  RobosenseToLidarNode(std::string node_name,
-                        const rclcpp::NodeOptions options = rclcpp::NodeOptions());
+  RobosenseToLidarNode(const std::string node_name,
+                       const rclcpp::NodeOptions options = rclcpp::NodeOptions());
 
   //----------------------------------------------------------------------------
   /*!
@@ -60,30 +61,44 @@ public:
    */
   void Callback(const Pcl2_msg& msg_received);
 
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Service to re-compute the estimation parameters of the conversion node.
+   * @param request Service request
+   * @param response Service response
+   */
+  void EstimParamsService(const std::shared_ptr<lidar_conversions::srv::EstimParams::Request> req,
+                          const std::shared_ptr<lidar_conversions::srv::EstimParams::Response> res);
+
 private:
 
   //----------------------------------------------------------------------------
 
-  // ROS node handles, subscriber and publisher
+  // ROS node handles, subscriber, publisher and service
   // ros::NodeHandle &Nh, &PrivNh;
   rclcpp::Subscription<Pcl2_msg>::SharedPtr Listener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
+  rclcpp::Service<lidar_conversions::srv::EstimParams>::SharedPtr EstimService;
 
-  std::map<std::string, uint8_t> DeviceIdMap;  ///< Map to store the device id of each device (in case of multilidar).
+  std::unordered_map<std::string, uint8_t> DeviceIdMap;  ///< Map to store the device id of each device (in case of multilidar).
 
   double NbLasers = 16.; ///< Number of lasers of the LiDAR. Optional as it can be taken from header attribute .height of the PointCloud.
-  bool InitEstimParamToDo = true; ///< Flag to initialize the parameters useful for laser_id and time estimations.
-  bool ClockwiseRotationBool;  ///< True if the LiDAR rotates clockwise, false otherwise.
+  bool RotSenseAndClustersEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations.
+  bool RotationIsClockwise;  ///< True if the LiDAR rotates clockwise, false otherwise.
 
   // Useful variable to estimate rotation duration (itself used to estimate time)
   // NOTE: to be precise, this rotation duration estimation requires that each input
   // scan is an entire scan covering excatly 360°
   double RotationDuration = -1.;
-  double PreviousTimeStamp = -1.;
-  const std::vector<double> PossibleFrequencies = {5., 10., 20.}; ///< Vector of all the possible frequencies for robosense LiDAR
+  double RotationDurationPrior = -1.;
+  double PrevFrameTime = -1.;
+  std::vector<double> PossibleFrequencies = {5., 10., 20.}; ///< Vector of all the possible frequencies for robosense LiDAR
 
   // Useful variable to estimate laser_id
   std::vector<Utils::Cluster> Clusters;
+
+  // Number of threads to use for the conversion
+  int NbThreads = 1;
 };
 
 }  // end of namespace lidar_conversions

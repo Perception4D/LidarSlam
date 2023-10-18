@@ -25,32 +25,41 @@ Currently, this package implements the following nodes :
 
 ## Usage
 
-Direct usage :
+### Direct usage :
 
 ```bash
-rosrun lidar_conversions velodyne_conversion_node
+ros2 run lidar_conversions velodyne_conversion_node
 ```
 
-Example of launchfile for a multi-lidar setup:
+### Direct usage with user invention to compute estimation parameters again (in case laser_id and/or time look unusual) :
+To be done in two seperate terminals:
+
+1:
+```bash
+ros2 run lidar_conversions velodyne_conversion_node
+```
+
+2:
+- if you want to compute estimation parameters again for Velodyne or Ouster :
+```bash
+ros2 service call lidar_conversions/estim_sense lidar_conversions/srv/EstimSense
+```
+- if you want to compute estimation parameters again for any other node (Robosense, Livox, Raw) :
+```bash
+ros2 service call lidar_conversions/estim_params lidar_conversions/srv/EstimParams
+```
+
+### Example of launchfile for a multi-lidar setup:
 
 ```xml
 <launch>
-  <!-- LiDAR pointclouds conversions.
-       The 'rpm' and 'timestamp_first_packet' parameters are only used to
-       generate approximate point-wise timestamps if 'time' field is not usable.
-       These 2 parameters should be set to the same values as ROS Velodyne/RSLidar drivers'. -->
+  <ros2param from="/lidar_conversions" command="load" file="$(find lidar_conversions)/params/conversion_config.yaml"/>
 
   <node name="velodyne_conversion" pkg="lidar_conversions" type="velodyne_conversion_node" output="screen">
-    <param name="device_id" value="0"/>
-    <param name="rpm" value="600."/>
-    <param name="timestamp_first_packet" value="false"/>
     <remap from="lidar_points" to="velodyne_lidar_points"/>
   </node>
 
   <node name="robosense_conversion" pkg="lidar_conversions" type="robosense_conversion_node" output="screen">
-    <rosparam param="laser_id_mapping">[0, 1, 2, 3, 4, 5, 6, 7, 15, 14, 13, 12, 11, 10, 9, 8]</rosparam>
-    <param name="device_id" value="1"/>
-    <param name="rpm" value="600."/>
     <remap from="lidar_points" to="robosense_lidar_points"/>
   </node>
 </launch>
