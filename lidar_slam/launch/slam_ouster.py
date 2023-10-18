@@ -88,7 +88,7 @@ def generate_launch_description():
   with open(os.path.join(lidar_conversion_share_path, 'params', "conversion_config.yaml"), 'r') as f:
     params_conversion = yaml.safe_load(f)['/lidar_conversions']['ros__parameters']
   # Manualy override conversions parameters from parameter file
-  params_conversion['use_sim_time'] = LaunchConfiguration("use_sim_time")
+  params_conversion['use_sim_time'] = LaunchConfiguration("replay")
   ouster_conversion_node = Node(
     name="ouster_conversion", package="lidar_conversions", executable="ouster_conversion_node", output="screen",
     parameters=[params_conversion],
