@@ -105,7 +105,7 @@ You can also use your own ouster driver parameters file with
 ros2 launch lidar_slam slam_ouster.py os_driver:=true replay:=false driver_parameter_file:="path/to/driver_parameters.yaml"
 ```
 
-**NOTE** : If you don't find the IP address of your lidar, you can remap it using : 
+**NOTE** : If you don't find the IP address of your lidar, you can remap it using :
 ```bash
 # Find ethernet interface of Ouster Lidar
 ip a
