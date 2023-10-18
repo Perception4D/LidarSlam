@@ -4,7 +4,7 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, SetEnvironmentVariable
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import TextSubstitution, LaunchConfiguration
@@ -34,6 +34,8 @@ def generate_launch_description():
     DeclareLaunchArgument("port", default_value=TextSubstitution(text="2368")),
     DeclareLaunchArgument("pcap", default_value=""),
     DeclareLaunchArgument("aggregate", default_value="false", description="Run aggregation node"),
+    DeclareLaunchArgument("domain_id", default_value="0", description="Set to different value to avoid interference when several computers running ROS2 on the same network."),
+    SetEnvironmentVariable(name='ROS_DOMAIN_ID',value=LaunchConfiguration('domain_id')),
   ])
 
   ##########
