@@ -132,7 +132,7 @@ install(TARGETS
     raw_conversion_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
-install(DIRECTORY launch params
+install(DIRECTORY params
         DESTINATION share/${PROJECT_NAME})
 
 ament_export_dependencies(${conversion_dependencies})
