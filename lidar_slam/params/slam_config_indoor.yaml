@@ -335,8 +335,8 @@
                                 # and the parameterization : see leaf_size keyframes parameters for more details
 
       # Keypoint extractor for each LiDAR sensor
+      # Single LiDAR input
       ke:
-        # Single LiDAR input
         enable:
           edge: true
           intensity_edge: true
@@ -361,9 +361,11 @@
         # # Multi LiDAR inputs
         # # The multiple devices to use for SLAM.
         # # A keypoint extractor will be initialized for each device.
-        # device_ids: [0, 10]
+        # device_ids:
+        #   - "lidar_frame_0"
+        #   - "lidar_frame_1"
         # # Keypoint extractors parameters for each LiDAR sensor "device_<device_id>"
-        # device_0:
+        # device_lidar_frame_0:
         #   enable:
         #     edge: true
         #     intensity_edge: true
@@ -383,7 +385,7 @@
         #   edge_depth_gap_threshold: 0.5      # [m] Threshold upon depth gap in neighborhood to select an edge keypoint.
         #   edge_nb_gap_points: 10             # [points] Minimum number of successive missing points to consider a space gap.
         #   edge_intensity_gap_threshold: 20.  # [0-255] Threshold upon intensity gap to select an edge keypoint.
-        # device_10:
+        # device_lidar_frame_1:
         #   enable:
         #     edge: true
         #     intensity_edge: true

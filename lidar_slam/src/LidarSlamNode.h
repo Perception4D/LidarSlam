@@ -143,7 +143,7 @@ protected:
    * @param[in] lidarFrameId The input LiDAR pointcloud frame_id.
    * @param[in] lidarDeviceId The numerical identifier of the LiDAR sensor.
    */
-  bool UpdateBaseToLidarOffset(const std::string& lidarFrameId, uint8_t lidarDeviceId);
+  bool UpdateBaseToLidarOffset(const std::string& lidarFrameId);
 
   //----------------------------------------------------------------------------
   /*!
@@ -237,7 +237,7 @@ protected:
   // Number of Lidars connected to the SLAM process
   int MultiLidarsNb = 1;
   // To save the lidar devices id from which frames are received and count the number of frames of each lidar
-  std::unordered_map<uint8_t, int> MultiLidarsCounter;
+  std::unordered_map<std::string, int> MultiLidarsCounter;
 
   // Enum to choose the frames collection mode when there is more than one lidar
   enum FramesCollectionMode
