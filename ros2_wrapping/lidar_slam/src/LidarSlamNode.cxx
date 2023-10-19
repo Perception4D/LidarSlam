@@ -254,7 +254,7 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
   }
 
   // Update TF from BASE to LiDAR
-  if (!this->UpdateBaseToLidarOffset(cloudS_ptr->header.frame_id, cloudS_ptr->front().device_id))
+  if (!this->UpdateBaseToLidarOffset(cloudS_ptr->header.frame_id))
     return;
 
   double timeInterval = this->Frames.empty() ? 0 : (LidarSlam::Utils::PclStampToSec(cloudS_ptr->header.stamp) - LidarSlam::Utils::PclStampToSec(this->Frames[0]->header.stamp));
@@ -263,16 +263,16 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
   if (!this->Frames.empty())
   {
     this->Frames.push_back(cloudS_ptr);
-    auto check_device = this->MultiLidarsCounter.find(cloudS_ptr->front().device_id);
+    auto check_device = this->MultiLidarsCounter.find(cloudS_ptr->header.frame_id);
     if (check_device == this->MultiLidarsCounter.end())
-      this->MultiLidarsCounter.insert(std::make_pair(cloudS_ptr->front().device_id, 1));
+      this->MultiLidarsCounter.insert(std::make_pair(cloudS_ptr->header.frame_id, 1));
     else
       check_device->second++;
 
     // Multilidar mode: drop old frame when waiting for long time
     if (this->WaitFramesDef == LidarSlamNode::FramesCollectionMode::BY_NBLIDARS && timeInterval > this->WaitFramesTime)
     {
-      auto check = this->MultiLidarsCounter.find(this->Frames[0]->front().device_id);
+      auto check = this->MultiLidarsCounter.find(this->Frames[0]->header.frame_id);
       check->second--;
       if (check->second == 0)
         this->MultiLidarsCounter.erase(check);
@@ -284,7 +284,7 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
   {
     // Fill Frames with pointcloud
     this->Frames = {cloudS_ptr};
-    this->MultiLidarsCounter.insert(std::make_pair(cloudS_ptr->front().device_id, 1));
+    this->MultiLidarsCounter.insert(std::make_pair(cloudS_ptr->header.frame_id, 1));
 
     this->MainLidarId = cloudS_ptr->header.frame_id;
 
@@ -1051,7 +1051,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
 //==============================================================================
 
 //------------------------------------------------------------------------------
-bool LidarSlamNode::UpdateBaseToLidarOffset(const std::string& lidarFrameId, uint8_t lidarDeviceId)
+bool LidarSlamNode::UpdateBaseToLidarOffset(const std::string& lidarFrameId)
 {
   // If tracking frame is different from input frame, get TF from LiDAR to BASE
   if (lidarFrameId != this->TrackingFrameId)
@@ -1060,7 +1060,7 @@ bool LidarSlamNode::UpdateBaseToLidarOffset(const std::string& lidarFrameId, uin
     // about timestamp and get only the latest transform
     Eigen::Isometry3d baseToLidar;
     if (Utils::Tf2LookupTransform(baseToLidar, *this->TfBuffer, this->TrackingFrameId, lidarFrameId))
-      this->LidarSlam.SetBaseToLidarOffset(baseToLidar, lidarDeviceId);
+      this->LidarSlam.SetBaseToLidarOffset(baseToLidar, lidarFrameId);
     else
       return false;
   }
@@ -1298,7 +1298,7 @@ void LidarSlamNode::SetSlamParameters()
   };
 
   // Multi-LiDAR devices
-  std::vector<int64_t> deviceIds;
+  std::vector<std::string> deviceIds;
   if (this->get_parameter("slam.ke.device_ids", deviceIds))
   {
     RCLCPP_INFO_STREAM(this->get_logger(), "Multi-LiDAR devices setup");
@@ -1308,12 +1308,12 @@ void LidarSlamNode::SetSlamParameters()
       auto ke = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
 
       // Change default parameters using ROS parameter server
-      std::string prefix = "slam.ke.device_" + std::to_string(deviceId) + ".";
+      std::string prefix = "slam.ke.device_" + deviceId + ".";
       InitKeypointsExtractor(ke, prefix);
 
       // Add extractor to SLAM
       this->LidarSlam.SetKeyPointsExtractor(ke, deviceId);
-      RCLCPP_INFO_STREAM(this->get_logger(), "Adding keypoint extractor for LiDAR device " << deviceId);
+      RCLCPP_INFO_STREAM(this->get_logger(), "Adding keypoints extractor for LiDAR device " << deviceId);
     }
   }
   // Single LiDAR device
@@ -1323,6 +1323,7 @@ void LidarSlamNode::SetSlamParameters()
     auto ke = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
     InitKeypointsExtractor(ke, "slam.ke.");
     this->LidarSlam.SetKeyPointsExtractor(ke);
+    RCLCPP_INFO_STREAM(this->get_logger(), "Adding keypoints extractor");
   }
 
 
