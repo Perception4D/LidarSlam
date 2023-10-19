@@ -68,10 +68,6 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
     return;
   }
 
-  // Fill the map of device_id if the device hasn't already been attributed one
-  if (this->DeviceIdMap.count(cloudO.header.frame_id) == 0)
-    this->DeviceIdMap[cloudO.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
-
   // Rotation duration is estimated to be used in time estimation if needed
   double currFrameTime = Utils::PclStampToSec(cloudO.header.stamp);
   double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
@@ -124,8 +120,6 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
 
   Eigen::Vector2d firstPoint = {cloudO[0].x, cloudO[0].y};
 
-  uint8_t deviceId = this->DeviceIdMap[cloudO.header.frame_id];
-
   // Build SLAM pointcloud
   #pragma omp parallel for num_threads(this->NbThreads)
   for (const PointO& ousterPoint : cloudO)
@@ -139,7 +133,6 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.y = ousterPoint.y;
     slamPoint.z = ousterPoint.z;
     slamPoint.intensity = ousterPoint.reflectivity;
-    slamPoint.device_id = deviceId;
     slamPoint.laser_id = ousterPoint.ring;
 
     // Use time field if available, else estimate it from azimuth advancement

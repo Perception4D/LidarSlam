@@ -78,9 +78,6 @@ private:
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
   rclcpp::Service<lidar_conversions::srv::EstimSense>::SharedPtr EstimService;
 
-  // Map to store the device id of each device (in case of multilidar).
-  std::unordered_map<std::string, uint8_t> DeviceIdMap;
-
   double NbLasers = 16.; ///< Number of lasers of the LiDAR. Optional as it can be taken from header attribute .height of the PointCloud.
   bool RotationSenseEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations.
   bool RotationIsClockwise;  ///< True if the LiDAR rotates clockwise, false otherwise.
