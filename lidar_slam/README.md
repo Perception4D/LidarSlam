@@ -161,6 +161,8 @@ UTM/GPS conversion node can output SLAM pose as a *gps_msgs/msg/GPSFix* message 
 #### Online configuration
 Some features are available online. Note that an interface for some of these features is available in the rviz visualization plugin.
 
+**WARNING** : The slam_visualization plugin is not available on Windows
+
 ![Slam Control Panel](<doc/Slam_command_list.png>)
 ##### Reset state
 At any time, the SLAM state can be reset meaning the maps, the trajectory and the external sensors are cleaned and all the metrics are reset as for the first frame acquisition. Note that it disables the recovery mode as well.
