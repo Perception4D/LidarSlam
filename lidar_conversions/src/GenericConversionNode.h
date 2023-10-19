@@ -97,9 +97,6 @@ private:
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
   rclcpp::Service<lidar_conversions::srv::EstimParams>::SharedPtr EstimService;
 
-  // Map to store the device id of each device (in case of multilidar).
-  std::unordered_map<std::string, uint8_t> DeviceIdMap;
-
   // Number of lasers of the LiDAR.
   double NbLasers = 16.;
 

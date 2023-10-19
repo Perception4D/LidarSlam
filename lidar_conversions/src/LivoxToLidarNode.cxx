@@ -60,10 +60,6 @@ void LivoxToLidarNode::PointCloud2Callback(const Pcl2_msg& msg_received)
     return;
   }
 
-  // Fill the map of device_id if the device hasn't already been attributed one
-  if (this->DeviceIdMap.count(cloudL.header.frame_id) == 0)
-    this->DeviceIdMap[cloudL.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
-
   // Init SLAM pointcloud
   CloudS cloudS;
   cloudS.reserve(cloudL.size());
@@ -73,8 +69,6 @@ void LivoxToLidarNode::PointCloud2Callback(const Pcl2_msg& msg_received)
 
   // Helper to estimate frameAdvancement in case time field is invalid
   Utils::SpinningFrameAdvancementEstimator frameAdvancementEstimator;
-
-  uint8_t deviceId = this->DeviceIdMap[cloudL.header.frame_id];
 
   // Build SLAM pointcloud
   double prevTime = -0.1;
@@ -90,7 +84,6 @@ void LivoxToLidarNode::PointCloud2Callback(const Pcl2_msg& msg_received)
     slamPoint.z = livoxPoint.z;
     slamPoint.intensity = livoxPoint.intensity;
     slamPoint.laser_id = 0;
-    slamPoint.device_id = deviceId;
 
     slamPoint.time = prevTime + 0.1/300000.; // Supposing 10 Hz and 300 000 points
     prevTime = slamPoint.time;
@@ -128,7 +121,6 @@ void LivoxToLidarNode::LivoxCustomMsgCallback(const LivoxCustomMsg& cloudLmsg)
     slamPoint.z = livoxPoint.z;
     slamPoint.intensity = livoxPoint.reflectivity;
     slamPoint.laser_id = livoxPoint.line;
-    slamPoint.device_id = cloudLmsg.lidar_id;
 
     slamPoint.time = double(livoxPoint.offset_time) * 1e-9; // seconds
     cloudS.push_back(slamPoint);

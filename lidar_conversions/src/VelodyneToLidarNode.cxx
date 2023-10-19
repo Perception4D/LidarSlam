@@ -64,10 +64,6 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
     return;
   }
 
-  // Fill the map of device_id if the device hasn't already been attributed one
-  if (this->DeviceIdMap.count(cloudV.header.frame_id) == 0)
-    this->DeviceIdMap[cloudV.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
-
   // Rotation duration is estimated to be used in time estimation if needed
   double currFrameTime = Utils::PclStampToSec(cloudV.header.stamp);
   double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
@@ -115,8 +111,6 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
 
   bool timeIsValid = duration > 1e-8 && duration < 2. * this->RotationDuration;
 
-  uint8_t deviceId = this->DeviceIdMap[cloudV.header.frame_id];
-
   if (!timeIsValid)
     RCLCPP_WARN_STREAM(this->get_logger(), "Invalid 'time' field, it will be built from azimuth advancement.");
 
@@ -135,7 +129,6 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.y = velodynePoint.y;
     slamPoint.z = velodynePoint.z;
     slamPoint.intensity = velodynePoint.intensity;
-    slamPoint.device_id = deviceId;
     slamPoint.laser_id = velodynePoint.ring;
 
     // Use time field if available, else estimate it from azimuth advancement

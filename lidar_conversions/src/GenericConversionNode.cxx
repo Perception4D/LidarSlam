@@ -62,10 +62,6 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
     return;
   }
 
-  // Fill the map of device_id if the device hasn't already been attributed one
-  if (this->DeviceIdMap.count(cloudRaw.header.frame_id) == 0)
-    this->DeviceIdMap[cloudRaw.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
-
   // Rotation duration is estimated to be used in time estimation if needed
   double currFrameTime = Utils::PclStampToSec(cloudRaw.header.stamp);
   double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
@@ -202,8 +198,6 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
       RCLCPP_WARN_STREAM(this->get_logger(), "Invalid 'time' field, it will be built from azimuth advancement.");
   }
 
-  uint8_t deviceId = this->DeviceIdMap[cloudRaw.header.frame_id];
-
   // Build SLAM pointcloud
   #pragma omp parallel for num_threads(this->NbThreads)
   for (unsigned int i = 0; i < cloudRaw.size(); ++i)
@@ -223,7 +217,6 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.x = rawPoint.x;
     slamPoint.y = rawPoint.y;
     slamPoint.z = rawPoint.z;
-    slamPoint.device_id = deviceId;
     slamPoint.intensity = intensities.empty() ? 0. : intensities[i];
     slamPoint.laser_id = laser_ids.empty() ? Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nbLasers, this->Clusters) : laser_ids[i];
     slamPoint.time = (times.empty() || !timeIsValid)? Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise) : times[i];
