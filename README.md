@@ -352,7 +352,10 @@ See [ros2_wrapping/lidar_slam/README.md](ros2_wrapping/lidar_slam/README.md) for
 
 This wrapping has been tested on Humble version of ROS2.
 
-**WARNING** : ROS2 is supported on Windows 10 but many packages are not ported and the installation can be tricky.
+**WARNINGS** : 
+  - ROS2 is supported on Windows 10 but many packages are not ported and the installation can be tricky.
+  - The slam_visualization plugin is not available on Windows
+
 
 **NOTE** : Always use administrator rights x64_x86 Cross Tools Command Prompt for VS 2019
 
