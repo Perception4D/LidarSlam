@@ -160,9 +160,11 @@ inline void ClusterizeVerticalAngles(const pcl::PointCloud<PointType>& cloudRaw,
   // Initialisation of the means of each cluster
   for (const auto& pt : cloudRaw)
   {
-    if (pt.getVector3fMap().norm() < 1e-6)
+    if (!Utils::IsPointValid(pt))
       continue;
-    verticalAngles.emplace_back((180./M_PI) * std::acos(pt.z / pt.getVector3fMap().norm()));
+    double ratio = pt.z / pt.getVector3fMap().norm();
+    ratio = std::max(std::min(ratio, 1.-1e-6), -1.+1e-6);
+    verticalAngles.emplace_back((180./M_PI) * std::acos(ratio));
   }
 
   double maxAngle = *std::max_element(verticalAngles.begin(), verticalAngles.end());
@@ -209,8 +211,10 @@ inline void ClusterizeVerticalAngles(const pcl::PointCloud<PointType>& cloudRaw,
     for (Cluster& cluster : clusters)
     {
       if (cluster.Empty)
+      {
+        cluster.Std = 0.;
         continue;
-
+      }
       double newMean = std::accumulate(cluster.Inliers.begin(), cluster.Inliers.end(), 0.) /
                        double(cluster.Inliers.size());
       cluster.Mean = newMean;
