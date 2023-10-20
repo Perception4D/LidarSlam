@@ -150,15 +150,27 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   // Init ROS subscribers
 
   // LiDAR inputs
+  priv_nh.getParam("lidars_nb", this->MultiLidarsNb);
+  int frameMode;
+  if (this->PrivNh.getParam("frames_mode", frameMode))
+  {
+    LidarSlamNode::FramesCollectionMode frameCollectionMode = static_cast<LidarSlamNode::FramesCollectionMode>(frameMode);
+    if (frameCollectionMode != LidarSlamNode::FramesCollectionMode::BY_TIME &&
+        frameCollectionMode != LidarSlamNode::FramesCollectionMode::BY_NBLIDARS)
+    {
+      ROS_ERROR_STREAM("Invalid frames collection mode (" << frameCollectionMode << "). Setting it to 'BY_NBLIDARS'.");
+      frameCollectionMode = LidarSlamNode::FramesCollectionMode::BY_NBLIDARS;
+    }
+    this->WaitFramesDef = frameCollectionMode;
+  }
+  priv_nh.getParam("frames_waiting_time", this->WaitFramesTime);
   std::vector<std::string> lidarTopics;
   if (!priv_nh.getParam("input", lidarTopics))
     lidarTopics.push_back(priv_nh.param<std::string>("input", "lidar_points"));
-  this->CloudSubs.push_back(nh.subscribe(lidarTopics[0], 1, &LidarSlamNode::ScanCallback, this));
-  ROS_INFO_STREAM("Using LiDAR frames on topic '" << lidarTopics[0] << "'");
-  for (unsigned int lidarTopicId = 1; lidarTopicId < lidarTopics.size(); lidarTopicId++)
+  for (unsigned int lidarTopicId = 0; lidarTopicId < lidarTopics.size(); lidarTopicId++)
   {
-    this->CloudSubs.push_back(nh.subscribe(lidarTopics[lidarTopicId], 1, &LidarSlamNode::SecondaryScanCallback, this));
-    ROS_INFO_STREAM("Using secondary LiDAR frames on topic '" << lidarTopics[lidarTopicId] << "'");
+    this->CloudSubs.push_back(nh.subscribe(lidarTopics[lidarTopicId], 1, &LidarSlamNode::ScanCallback, this));
+    ROS_INFO_STREAM("Using LiDAR frames on topic '" << lidarTopics[lidarTopicId] << "'");
   }
 
   // SLAM commands
@@ -238,94 +250,111 @@ void LidarSlamNode::ScanCallback(const CloudS::Ptr cloudS_ptr)
     return;
   }
 
-  this->MainLidarId = cloudS_ptr->header.frame_id;
-
-  this->StartTime = ros::Time::now().toSec();
-
-  if (!this->LidarTimePosix)
-  {
-    // Compute time offset
-    // Get ROS frame reception time
-    double TimeFrameReceptionPOSIX = ros::Time::now().toSec();
-    // Get last acquired point timestamp
-    double TimeLastPoint = LidarSlam::Utils::PclStampToSec(cloudS_ptr->header.stamp) + cloudS_ptr->back().time;
-    // Compute offset
-    double potentialOffset = TimeLastPoint - TimeFrameReceptionPOSIX;
-    // Get current offset
-    double absCurrentOffset = std::abs(this->LidarSlam.GetSensorTimeOffset());
-    // If the current computed offset is more accurate, replace it
-    if (absCurrentOffset < 1e-6 || std::abs(potentialOffset) < absCurrentOffset)
-      this->LidarSlam.SetSensorTimeOffset(potentialOffset + this->SensorTimeOffset);
-  }
-  else
-    this->LidarSlam.SetSensorTimeOffset(this->SensorTimeOffset);
-
   // Update TF from BASE to LiDAR
   if (!this->UpdateBaseToLidarOffset(cloudS_ptr->header.frame_id, cloudS_ptr->front().device_id))
     return;
 
-  // Set the SLAM main input frame at first position
-  this->Frames.insert(this->Frames.begin(), cloudS_ptr);
+  double timeInterval = this->Frames.empty() ? 0 : (LidarSlam::Utils::PclStampToSec(cloudS_ptr->header.stamp) - LidarSlam::Utils::PclStampToSec(this->Frames[0]->header.stamp));
 
-  // Run SLAM : register new frame and update localization and map.
-  this->LidarSlam.AddFrames(this->Frames);
-
-  // TMP
-  // Check if SLAM has failed
-  if (this->LidarSlam.IsRecovery())
+  // Fill Frames with pointcloud of all lidar sensors
+  if (!this->Frames.empty())
   {
-    // TMP : in the future, the user should have a look
-    // at the result to validate recovery
-    // Check if the SLAM can go on and pose has to be displayed
-    if (this->LidarSlam.GetOverlapEstimation() > 0.2f &&
-        this->LidarSlam.GetPositionErrorStd()  < 0.1f)
+    this->Frames.push_back(cloudS_ptr);
+    auto checkDevice = this->MultiLidarsCounter.find(cloudS_ptr->header.frame_id);
+    if (checkDevice == this->MultiLidarsCounter.end())
+      this->MultiLidarsCounter.insert(std::make_pair(cloudS_ptr->header.frame_id, 1));
+    else
+      checkDevice->second++;
+
+    // Multilidar mode: drop old frame when waiting for long time
+    if (this->WaitFramesDef == LidarSlamNode::FramesCollectionMode::BY_NBLIDARS && timeInterval > this->WaitFramesTime)
     {
-      ROS_WARN_STREAM("Getting out of recovery mode");
-      // Frame is relocalized, reset params
-      this->LidarSlam.EndRecovery();
+      auto check = this->MultiLidarsCounter.find(this->Frames[0]->header.frame_id);
+      check->second--;
+      if (check->second == 0)
+        this->MultiLidarsCounter.erase(check);
+      this->Frames.erase(this->Frames.begin());
+    }
+  }
+  else
+  {
+    this->MainLidarId = cloudS_ptr->header.frame_id;
+
+    // Fill Frames with pointcloud
+    this->Frames = {cloudS_ptr};
+    this->MultiLidarsCounter.insert(std::make_pair(cloudS_ptr->header.frame_id, 1));
+
+    this->StartTime = ros::Time::now().toSec();
+
+    if (!this->LidarTimePosix)
+    {
+      // Compute time offset
+      // Get ROS frame reception time
+      double timeFrameReceptionPOSIX = ros::Time::now().toSec();
+      // Get last acquired point timestamp
+      double timeLastPoint = LidarSlam::Utils::PclStampToSec(cloudS_ptr->header.stamp) + cloudS_ptr->back().time;
+      // Compute offset
+      double potentialOffset = timeLastPoint - timeFrameReceptionPOSIX;
+      // Get current offset
+      double absCurrentOffset = std::abs(this->LidarSlam.GetSensorTimeOffset());
+      // If the current computed offset is more accurate, replace it
+      if (absCurrentOffset < 1e-6 || std::abs(potentialOffset) < absCurrentOffset)
+        this->LidarSlam.SetSensorTimeOffset(potentialOffset + this->SensorTimeOffset);
     }
     else
-      ROS_WARN_STREAM("Still waiting for recovery");
+      this->LidarSlam.SetSensorTimeOffset(this->SensorTimeOffset);
   }
-  else if (this->LidarSlam.HasFailed())
+
+
+  // Run SLAM when:
+  // 1. frames collection mode is "waiting all lidars" and frames from all lidar devices have arrived,
+  // 2. frames collection mode is "waiting time" and interval is greater than waiting time (0.2s),
+  // 3. There is only one lidar sensor
+  if ((this->WaitFramesDef == LidarSlamNode::FramesCollectionMode::BY_NBLIDARS && this->MultiLidarsCounter.size() == this->MultiLidarsNb) ||
+      (this->WaitFramesDef == LidarSlamNode::FramesCollectionMode::BY_TIME && this->MultiLidarsNb > 1 && timeInterval > 0.2) ||
+      this->MultiLidarsNb == 1)
   {
-    ROS_WARN_STREAM("SLAM has failed : entering recovery mode :\n"
-                    << "\t -Maps will not be updated\n"
-                    << "\t -Egomotion and undistortion are disabled\n"
-                    << "\t -The number of ICP iterations is increased\n"
-                    << "\t -The maximum distance between a frame point and a map target point is increased");
-    // Enable recovery mode :
-    // Last frames are removed
-    // Maps are not updated
-    // Param are tuned to handle bigger motions
-    // Warning : real time is not ensured
-    this->LidarSlam.StartRecovery(this->RecoveryTime);
+    // Run SLAM : register new frame and update localization and map.
+    this->LidarSlam.AddFrames(this->Frames);
+
+    // Check if SLAM has failed
+    if (this->LidarSlam.IsRecovery())
+    {
+      // TMP : in the future, the user should have a look
+      // at the result to validate recovery
+      // Check if the SLAM can go on and pose has to be displayed
+      if (this->LidarSlam.GetOverlapEstimation() > 0.2f &&
+          this->LidarSlam.GetPositionErrorStd()  < 0.1f)
+      {
+        ROS_WARN_STREAM("Getting out of recovery mode");
+        // Frame is relocalized, reset params
+        this->LidarSlam.EndRecovery();
+      }
+      else
+        ROS_WARN_STREAM("Still waiting for recovery");
+    }
+    else if (this->LidarSlam.HasFailed())
+    {
+      ROS_WARN_STREAM("SLAM has failed : entering recovery mode :\n"
+                      << "\t -Maps will not be updated\n"
+                      << "\t -Egomotion and undistortion are disabled\n"
+                      << "\t -The number of ICP iterations is increased\n"
+                      << "\t -The maximum distance between a frame point and a map target point is increased");
+      // Enable recovery mode :
+      // Last frames are removed
+      // Maps are not updated
+      // Param are tuned to handle bigger motions
+      // Warning : real time is not ensured
+      this->LidarSlam.StartRecovery(this->RecoveryTime);
+    }
+
+    // Publish SLAM output as requested by user
+    this->PublishOutput();
+
+    // Reset frames vector and multi lidar counter
+    this->Frames.clear();
+    this->MultiLidarsCounter.clear();
   }
-
-  // Publish SLAM output as requested by user
-  this->PublishOutput();
-
-  this->Frames.clear();
-}
-
-//------------------------------------------------------------------------------
-void LidarSlamNode::SecondaryScanCallback(const CloudS::Ptr cloudS_ptr)
-{
-  if (!this->SlamEnabled)
-    return;
-
-  if (cloudS_ptr->empty())
-  {
-    ROS_WARN_STREAM("Secondary input point cloud sent by Lidar sensor driver is empty -> ignoring message");
-    return;
-  }
-
-  // Update TF from BASE to LiDAR for this device
-  if (!this->UpdateBaseToLidarOffset(cloudS_ptr->header.frame_id, cloudS_ptr->front().device_id))
-    return;
-
-  // Add new frame to SLAM input frames
-  this->Frames.push_back(cloudS_ptr);
 }
 
 //------------------------------------------------------------------------------

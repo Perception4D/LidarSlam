@@ -80,24 +80,6 @@ public:
 
   //----------------------------------------------------------------------------
   /*!
-   * @brief     New secondary lidar frame callback, buffered to be latered processed by SLAM.
-   * @param[in] cloud New frame, published by conversion node.
-   *
-   * Input pointcloud must have following fields :
-   *  - x, y, z (float): point coordinates
-   *  - time (double): time offset to add to the pointcloud header timestamp to
-   *    get approximate point-wise acquisition timestamp
-   *  - intensity (float): intensity/reflectivity of the point
-   *  - laser_id (uint16): numeric identifier of the laser ring that shot this point.
-   *    The lowest/bottom laser ring should be 0, and it should increase upward.
-   *  - device_id (uint8): numeric identifier of the LiDAR device/sensor.
-   *    This id should be the same for all points of the cloud acquired by the same sensor.
-   *  - label (uint8): optional input, not yet used.
-   */
-  virtual void SecondaryScanCallback(const CloudS::Ptr cloudS_ptr);
-
-  //----------------------------------------------------------------------------
-  /*!
    * @brief     Optional GPS odom callback, accumulating poses.
    * @param[in] msg Converted GPS pose with its associated covariance.
    */
@@ -232,6 +214,21 @@ protected:
   LidarSlam::Slam LidarSlam;
   std::vector<CloudS::Ptr> Frames;
   bool SlamEnabled = true;
+
+  // Number of Lidars connected to the SLAM process
+  int MultiLidarsNb = 1;
+  // To save the lidars' frame_id from which frames are received and count the number of frames of each lidar
+  std::unordered_map<std::string, int> MultiLidarsCounter;
+
+  // Enum to choose the frames collection mode when there is more than one lidar
+  enum FramesCollectionMode
+  {
+    BY_TIME     = 0, // wait for a time to receive frames(0.2s)
+    BY_NBLIDARS = 1  // wait until received frames from all lidar devices
+  };
+  FramesCollectionMode WaitFramesDef = FramesCollectionMode::BY_NBLIDARS;
+  // Time to wait to receive frames
+  double WaitFramesTime = 0.2;
 
   // ROS node handles, subscribers and publishers
   ros::NodeHandle &Nh, &PrivNh;

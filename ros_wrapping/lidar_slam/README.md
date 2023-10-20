@@ -5,6 +5,7 @@
     - [Description and basic usage](#description-and-basic-usage)
     - [More advanced usage](#more-advanced-usage)
       - [Detailed pipeline](#detailed-pipeline)
+      - [Multiple lidar sensors](#multiple-lidar-sensors)
       - [Online configuration](#online-configuration)
         - [Reset state](#reset-state)
         - [Map update modes](#map-update-modes)
@@ -104,6 +105,17 @@ SLAM outputs can also be configured out to publish :
 UTM/GPS conversion node can output SLAM pose as a *gps_common/GPSFix* message on topic '*slam_fix*'.
 
 **NOTE** : It is possible to track any *tracking_frame* in *odometry_frame*, using a pointcloud expressed in an *lidar_frame*. However, please ensure that a valid TF tree is beeing published to link *lidar_frame* to *tracking_frame*.
+
+#### Multiple LiDAR sensors
+
+When there are multiple LiDAR devices, frames coming from different devices should be collected. There are two collection modes: waiting for all lidars or waiting for a time duration.
+
+A SLAM iteration runs when:
+* Only one LiDAR sensor is implied,
+* Frames collection mode is "waiting for all LiDAR sensors" and frames from all lidar devices have arrived,
+* Frames collection mode is "waiting for a time duration" and interval is greater than waiting time (0.2s).
+
+The **device_id** of LiDAR sensors need to be precised when setting keypoint extraction parameters.
 
 #### Online configuration
 
