@@ -90,7 +90,7 @@
       gps:
 
         # Optional GPS positions use to calibrate output SLAM pose to world coordinates and/or optimize SLAM trajectory.
-        # If true, subscribes to topic 'gps_odom' (nav_msgs/Odometry), and logs GPS positions during 'slam/logging_timeout' seconds.
+        # If true, subscribes to topic 'gps_odom' (nav_msgs/Odometry), and logs GPS positions during 'logging/timeout' seconds.
         # (WARNING Can be overridden in launch files with 'gps' arg).
         enable: false
 
@@ -133,6 +133,27 @@
       publish_path: false  # If true, publish optimized SLAM trajectory to 'pgo_slam_path' latched topic
       covariance_scale: 1. # Scale to apply to SLAM pose covariances in pose graph optimization
       iterations_nb: 100   # Number of iterations to perform to optimize the graph
+
+    logging:
+      # Optional logging of computed pose, localization covariance and keypoints of each processed frame.
+      #  - A value of 0. will disable logging.
+      #  - A negative value will log all incoming data, without any timeout.
+      #  - A positive value will keep only most recent data, forgetting all previous data older than timeout seconds.
+      # Logged data will be used for pose graph optimization, GPS antenna/LiDAR sensor calibration using GPS data
+      # and when using the recovery mode : if the SLAM is lost, it will recover an older map from the logged information.
+      timeout: 1800.  # [s]
+
+      # How to store pointclouds data during keypoints logging (if logging_timeout != 0):
+      #  0) PCL pointcloud                    (in RAM,     no compression,      no overhead)
+      #  1) Octree compressed binary data     (in RAM,    ~5x compression,   ~3 ms overhead)
+      #  2) Ascii format PCD file             (on disk, ~0.6x compression,   ~5 ms overhead)
+      #  3) Binary format PCD file            (on disk, ~1.3x compression, ~0.3 ms overhead)
+      #  4) Binary compressed format PCD file (on disk, ~1.5x compression, ~0.8 ms overhead)
+      storage_type: 0
+
+      # Decide whether to log all frames or only keyframes
+      # /!\ All log frames are used in post graph processing
+      only_keyframes: false # [bool]
 
     # SLAM parameters (see Slam.h for description). Comment parameter to get default value.
     slam:
@@ -195,27 +216,6 @@
       # 1) QUADRATIC : quadratic spline from a set of 3 poses
       # 2) CUBIC :     cubic spline from a set of 4 poses
       interpolation_model: 0
-
-      logging:
-        # Optional logging of computed pose, localization covariance and keypoints of each processed frame.
-        #  - A value of 0. will disable logging.
-        #  - A negative value will log all incoming data, without any timeout.
-        #  - A positive value will keep only most recent data, forgetting all previous data older than timeout seconds.
-        # Logged data will be used for pose graph optimization, GPS antenna/LiDAR sensor calibration using GPS data
-        # and when using the recovery mode : if the SLAM is lost, it will recover an older map from the logged information.
-        timeout: 1800.  # [s]
-
-        # How to store pointclouds data during keypoints logging (if logging_timeout != 0):
-        #  0) PCL pointcloud                    (in RAM,     no compression,      no overhead)
-        #  1) Octree compressed binary data     (in RAM,    ~5x compression,   ~3 ms overhead)
-        #  2) Ascii format PCD file             (on disk, ~0.6x compression,   ~5 ms overhead)
-        #  3) Binary format PCD file            (on disk, ~1.3x compression, ~0.3 ms overhead)
-        #  4) Binary compressed format PCD file (on disk, ~1.5x compression, ~0.8 ms overhead)
-        storage_type: 0
-
-        # Decide whether to log all frames or only keyframes
-        # /!\ All log frames are used in post graph processing
-        only_keyframes: false
 
       # ICP and LM parameters for Ego-Motion registration step (used only if ego_motion is 2 or 3)
       ego_motion_registration:
