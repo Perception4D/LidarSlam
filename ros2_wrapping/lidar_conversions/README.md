@@ -21,7 +21,11 @@ Currently, this package implements the following nodes :
 - **robosense_conversion_node** : converts pointclouds output by RoboSense spinning sensors using the [ROS RoboSense-LiDAR driver](https://github.com/RoboSense-LiDAR/ros_rslidar) to SLAM pointcloud format. This has been tested only with RS16 sensor, and could need additional changes to support other RS sensors.
 - **ouster_conversion_node** : converts pointclouds output by Ouster spinning sensors using the [ROS Ouster driver](https://github.com/ouster-lidar/ouster_example) to SLAM pointcloud format.
 - **livox_conversion_node** : converts custom pointclouds output by Livox spinning sensors using the [ROS Livox driver](https://github.com/Livox-SDK/livox_ros_driver) to SLAM pointcloud format.
-- **raw_conversion_node** : converts any PointCloud2 to SLAM pointcloud format using only space coordinates. It computes laser_id and time attributes and deduces rotation sense of the LiDAR from space coordinates. It estimates RPM and deduces device_id from PCLHeader.
+- **generic_conversion_node** : converts any PointCloud2 to SLAM pointcloud format. It can recognize multiple names and types for the fields of PointCloud2, and if some are missing (like laser_id or time), it recomputes them using space coordinates only.
+As it looks for multiple types/names, if the user gives a complete PointCloud2, the average conversion time will be doubled compared to using a specific conversion node. We advise to use one the nodes above if the user is certain of his PointCloud2 (types and names of each field included).
+If the user is unable to provide all the necessary fields required for SLAM, we advise to use this node. It will automatically compute the missing information.
+
+**WARNING** : Using generic_converison_node will multiply by (at least) 1.5 the time for conversion, as required for the field searching. The autoestimation of missing fields will multiply by 2 the time for conversion (compared to a specific conversion node).
 
 ## Usage
 
@@ -44,7 +48,7 @@ ros2 run lidar_conversions velodyne_conversion_node
 ```bash
 ros2 service call lidar_conversions/estim_sense lidar_conversions/srv/EstimSense
 ```
-- if you want to compute estimation parameters again for any other node (Robosense, Livox, Raw) :
+- if you want to compute estimation parameters again for any other node (Robosense, Livox, Generic) :
 ```bash
 ros2 service call lidar_conversions/estim_params lidar_conversions/srv/EstimParams
 ```

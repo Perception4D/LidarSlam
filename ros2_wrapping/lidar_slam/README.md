@@ -1,11 +1,14 @@
 # lidar_slam
 
-- [lidar_slam](#lidar_slam)
+- [lidar\_slam](#lidar_slam)
   - [LiDAR SLAM node](#lidar-slam-node)
     - [Description and basic usage](#description-and-basic-usage)
       - [Slam node](#slam-node)
-      - [With a Velodyne Lidar](#with-a-velodyne-lidar)
-      - [With an Ouster Lidar](#with-an-ouster-lidar)
+      - [Pipeline use](#pipeline-use)
+        - [With a Velodyne Lidar](#with-a-velodyne-lidar)
+        - [With an Ouster Lidar](#with-an-ouster-lidar)
+        - [With other LiDAR](#with-other-lidar)
+      - [Choosing a domain ID](#choosing-a-domain-id)
     - [More advanced usage](#more-advanced-usage)
       - [Detailed pipeline](#detailed-pipeline)
       - [Online configuration](#online-configuration)
@@ -50,7 +53,9 @@ If you want to specify parameters, you should consider using a launchfile. Two l
 
 **NOTE** : all launchfile options are described in the launchfile itself
 
-#### With a Velodyne Lidar
+#### Pipeline use
+
+##### With a Velodyne Lidar
 To use a Velodyne lidar with the SLAM, install the Velodyne driver and use the velodyne launch file.
 
 - To install the Velodyne driver, run :
@@ -68,7 +73,7 @@ ros2 bag play --clock <my_bag_file>  # in 2nd shell
 ros2 launch lidar_slam slam_velodyne.py use_sim_time:=false
 ```
 
-#### With an Ouster Lidar
+##### With an Ouster Lidar
 To use an Ouster lidar with the SLAM, install the Ouster driver and use the ouster launch file.
 
 **NOTE** : Use this [commit id](https://github.com/ouster-lidar/ouster-ros/commit/6c9b3f514c7e4c0c8e1240c47c1c2ecbd3c7a365) of the ouster driver.
@@ -120,6 +125,23 @@ These launch files will start :
 * the *lidar_conversion_node* which converts the driver point type to expected SLAM use (see next paragraph),
 * (optional) The Lidar drivers if required (see velodyne_driver and os_driver parameters),
 * (optional) GPS/UTM conversions nodes to publish SLAM pose as a GPS coordinate in WGS84 format (if `gps` arg is enabled). This uses the prior that full GPS pose and GPS/LiDAR calibration are correctly known and set (see [GPS/SLAM calibration](#gpsslam-calibration) section below for more info).
+
+##### With other LiDAR
+**WARNING** : We recommend to use the specific launch files explained above if you have the mentionned Lidar.
+
+We've implemented a generic conversion node with a (future) generic launch file to allow the use of many more
+types of Lidar. Thanks to it, you can use any Lidar that publishes a PointCloud2 message with the following fields :
+- **x**, **y**, **z** (`float`) : point coordinates
+- optionnally **intensity** (or **reflectivity**), **laser_id** (or **ring**), **time** (or **t**) of any type (see 8 types [`here`](http://docs.ros.org/en/melodic/api/sensor_msgs/html/msg/PointField.html)).
+
+**NOTE** : The generic conversion node will be slower than the specific conversion nodes (as it tests the presence of the fields and estimates missing fields (for time and laser_id))
+
+To use the generic conversion node and launch lidar_slam, you can use the following launch file :
+```bash
+//TODO:
+```
+
+We advise to update the ROS parameters (**nb_lasers**, **possible_frequencies**) to ease the computations during the conversion (see [`conversion_config.yaml`](src/ros2_wrapping/lidar_conversions/params/conversion_config.yaml)).
 
 #### Choosing a domain ID
 
