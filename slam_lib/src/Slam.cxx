@@ -720,10 +720,10 @@ bool Slam::OptimizeGraph()
     return false;
   }
 
-  if ((!this->UsePGOConstraints[LANDMARK]     || !this->LmHasData())  &&
-      (!this->UsePGOConstraints[PGO_GPS]      || !this->GpsHasData()) &&
-      (!this->UsePGOConstraints[PGO_EXT_POSE] || !this->PoseHasData()) &&
-      !this->UsePGOConstraints[LOOP_CLOSURE])
+  if ((!this->UsePGOConstraints[PGOConstraint::LANDMARK]     || !this->LmHasData())  &&
+      (!this->UsePGOConstraints[PGOConstraint::GPS]          || !this->GpsHasData()) &&
+      (!this->UsePGOConstraints[PGOConstraint::EXT_POSE]     || !this->PoseHasData()) &&
+       !this->UsePGOConstraints[PGOConstraint::LOOP_CLOSURE])
   {
     PRINT_WARNING("No external constraint found, graph cannot be optimized");
     return false;
@@ -747,7 +747,7 @@ bool Slam::OptimizeGraph()
   bool externalConstraint = false;
 
   // Look for loop closure constraints
-  if (this->UsePGOConstraints[LOOP_CLOSURE])
+  if (this->UsePGOConstraints[PGOConstraint::LOOP_CLOSURE])
   {
     if(!this->LoopDetections.empty())
     {
@@ -775,7 +775,7 @@ bool Slam::OptimizeGraph()
   }
 
   // Look for landmark constraints
-  if (this->UsePGOConstraints[LANDMARK] && this->LmHasData())
+  if (this->UsePGOConstraints[PGOConstraint::LANDMARK] && this->LmHasData())
   {
     // Allow the rotation of the covariances when interpolating the measurements
     this->SetLandmarkCovarianceRotation(true);
@@ -811,7 +811,7 @@ bool Slam::OptimizeGraph()
   }
 
   // Look for GPS constraints
-  if (this->UsePGOConstraints[PGO_GPS] && this->GpsHasData())
+  if (this->UsePGOConstraints[PGOConstraint::GPS] && this->GpsHasData())
   {
     // For the first optimization, we may not know the offset
     // between GPS reference frame (utm/enu/map) and Lidar SLAM reference frame (odom)
@@ -848,7 +848,7 @@ bool Slam::OptimizeGraph()
   }
 
   // Look for ext pose constraints
-  if (this->UsePGOConstraints[PGO_EXT_POSE] && this->PoseHasData())
+  if (this->UsePGOConstraints[PGOConstraint::EXT_POSE] && this->PoseHasData())
   {
     // Compute offset between SLAM referential frame
     // and external poses referential frame
@@ -929,14 +929,14 @@ bool Slam::OptimizeGraph()
   // and T_GPS is defined by : T_base_after_optimization * Calibration_GPS = offset_old * T_GPS
   //  -> T_GPS = offset_old^-1 * T_base_after_optimization * Calibration_GPS
   // All together in (1) : offset = T_base_before_optimization * T_base_after_optimization^-1 * offset_old
-  if (this->UsePGOConstraints[PGO_GPS] && this->GpsHasData())
+  if (this->UsePGOConstraints[PGOConstraint::GPS] && this->GpsHasData())
     this->GpsManager->RefineOffset(this->TworldInit * this->LogStates.front().Isometry.inverse());
 
   // Replace Lidar SLAM poses in odom frame
   // Warning : the Gps offset refinement needs to be done before
   // calling this function
   this->ResetTrajWithTworldInit();
-  if (this->UsePGOConstraints[PGO_EXT_POSE] && this->PoseHasData())
+  if (this->UsePGOConstraints[PGOConstraint::EXT_POSE] && this->PoseHasData())
     // Update offset of referential frames with new de-skewed trajectory
     this->PoseManager->UpdateOffset(this->LogStates);
 

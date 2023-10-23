@@ -80,16 +80,16 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   this->SetSlamInitialState();
 
   // Use GPS data for GPS/SLAM calibration or Pose Graph Optimization.
-  this->UseExtSensor[LidarSlam::GPS] = priv_nh.param("external_sensors/gps/enable", false);
-  this->LidarSlam.EnablePGOConstraint(LidarSlam::PGO_GPS, this->UseExtSensor[LidarSlam::GPS]);
+  this->UseExtSensor[LidarSlam::ExternalSensor::GPS] = priv_nh.param("external_sensors/gps/enable", false);
+  this->LidarSlam.EnablePGOConstraint(LidarSlam::PGOConstraint::GPS, this->UseExtSensor[LidarSlam::ExternalSensor::GPS]);
   // Use tags data for local optimization.
-  this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR] = priv_nh.param("external_sensors/landmark_detector/enable", false);
-  this->LidarSlam.EnablePGOConstraint(LidarSlam::LANDMARK, this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR]);
+  this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] = priv_nh.param("external_sensors/landmark_detector/enable", false);
+  this->LidarSlam.EnablePGOConstraint(LidarSlam::PGOConstraint::LANDMARK, this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR]);
   // Use camera rgb images in local optimization.
-  this->UseExtSensor[LidarSlam::CAMERA] = priv_nh.param("external_sensors/camera/enable", false);
+  this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] = priv_nh.param("external_sensors/camera/enable", false);
   // Use external poses in local optimization or in graph optimization
-  this->UseExtSensor[LidarSlam::POSE] = priv_nh.param("external_sensors/external_poses/enable", false);
-  this->LidarSlam.EnablePGOConstraint(LidarSlam::PGO_EXT_POSE, this->UseExtSensor[LidarSlam::POSE]);
+  this->UseExtSensor[LidarSlam::ExternalSensor::POSE] = priv_nh.param("external_sensors/external_poses/enable", false);
+  this->LidarSlam.EnablePGOConstraint(LidarSlam::PGOConstraint::EXT_POSE, this->UseExtSensor[LidarSlam::ExternalSensor::POSE]);
 
   // ***************************************************************************
   // Init ROS publishers
@@ -136,9 +136,9 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
 
   initPublisher(CONFIDENCE, "slam_confidence", lidar_slam::Confidence, "output/confidence", true, 1, false);
 
-  if (this->UseExtSensor[LidarSlam::GPS] ||
-      this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR] ||
-      this->UseExtSensor[LidarSlam::POSE])
+  if (this->UseExtSensor[LidarSlam::ExternalSensor::GPS] ||
+      this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ||
+      this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
   {
     initPublisher(PGO_PATH, "pgo_slam_path", nav_msgs::Path, "graph/publish_path", false, 1, true);
   }
@@ -178,17 +178,17 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
 
   // Init logging of GPS data for GPS/SLAM calibration or Pose Graph Optimization.
   // Perfect synchronization is not required as GPS data are not used in SLAM local process
-  if (this->UseExtSensor[LidarSlam::GPS])
+  if (this->UseExtSensor[LidarSlam::ExternalSensor::GPS])
     this->GpsOdomSub = nh.subscribe("gps_odom", 1, &LidarSlamNode::GpsCallback, this);
 
   // Init logging of landmark data and/or Camera data
-  if (this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR] ||
-      this->UseExtSensor[LidarSlam::CAMERA] ||
-      this->UseExtSensor[LidarSlam::POSE])
+  if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ||
+      this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] ||
+      this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
   {
     // Create an external independent spinner to get the landmarks and/or camera info in a parallel way
 
-    if (this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR])
+    if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR])
     {
       ros::SubscribeOptions ops;
       ops.initByFullCallbackType<apriltag_ros::AprilTagDetectionArray>("tag_detections", 200,
@@ -197,7 +197,7 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
       this->LandmarksSub = nh.subscribe(ops);
     }
 
-    if (this->UseExtSensor[LidarSlam::CAMERA])
+    if (this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA])
     {
       ros::SubscribeOptions opsImage;
       opsImage.initByFullCallbackType<sensor_msgs::Image>("camera", 10, boost::bind(&LidarSlamNode::ImageCallback,
@@ -212,7 +212,7 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
       this->CameraInfoSub = nh.subscribe(opsCameraInfo);
     }
 
-    if (this->UseExtSensor[LidarSlam::POSE])
+    if (this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
     {
       ros::SubscribeOptions ops;
       ops.initByFullCallbackType<geometry_msgs::PoseWithCovarianceStamped>("ext_poses", 10,
@@ -364,7 +364,7 @@ void LidarSlamNode::ImageCallback(const sensor_msgs::Image& imageMsg)
     return;
 
   #ifdef USE_CV_BRIDGE
-  if (!this->UseExtSensor[LidarSlam::CAMERA])
+  if (!this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA])
     return;
 
   // Transform to apply to points represented in GPS frame to express them in base frame
@@ -426,7 +426,7 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::PoseWithCovarianceStamp
   if (!this->SlamEnabled)
     return;
 
-  if (!this->UseExtSensor[LidarSlam::POSE])
+  if (!this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
     return;
 
   // Set calibration
@@ -467,7 +467,7 @@ void LidarSlamNode::GpsCallback(const nav_msgs::Odometry& gpsMsg)
   if (!this->SlamEnabled)
     return;
 
-  if (!this->UseExtSensor[LidarSlam::GPS])
+  if (!this->UseExtSensor[LidarSlam::ExternalSensor::GPS])
     return;
 
   // Calibration
@@ -527,7 +527,7 @@ void LidarSlamNode::TagCallback(const apriltag_ros::AprilTagDetectionArray& tags
   if (!this->SlamEnabled)
     return;
 
-  if (!this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR])
+  if (!this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR])
     return;
 
   for (auto& tagInfo : tagsInfo.detections)
@@ -933,9 +933,9 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
 
     case lidar_slam::SlamCommand::OPTIMIZE_GRAPH:
     {
-      if ((!this->UseExtSensor[LidarSlam::GPS] &&
-           !this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR] &&
-           !this->UseExtSensor[LidarSlam::POSE]) ||
+      if ((!this->UseExtSensor[LidarSlam::ExternalSensor::GPS] &&
+           !this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] &&
+           !this->UseExtSensor[LidarSlam::ExternalSensor::POSE]) ||
            this->LidarSlam.GetSensorMaxMeasures() < 2 || this->LidarSlam.GetLoggingTimeout() < 0.2)
       {
         ROS_ERROR_STREAM("Cannot optimize pose graph as sensor info logging has not been enabled. "
