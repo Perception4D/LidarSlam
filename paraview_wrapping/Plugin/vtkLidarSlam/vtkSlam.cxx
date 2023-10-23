@@ -235,7 +235,6 @@ void vtkSlam::ClearLoopDetections()
 //-----------------------------------------------------------------------------
 void vtkSlam::OptimizeGraph()
 {
-  const std::list<LidarSlam::LidarState>& initLidarStates = this->SlamAlgo->GetLogStates();
   if (!this->SlamAlgo->OptimizeGraph())
     return;
   // Update trajectory poses that have been optimized by the SLAM
