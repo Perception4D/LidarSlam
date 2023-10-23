@@ -95,7 +95,11 @@ void RawToLidarNode::CallbackXYZ(const Pcl2_msg& msg_received)
 
   CloudS cloudS = Utils::InitCloudS<CloudXYZ>(cloudRaw);
 
-  const int nbLasers = (cloudRaw.height >= 8 && cloudRaw.height <=128) ? static_cast<double>(cloudRaw.height) : this->NbLasers;
+  const int nbLasers = ((cloudRaw.height >= 8 && cloudRaw.height <= 128)
+                   ? static_cast<double>(cloudRaw.height)
+                   : (cloudRaw.width >= 8 && cloudRaw.width <= 128)
+                     ? static_cast<double>(cloudRaw.width)
+                     : this->NbLasers);
 
   // Init of parameters useful for laser_id and time estimations
   if (!this->RotSenseAndClustersEstimated)
@@ -174,7 +178,11 @@ void RawToLidarNode::CallbackXYZI(const Pcl2_msg& msg_received)
 
   CloudS cloudS = Utils::InitCloudS<CloudXYZI>(cloudRaw);
 
-  const int nbLasers = (cloudRaw.height >= 8 && cloudRaw.height <=128) ? static_cast<double>(cloudRaw.height) : this->NbLasers;
+  const int nbLasers = ((cloudRaw.height >= 8 && cloudRaw.height <= 128)
+                   ? static_cast<double>(cloudRaw.height)
+                   : (cloudRaw.width >= 8 && cloudRaw.width <= 128)
+                     ? static_cast<double>(cloudRaw.width)
+                     : this->NbLasers);
 
   // Init of parameters useful for laser_id and time estimations
   if (!this->RotSenseAndClustersEstimated)
