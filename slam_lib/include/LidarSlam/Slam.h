@@ -739,7 +739,7 @@ public:
   bool DetectLoopClosureIndices(LoopClosure::LoopIndices& loop);
 
   // Add indices of a loop into vector LoopDetections
-  void AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFrame = false);
+  void AddLoopClosureIndices(LoopClosure::LoopIndices& loop);
 
   // Reset LoopDetections vector
   void ClearLoopDetections();

@@ -1920,20 +1920,9 @@ bool Slam::DetectLoopClosureIndices(LoopClosure::LoopIndices& loop)
 }
 
 //-----------------------------------------------------------------------------
-void Slam::AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFrame)
+void Slam::AddLoopClosureIndices(LoopClosure::LoopIndices& loop)
 {
-  if (!checkKeyFrame)
-  {
-    this->LoopDetections.emplace_back(loop);
-    return;
-  }
-  // Get query frames
-  // It is possible that the input frame indices are not keyframes
-  // but only the keyframes have been logged.
-  // In this case, output the nearest neighbor keyframe
-  auto itQueryState     = this->GetKeyStateIterator(loop.QueryIdx);
-  auto itRevisitedState = this->GetKeyStateIterator(loop.RevisitedIdx);
-  this->LoopDetections.emplace_back(itQueryState->Index, itRevisitedState->Index, loop.Time);
+  this->LoopDetections.emplace_back(loop);
 }
 
 //-----------------------------------------------------------------------------

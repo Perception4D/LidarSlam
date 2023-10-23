@@ -2086,7 +2086,7 @@ void vtkSlam::LoadLoopDetectionIndices(const std::string& fileName)
   for (vtkIdType i = 0; i < numLoops; ++i)
   {
     LidarSlam::LoopClosure::LoopIndices loop(arrayQueryIdx->GetTuple1(i), arrayRevisitedIdx->GetTuple1(i), -1);
-    this->SlamAlgo->AddLoopClosureIndices(loop, true);
+    this->SlamAlgo->AddLoopClosureIndices(loop);
   }
 
   PRINT_INFO("Loop closure indices are loaded successfully from external source!");
