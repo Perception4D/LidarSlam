@@ -603,7 +603,6 @@ std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& 
   // Check which delimiter is used
   std::string lmStr;
   std::string delimiter;
-  getline (lmFile, lmStr);
   std::vector<std::string> fields;
 
   // Get the first data line (after header)
