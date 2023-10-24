@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(LidarSlam
         LANGUAGES CXX
-        VERSION 2.0)
+        VERSION 2.1)
 
 #-------------------------
 #  CMake parameters
@@ -38,9 +38,6 @@ if(WIN32 AND MSVC)
 	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
   add_compile_options(/bigobj)
 endif()
-
-# Boost do not use STATIC libs (Superbuild like), coherent with BUILD_SHARED_LIBS ON
-set(Boost_USE_STATIC_LIBS OFF)
 
 #-------------------------
 #  Find dependencies

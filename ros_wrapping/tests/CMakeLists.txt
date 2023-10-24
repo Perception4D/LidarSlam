@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(lidar_slam_test VERSION 2.0)
+project(lidar_slam_test VERSION 2.1)
 
 # Compile as C++14, supported in ROS Kinetic and newer
 set(CMAKE_CXX_STANDARD 14)
@@ -44,6 +44,9 @@ add_executable(lidar_slam_test_node
 target_link_libraries(lidar_slam_test_node
   ${catkin_LIBRARIES}
 )
+
+# To be sure to compile the lidar_slam interfaces before the project
+add_dependencies(lidar_slam_test_node lidar_slam_generate_messages_cpp)
 
 #############
 ## Install ##

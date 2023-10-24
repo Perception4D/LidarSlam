@@ -110,6 +110,23 @@
 
       <!--~~~~~~~~~~~~~~~~~~~~~~~~~ Inputs options ~~~~~~~~~~~~~~~~~~~~~~~~~~-->
 
+      <!--This is placed before external sensor file for update order issue-->
+      <IntVectorProperty name="Planar trajectory"
+                         command="SetPlanarTrajectory"
+                         number_of_elements="1"
+                         default_values="0"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="External sensors data file" value="" />
+        </Hints>
+        <Documentation>
+          If checked, the automatic calibration between external poses and the tracked frame
+          will not take the world z axis into account because of the missing degree of liberty.
+          If the calibration is provided, or if the sensor file does not contain external poses, this option has no effect.
+        </Documentation>
+      </IntVectorProperty>
+
       <!-- Sensor data file must be csv.
            A field time is necessary with same reference as Lidar data or TCP/UDP packets
            Possible sensor fields are :
@@ -391,6 +408,7 @@
         <Property name="Rebuild maps" />
         <Property name="Clear maps" />
         <Property name="External sensors data file" />
+        <Property name="Planar trajectory" />
         <Property name="Reload trajectory" />
         <Property name="Auto detect input arrays" />
         <Property name="Time array" />
@@ -1183,6 +1201,24 @@
         </Documentation>
       </IntVectorProperty>
 
+      <IntVectorProperty name="Submap extraction mode"
+                         command="SetSubmapMode"
+                         number_of_elements="1"
+                         default_values="0">
+        <EnumerationDomain name="enum">
+          <Entry value="0" text="Bounding box"/>
+          <Entry value="1" text="profile"/>
+        </EnumerationDomain>
+        <Documentation>
+          How to extract the submap of target keypoints.
+
+          If BOUNDING BOX, the bounding box of the current frame is extracted from the map.
+
+          If PROFILE, only the implied voxels and their direct neighbors are extracted from the map.
+
+        </Documentation>
+      </IntVectorProperty>
+
       <DoubleVectorProperty name="Decaying threshold"
                             command="SetVoxelGridDecayingThreshold"
                             number_of_elements="1"
@@ -1450,6 +1486,7 @@
 
       <PropertyGroup label="Map parameters">
         <Property name="Mapping mode" />
+        <Property name="Submap extraction mode" />
         <Property name="Decaying threshold" />
         <Property name="Keyframe distance threshold" />
         <Property name="Keyframe angle threshold" />
@@ -1806,28 +1843,6 @@
         </Documentation>
       </IntVectorProperty>
 
-      <IntVectorProperty name="Fix first vertex"
-                         command="SetFixFirstVertex"
-                         number_of_elements="1"
-                         default_values="1"
-                         panel_visibility="advanced">
-        <BooleanDomain name="bool" />
-        <Documentation>
-          Fix first vertex in pose graph.
-        </Documentation>
-      </IntVectorProperty>
-
-      <IntVectorProperty name="Fix last vertex"
-                         command="SetFixLastVertex"
-                         number_of_elements="1"
-                         default_values="0"
-                         panel_visibility="advanced">
-        <BooleanDomain name="bool" />
-        <Documentation>
-          Fix last vertex in pose graph.
-        </Documentation>
-      </IntVectorProperty>
-
       <IntVectorProperty name="Use loop closure constraint"
                          command="EnablePGOConstraintLoopClosure"
                          number_of_elements="1"
@@ -1842,7 +1857,7 @@
       <IntVectorProperty name="Use landmark constraint"
                          command="EnablePGOConstraintLandmark"
                          number_of_elements="1"
-                         default_values="1"
+                         default_values="0"
                          panel_visibility="advanced">
         <BooleanDomain name="bool" />
         <Documentation>
@@ -1853,7 +1868,7 @@
       <IntVectorProperty name="Use GPS constraint"
                          command="EnablePGOConstraintGPS"
                          number_of_elements="1"
-                         default_values="1"
+                         default_values="0"
                          panel_visibility="advanced">
         <BooleanDomain name="bool" />
         <Documentation>
@@ -1861,17 +1876,27 @@
         </Documentation>
       </IntVectorProperty>
 
+      <IntVectorProperty name="Use external pose constraint"
+                         command="EnablePGOConstraintExtPose"
+                         number_of_elements="1"
+                         default_values="0"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          If enabled, external pose constraint are used in pose graph optimization.
+        </Documentation>
+      </IntVectorProperty>
+
       <PropertyGroup label="Pose Graph Optimization">
         <Property name="Optimize Graph With IMU" />
         <Property name="Optimize Graph" />
         <Property name="Save g2o file" />
-        <Property name="Fix first vertex" />
-        <Property name="Fix last vertex" />
         <Property name="Covariance scale" />
         <Property name="Graph iterations" />
         <Property name="Use loop closure constraint" />
         <Property name="Use landmark constraint" />
         <Property name="Use GPS constraint" />
+        <Property name="Use external pose constraint" />
         <Hints>
           <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Use pose graph" value="1" />
         </Hints>
@@ -1885,34 +1910,59 @@
                          default_values="0"
                          panel_visibility="advanced">
         <EnumerationDomain name="enum">
-          <Entry value="0" text="Disabled"/>
-          <Entry value="1" text="Manual"/>
-          <Entry value="2" text="Teaserpp"/>
+          <Entry value="0" text="External"/>
+          <Entry value="1" text="Teaserpp"/>
         </EnumerationDomain>
         <Documentation>
           Choose a detector for loop closure:
 
-           (0) No loop closure detection is performed, the graph optimization won't contain loop closure;
+           (0) Loop indices should be provided by a csv file;
 
-           (1) Manual detector: users need to indicate the frame indices of the loop closure;
-
-           (2) Teaserpp: slam detects automatically a loop closure for current frame by using teaserpp .
+           (1) Teaserpp: slam detects automatically a loop closure for current frame by using teaserpp .
         </Documentation>
       </IntVectorProperty>
 
-      <IntVectorProperty name="Query frame index"
-                         command="SetLoopQueryIdx"
-                         number_of_elements="1"
-                         default_values="0"
-                         panel_visibility="advanced">
+      <StringVectorProperty name="Load loop indices"
+                            command="LoadLoopDetectionIndices"
+                            number_of_elements="1"
+                            animateable="0"
+                            panel_visibility="advanced">
+        <FileListDomain name="files"/>
+        <Hints>
+          <FileChooser extensions="csv" file_description="csv file format" />
+        </Hints>
         <Documentation>
-          Enter manually the query frame index of the loop closure.
-          The query frame index represents a recent frame who meets a loop.
+          The path of the external loop closure indices file.
+          This CSV file must have 2 columns:
+          *queryIdx*: query frame indices
+          *revisitedIdx*: revisited frame indices
         </Documentation>
         <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="1" />
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="0" />
         </Hints>
-      </IntVectorProperty>
+      </StringVectorProperty>
+
+      <Property name="Detect Loop"
+                command="DetectLoop"
+                panel_visibility="advanced">
+        <Documentation>
+          Detect loop closure for current frame with the chosen detector.
+        </Documentation>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="Loop closure detector" value="0" />
+        </Hints>
+      </Property>
+
+      <Property name="Reset loop detection"
+                command="ClearLoopDetections"
+                panel_visibility="advanced">
+        <Documentation>
+          Clear LoopDetections vector.
+        </Documentation>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="Loop closure detector" value="0" />
+        </Hints>
+      </Property>
 
       <DoubleVectorProperty name="Query map start range"
                             command="SetLoopQueryMapStartRange"
@@ -1945,7 +1995,7 @@
           The loop gap length is the travelled distance before the query frame where is considered no loop formed
         </Documentation>
         <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="2" />
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="Loop closure detector" value="0" />
         </Hints>
       </DoubleVectorProperty>
 
@@ -1958,7 +2008,7 @@
           A overlap threshold to decide whether a candidate frame is the revisited frame or not.
         </Documentation>
         <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="2" />
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="1" />
         </Hints>
       </DoubleVectorProperty>
 
@@ -1971,7 +2021,7 @@
           If enabled, display parameters for subsampling revisited maps from the full map.
         </Documentation>
         <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="2" />
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="1" />
         </Hints>
       </IntVectorProperty>
 
@@ -1987,26 +2037,12 @@
         <Hints>
           <PropertyWidgetDecorator type="CompositeDecorator">
             <Expression type="and">
-              <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="2" />
+              <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="1" />
               <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Subsample revisited maps" value="1" />
             </Expression>
           </PropertyWidgetDecorator>
         </Hints>
       </DoubleVectorProperty>
-
-      <IntVectorProperty name="Revisited frame index"
-                         command="SetLoopRevisitedIdx"
-                         number_of_elements="1"
-                         default_values="0"
-                         panel_visibility="advanced">
-        <Documentation>
-          Enter manually the revisited frame index of the loop closure.
-          The revisited frame index represents a previous frame which a recent frame considers that there is a loop closure.
-        </Documentation>
-        <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="1" />
-        </Hints>
-      </IntVectorProperty>
 
       <DoubleVectorProperty name="Revisited map start range"
                             command="SetLoopRevisitedMapStartRange"
@@ -2018,10 +2054,10 @@
           [frame index + start range, frame index + end range]
         </Documentation>
         <Hints>
-          <!-- Revisited map range can be set only if loop detection mode is manual or subsampling is enabled for teaserpp-->
+          <!-- Revisited map range can be set if subsampling is enabled for teaserpp-->
           <PropertyWidgetDecorator type="CompositeDecorator">
             <Expression type="or">
-              <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="1" />
+              <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="0" />
               <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Subsample revisited maps" value="1" />
             </Expression>
           </PropertyWidgetDecorator>
@@ -2038,10 +2074,10 @@
           [frame index + start interval, frame index + end interval]
         </Documentation>
         <Hints>
-          <!-- Revisited map range can be set only if loop detection mode is manual or subsampling is enabled for teaserpp-->
+          <!-- Revisited map range can be set if subsampling is enabled for teaserpp-->
           <PropertyWidgetDecorator type="CompositeDecorator">
             <Expression type="or">
-              <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="1" />
+              <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="0" />
               <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Subsample revisited maps" value="1" />
             </Expression>
           </PropertyWidgetDecorator>
@@ -2060,14 +2096,15 @@
 
       <PropertyGroup label="Loop closure parameters">
         <Property name="Loop closure detector" />
-        <Property name="Query frame index" />
+        <Property name="Load loop indices" />
+        <Property name="Detect Loop" />
+        <Property name="Reset loop detection" />
         <Property name="Query map start range" />
         <Property name="Query map end range" />
         <Property name="Loop gap length" />
         <Property name="Loop evaluation threshold" />
         <Property name="Subsample revisited maps" />
         <Property name="Loop sample step" />
-        <Property name="Revisited frame index" />
         <Property name="Revisited map start range" />
         <Property name="Revisited map end range" />
         <Property name="Advanced settings" />
@@ -2586,6 +2623,7 @@
         <Property name="Min neighbors nb" />
         <Property name="Min neighborhood radius" />
         <Property name="Min distance to sensor" />
+        <Property name="Max distance to sensor" />
         <Property name="Min azimuth angle" />
         <Property name="Max azimuth angle" />
         <Property name="Min laser beam to surface angle" />

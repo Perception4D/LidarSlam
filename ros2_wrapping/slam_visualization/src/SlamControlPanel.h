@@ -20,26 +20,23 @@
 #define SLAM_CONTROL_PANEL_H
 
 #include <QLabel>
-#include <QGridLayout>
-#include <QGroupBox>
-#include <QLineEdit>
 #include <QPushButton>
-#include <QVBoxLayout>
 
 #include <pluginlib/class_list_macros.hpp>
 
 #include <lidar_slam/msg/confidence.hpp>
 #include <lidar_slam/msg/slam_command.hpp>
+#include <lidar_slam/srv/save_pc.hpp>
+#include <lidar_slam/srv/reset.hpp>
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/publisher_base.hpp>
 #include <rviz_common/panel.hpp>
-#include <rviz_common/display_context.hpp>
 
 namespace slam_visualization
 {
 
-class SlamControlPanel : 
+class SlamControlPanel :
         public rviz_common::Panel
 {
 
@@ -65,13 +62,13 @@ public Q_SLOTS:
 
   //----------------------------------------------------------------------------
   /*!
-   * @brief Send a RESET_STATE command to the slam node.
+   * @brief Send a RESET_SLAM command to the slam node.
    */
   void ResetSlamState();
 
   //----------------------------------------------------------------------------
   /*!
-   * @brief Send a DISABLE_MAP_UPDATE command to the slam node.
+   * @brief Send a DISABLE_SLAM_MAP_UPDATE command to the slam node.
    */
   void DisableMapUpdate();
 
@@ -95,39 +92,24 @@ public Q_SLOTS:
 
   //----------------------------------------------------------------------------
   /*!
-   * @brief Send a SAVE_TRAJECTORY command to the slam node.
+   * @brief Open a dialog to chose a path to save the trajectory
+   *        and send a SAVE_TRAJECTORY command to the slam node.
    */
   void SaveTraj();
 
   //----------------------------------------------------------------------------
   /*!
-   * @brief Set the path to save the trajectory
-   */
-  void SetTrajPath(const QString &text);
-
-  //----------------------------------------------------------------------------
-  /*!
-   * @brief Send a SAVE_TRAJECTORY command to the slam node.
+   * @brief Open a dialog to chose a path to save the keypoint maps and the aggregation points.
+   *        Send a SAVE_TRAJECTORY command to the slam node and a SavePc request to aggregation node.
    */
   void SaveMaps();
 
   //----------------------------------------------------------------------------
   /*!
-   * @brief Set the path to save the trajectory
-   */
-  void SetMapsPath(const QString &text);
-
-  //----------------------------------------------------------------------------
-  /*!
-   * @brief Send a SAVE_TRAJECTORY command to the slam node.
+   * @brief Open a dialog to choose a csv calibration file
+   *        and send a CALIBRATE_WITH_POSES command to the slam node.
    */
   void Calibrate();
-
-  //----------------------------------------------------------------------------
-  /*!
-   * @brief Set the path to save the trajectory
-   */
-  void SetPosesPath(const QString &text);
 
 private:
   //----------------------------------------------------------------------------
@@ -160,20 +142,14 @@ private:
   QLabel* ComplyMotionLimitsValueLabel = nullptr;
   QLabel* StdPositionErrorValueLabel = nullptr;
   QLabel* ComputationTimeValueLabel = nullptr;
-  QPushButton* SaveTrajButton = nullptr;
-  QPushButton* SaveMapsButton = nullptr;
-  QPushButton* CalibrateButton = nullptr;
 
   // ROS interface
   rclcpp::Node::SharedPtr visualization_node;
   rclcpp::CallbackGroup::SharedPtr SlamCallbackGroup;
   rclcpp::Publisher<lidar_slam::msg::SlamCommand>::SharedPtr CommandPublisher;
   rclcpp::Subscription<lidar_slam::msg::Confidence>::SharedPtr ConfidenceSubscriber;
-
-  // Path storage
-  std::string TrajectoryPath;
-  std::string MapsPath;
-  std::string PosesPath;
+  rclcpp::Client<lidar_slam::srv::SavePc>::SharedPtr SavePcClient;
+  rclcpp::Client<lidar_slam::srv::Reset>::SharedPtr ResetClient;
 };
 
 } // namespace lidar_visualization.

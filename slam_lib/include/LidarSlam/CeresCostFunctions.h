@@ -646,11 +646,11 @@ private:
 
 //------------------------------------------------------------------------------
 /**
- * \class CalibResidual
+ * \class CalibPosesResidual
  * \brief Residual corresponding to a comparison between 2 poses (pose1 and pose2)
  * representing RELATIVE motion of two frames rigidly linked with unknown calibration offset
- * In the same global referential frame : absPose1 = absPose2 * Calib
- * Therefore : residual = pose6D(Calib * transform(pose1) * Calib^-1) - pose2
+ * In the same global referential frame : transform(absPose1) = transform(absPose2) * Calib
+ * Therefore, using relative motions : residual = pose6D(Calib * transform(pose1) * Calib^-1) - pose2
  *
  * This function takes one 7D parameters block :
  *   - 3 first parameters to encode translation : X, Y, Z
@@ -658,9 +658,9 @@ private:
  *
  * It outputs a 7D residual block.
  */
-struct CalibResidual
+struct CalibPosesResidual
 {
-  CalibResidual(const Eigen::Isometry3d& pose1, const Eigen::Isometry3d& pose2)
+  CalibPosesResidual(const Eigen::Isometry3d& pose1, const Eigen::Isometry3d& pose2)
               : Pose1Isometry(pose1)
   {
     this->Pose2.head<3>() = pose2.translation();
@@ -675,7 +675,7 @@ struct CalibResidual
     using Isometry3T = Eigen::Transform<T, 3, Eigen::Isometry>;
 
     Isometry3T calibIsometry = Utils::XYZQuatToIsometry(w[0], w[1], w[2], w[3], w[4], w[5], w[6]);
-    // Transform pose1 to get pose 2 equivalent
+    // Transform pose1 to get pose2 equivalent
     Vector7T pose1Transformed = Utils::IsometryToXYZQuat(calibIsometry * this->Pose1Isometry.cast<T>() * calibIsometry.inverse());
 
     // Compute residual
@@ -686,13 +686,60 @@ struct CalibResidual
   }
 
   // Factory to ease the construction of the auto-diff residual object
-  RESIDUAL_FACTORY(CalibResidual, 7, 7)
+  RESIDUAL_FACTORY(CalibPosesResidual, 7, 7)
 
 private:
   // Poses corresponding to RELATIVE motions of two rigidly
   // linked frames that move together in a global frame
   const Eigen::Isometry3d Pose1Isometry;
   Eigen::Matrix<double, 7, 1> Pose2;
+};
+
+//------------------------------------------------------------------------------
+/**
+ * \class CalibGpsResidual
+ * \brief Residual corresponding to a comparison between a pose and a position
+ * representing RELATIVE motion of two frames rigidly linked with unknown calibration offset
+ * In the same global referential frame : absPosition = (absPose * Calib).Position
+ * Therefore, using relative motions : residual = (Calib^-1 * transform(pose) * Calib).Position - position
+ *
+ * This function takes one 7D parameters block :
+ *   - 3 first parameters to encode translation : X, Y, Z
+ *   - 4 last parameters to encode rotation with quaternions : qX, qY, qZ, qW
+ *
+ * It outputs a 7D residual block.
+ */
+struct CalibGpsResidual
+{
+  CalibGpsResidual(const Eigen::Isometry3d& pose, const Eigen::Vector3d& position)
+                  : Pose1Isometry(pose), Pose2Position(position) {}
+
+  template <typename T>
+  bool operator()(const T* const w, T* residual) const
+  {
+    using Vector7T = Eigen::Matrix<T, 7, 1>;
+    using Vector3T = Eigen::Matrix<T, 3, 1>;
+    using Isometry3T = Eigen::Transform<T, 3, Eigen::Isometry>;
+
+    Isometry3T calibIsometry = Utils::XYZQuatToIsometry(w[0], w[1], w[2], w[3], w[4], w[5], w[6]);
+    // Transform pose1 to get position2 equivalent
+    Vector3T positionFromPoseAndCalib = (calibIsometry.inverse() * this->Pose1Isometry.cast<T>() * calibIsometry).translation();
+
+    // Compute residual
+    Eigen::Map<Vector3T> residualVec(residual);
+    residualVec = positionFromPoseAndCalib - this->Pose2Position.cast<T>();
+
+    return true;
+  }
+
+  // Factory to ease the construction of the auto-diff residual object
+  RESIDUAL_FACTORY(CalibGpsResidual, 3, 7)
+
+private:
+  // Poses corresponding to RELATIVE motions of two rigidly
+  // linked frames that move together in a global frame
+  const Eigen::Isometry3d Pose1Isometry;
+  Eigen::Matrix<double, 3, 1> Pose2Position;
 };
 
 //------------------------------------------------------------------------------

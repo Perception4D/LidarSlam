@@ -247,6 +247,33 @@ public:
   // 'trackTime' allows to keep a time track and to speed up multiple searches
   // when following chronological order
   virtual bool ComputeSynchronizedMeasure(double lidarTime, T& synchMeas, bool trackTime = true) = 0;
+
+  // Compute a synchronized measure for each state of the states input list
+  // If no synchronized measure is found, the measure is remained as default
+  // This function outputs the first state index that has a synchronized measure associated
+  virtual int ComputeSynchronizedMeasures(const std::list<LidarState>& states, std::vector<T>& measures)
+  {
+    // Create temporary buffer
+    T synchMeas; // Virtual measure with synchronized timestamp and calibration applied
+    // Compute the first index for which a synchronized pose was found
+    unsigned int startIdxPose = 0;
+    auto it = states.begin();
+    // Find the first state for which there is a synchronized measure
+    while (it != states.end() && !this->ComputeSynchronizedMeasure(it->Time, synchMeas))
+      ++startIdxPose;
+
+    // Fill the measures vector with synchronized measurements
+    measures.resize(states.size());
+    for (int idxPose = startIdxPose; it != states.end(); ++it, ++idxPose)
+    {
+      // Compute synchronized measures representing sensor frame
+      if (this->ComputeSynchronizedMeasure(it->Time, synchMeas))
+        measures[idxPose] = synchMeas;
+    }
+
+    return startIdxPose;
+  }
+
   // Compute the constraint associated to the measurement
   virtual bool ComputeConstraint(double lidarTime) = 0;
 
@@ -588,6 +615,9 @@ public:
   GetSensorMacro(Offset, Eigen::Isometry3d)
   SetSensorMacro(Offset, const Eigen::Isometry3d&)
 
+  // Helper to refine the actual offset with new estimation
+  void RefineOffset(Eigen::Isometry3d offset) {this->Offset = offset * this->Offset;}
+
   // Compute the interpolated measure (GPS position in GPS referential) to be synchronized with SLAM output at lidarTime
   bool ComputeSynchronizedMeasure(double lidarTime, GpsMeasurement& synchMeas, bool trackTime = true) override;
 
@@ -595,17 +625,17 @@ public:
   // The measures data track GPS sensor frame (not base frame) but are represented in the same referential
   bool ComputeSynchronizedMeasureOffset(double lidarTime, GpsMeasurement& synchMeas, bool trackTime = true);
 
-  // Compute the interpolated measure (SLAM base frame position in SLAM referential) to be synchronized with SLAM output at lidarTime
-  // The measures data track base frame and are represented in the same referential
-  bool ComputeSynchronizedMeasureOffsetBase(double lidarTime, GpsMeasurement& synchMeas, bool trackTime = true);
-
   bool ComputeConstraint(double lidarTime) override;
 
   bool CanBeUsedLocally() const {return false;}
 
+  bool ComputeCalibration(const std::list<LidarState>& states);
+
 private:
-  // Offset transform to link GPS global frame and Lidar SLAM global frame
-  // GPS referential to base referential
+  // Offset transform to link GPS reference frame
+  // to Lidar SLAM reference frame
+  // odom * offset = TrefGPS
+  // basePose * calibGps = offset * gpsPose
   Eigen::Isometry3d Offset = Eigen::Isometry3d::Identity();
 };
 
@@ -636,6 +666,9 @@ public:
   GetSensorMacro(DistanceThreshold, double)
   SetSensorMacro(DistanceThreshold, double)
 
+  GetSensorMacro(Offset, Eigen::Isometry3d)
+  SetSensorMacro(Offset, const Eigen::Isometry3d&)
+
   Interpolation::Model GetInterpolationModel() const {return this->Interpolator.GetModel();}
   void SetInterpolationModel(Interpolation::Model model) {this->Interpolator.SetModel(model);}
 
@@ -661,9 +694,17 @@ public:
                                   std::vector<PoseMeasurement>& poseMeasurements);
 
   // Compute calibration using the poses and the SLAM trajectory
-  bool ComputeCalibration(const std::list<LidarState>& states);
+  bool ComputeCalibration(const std::list<LidarState>& states, bool reset = false, bool planarTrajectory = false);
+
+  // Compute offset between the referential
+  // of external poses and the referential
+  // of SLAM poses using one of the poses
+  bool UpdateOffset(const std::list<LidarState>& states);
 
 protected:
+  // Rigid transfo between SLAM referential frame and
+  // the external poses referential frame (refSlam to refExt)
+  Eigen::Isometry3d Offset = Eigen::Isometry3d::Identity();
   double PrevLidarTime = -1.;
   Eigen::Isometry3d PrevPoseTransform = Eigen::Isometry3d::Identity();
   // Allow to rotate the covariance

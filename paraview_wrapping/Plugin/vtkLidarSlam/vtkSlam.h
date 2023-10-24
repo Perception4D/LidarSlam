@@ -186,6 +186,9 @@ public:
   vtkGetMacro(TrajFrequency, double)
   vtkSetMacro(TrajFrequency, double)
 
+  vtkGetMacro(PlanarTrajectory, bool)
+  void SetPlanarTrajectory(bool planarTraj);
+
   // ---------------------------------------------------------------------------
   //   Graph parameters
   // ---------------------------------------------------------------------------
@@ -200,14 +203,17 @@ public:
   // Optimize the graph with available information (needs G2O not GTSAM)
   void OptimizeGraph();
 
+  // Check if there is a loop closure implying current frame
+  void DetectLoop();
+
+  // Add the detected loop indices into slam
+  void AddLoopDetection();
+
+  // Reset the LoopDetections vector
+  void ClearLoopDetections();
+
   vtkCustomGetMacro(G2oFileName, std::string)
   vtkCustomSetMacro(G2oFileName, std::string)
-
-  vtkCustomGetMacro(FixFirstVertex, bool)
-  vtkCustomSetMacro(FixFirstVertex, bool)
-
-  vtkCustomGetMacro(FixLastVertex, bool)
-  vtkCustomSetMacro(FixLastVertex, bool)
 
   vtkCustomGetMacro(CovarianceScale, float)
   vtkCustomSetMacro(CovarianceScale, float)
@@ -218,23 +224,24 @@ public:
   void EnablePGOConstraintLoopClosure(bool enable);
   void EnablePGOConstraintLandmark(bool enable);
   void EnablePGOConstraintGPS(bool enable);
+  void EnablePGOConstraintExtPose(bool enable);
 
   bool GetPGOConstraintLoopClosure();
   bool GetPGOConstraintLandmark();
   bool GetPGOConstraintGPS();
+  bool GetPGOConstraintExtPose();
 
   // ---------------------------------------------------------------------------
   //   Loop closure parameters
   // ---------------------------------------------------------------------------
 
+  vtkGetMacro(LoopDetected, bool)
+  vtkSetMacro(LoopDetected, bool)
+
   virtual int  GetLoopDetector();
   virtual void SetLoopDetector(int detector);
 
-  vtkCustomGetMacro(LoopQueryIdx, unsigned int)
-  virtual void SetLoopQueryIdx(unsigned int loopClosureQueryIdx);
-
-  vtkCustomGetMacro(LoopRevisitedIdx, unsigned int)
-  virtual void SetLoopRevisitedIdx(unsigned int loopClosureRevisitedIdx);
+  void LoadLoopDetectionIndices(const std::string& fileName);
 
   vtkCustomGetMacro(LoopQueryMapStartRange, double)
   vtkCustomSetMacro(LoopQueryMapStartRange, double)
@@ -443,6 +450,9 @@ public:
   virtual unsigned int GetMapUpdate();
   virtual void SetMapUpdate(unsigned int mode);
 
+  virtual unsigned int GetSubmapMode();
+  virtual void SetSubmapMode(unsigned int mode);
+
   vtkCustomGetMacro(VoxelGridDecayingThreshold, double)
   vtkCustomSetMacro(VoxelGridDecayingThreshold, double)
 
@@ -636,6 +646,11 @@ private:
   // Boolean to decide whether or not to use the pose graph
   bool UsePoseGraph = false;
 
+  // Boolean to register whether or not a loop is detected
+  bool LoopDetected = false;
+
+  LidarSlam::LoopClosure::LoopIndices LoopIdx = {0, 0, -1};
+
   // Choose whether to synchronize on network packet
   // reception time or on Lidar frame header time
   bool SynchronizeOnPacket = false;
@@ -645,6 +660,18 @@ private:
 
   // Output trajectory require frequency (Hz)
   double TrajFrequency = -1;
+
+  // Boolean used in calibration with external poses
+  // to precise if the the trajectory was planar (one degree of liberty missing)
+  // so we consider there is no lever arm in world z direction
+  // This might be the case for vehicle acquisitions
+  // If the boolean is set to false and the trajectory is planar
+  // A big translation uncertainty might be added, leading to numerical unstability
+  bool PlanarTrajectory = false;
+
+  // Boolean to store the fact that a calibration has been supplied
+  // with external sensors info (used in recalibration)
+  bool CalibrationSupplied = false;
 };
 
 #endif // VTK_SLAM_H

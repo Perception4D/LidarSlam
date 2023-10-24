@@ -18,6 +18,13 @@
 
 #include "SlamControlPanel.h"
 
+#include <rviz_common/display_context.hpp>
+
+#include <QGridLayout>
+#include <QGroupBox>
+#include <QLineEdit>
+#include <QVBoxLayout>
+#include <QFileDialog>
 
 namespace slam_visualization
 {
@@ -28,7 +35,10 @@ SlamControlPanel::SlamControlPanel(QWidget* parent)
   this->CreateLayout();
 
   this->visualization_node = std::make_shared<rclcpp::Node>("slam_control_pannel_node");
+
   this->CommandPublisher = this->visualization_node->create_publisher<lidar_slam::msg::SlamCommand>("slam_command", 1);
+  this->SavePcClient     = this->visualization_node->create_client<lidar_slam::srv::SavePc>("lidar_slam/save_pc");
+  this->ResetClient      = this->visualization_node->create_client<lidar_slam::srv::Reset>("lidar_slam/reset");
 }
 
 //----------------------------------------------------------------------------
@@ -52,69 +62,71 @@ void SlamControlPanel::CreateLayout()
   // Reset the SLAM process
   auto resetStateButton = new QPushButton;
   resetStateButton->setText("Reset state");
+  resetStateButton->setToolTip("Clear the map, reset the pose to\n"
+                               "initial pose and empty logged info.");
   connect(resetStateButton, &QPushButton::clicked, this, &SlamControlPanel::ResetSlamState);
+
+  // Turn on/off the SLAM process
+  auto switchOnOffButton = new QPushButton;
+  switchOnOffButton->setText("Switch on/off");
+  switchOnOffButton->setToolTip("Disable the SLAM process but keep current state");
+  connect(switchOnOffButton, &QPushButton::clicked, this, &SlamControlPanel::SwitchOnOff);
 
   // Disable the update of the maps, they will remain the same
   auto disableMapUpdateButton = new QPushButton;
   disableMapUpdateButton->setText("Disable map update");
+  disableMapUpdateButton->setToolTip("Fix the map to its current state\n"
+                                     "new keypoints will not be added.");
   connect(disableMapUpdateButton, &QPushButton::clicked, this, &SlamControlPanel::DisableMapUpdate);
 
   // Enable the expansion of the maps, keeping the initial one
   auto enableMapExpansionButton = new QPushButton;
   enableMapExpansionButton->setText("Enable map expansion");
+  enableMapExpansionButton->setToolTip("Add new keypoints to the SLAM maps as soon as\n"
+                                       "they don't replace an initial keypoint (loaded from file)");
   connect(enableMapExpansionButton, &QPushButton::clicked, this, &SlamControlPanel::EnableMapExpansion);
 
   // Enable the complete update of the maps
   auto enableMapUpdateButton = new QPushButton;
   enableMapUpdateButton->setText("Enable map update");
+  enableMapUpdateButton->setToolTip("Add all new keypoints to the SLAM maps");
   connect(enableMapUpdateButton, &QPushButton::clicked, this, &SlamControlPanel::EnableMapUpdate);
 
-  // Turn on/off the SLAM process
-  auto switchOnOffButton = new QPushButton;
-  switchOnOffButton->setText("Switch on/off");
-  connect(switchOnOffButton, &QPushButton::clicked, this, &SlamControlPanel::SwitchOnOff);
+ // Save trajectory
+  auto saveTrajButton = new QPushButton;
+  saveTrajButton->setText("Save trajectory");
+  saveTrajButton->setToolTip("This will save the trajectory as a CSV type file\n"
+                             "with header <t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2>\n"
+                             "x,y,z being the position and \n"
+                             "xi,yi,zi being an axis of the 3D frame \n"
+                             "of the trajectory pose (ith column of the rotation).");
+  connect(saveTrajButton, &QPushButton::clicked, this, &SlamControlPanel::SaveTraj);
 
-  // Save trajectory
-  this->SaveTrajButton = new QPushButton;
-  this->SaveTrajButton->setText("Save trajectory");
-  this->SaveTrajButton->setDisabled(true);
-  connect(this->SaveTrajButton, &QPushButton::clicked, this, &SlamControlPanel::SaveTraj);
+// Save maps
+  auto saveMapsButton = new QPushButton;
+  saveMapsButton->setText("Save maps");
+  saveMapsButton->setToolTip("Save the maps to the required path.\n"
+                             "For example for the input prefix path path/to/map,\n"
+                             "one map by keypoint type will be saved as\n"
+                             "path/to/map_kptType.pcd.\n"
+                             "If the aggregation node has been turned on,\n"
+                             "the aggregated map will also\n"
+                             "be saved as path/to/map_posixTime.pcd.");
+  connect(saveMapsButton, &QPushButton::clicked, this, &SlamControlPanel::SaveMaps);
 
-  auto trajPathEdit = new QLineEdit;
-  connect(trajPathEdit, &QLineEdit::textChanged, this, &SlamControlPanel::SetTrajPath);
-
-  // Create trajectory space with a button and a line edit to set a path
-  auto trajLayout = new QHBoxLayout;
-  trajLayout->addWidget(this->SaveTrajButton);
-  trajLayout->addWidget(trajPathEdit);
-
-  // Save maps
-  this->SaveMapsButton = new QPushButton;
-  this->SaveMapsButton->setText("Save maps");
-  this->SaveMapsButton->setDisabled(true);
-  connect(this->SaveMapsButton, &QPushButton::clicked, this, &SlamControlPanel::SaveMaps);
-
-  auto mapsPathEdit = new QLineEdit;
-  connect(mapsPathEdit, &QLineEdit::textChanged, this, &SlamControlPanel::SetMapsPath);
-
-  // Create maps space with a button and a line edit to set a path
-  auto mapsLayout = new QHBoxLayout;
-  mapsLayout->addWidget(this->SaveMapsButton);
-  mapsLayout->addWidget(mapsPathEdit);
-
-  // Calibrate with external poses
-  this->CalibrateButton = new QPushButton;
-  this->CalibrateButton->setText("Calibrate");
-  this->CalibrateButton->setDisabled(true);
-  connect(this->CalibrateButton, &QPushButton::clicked, this, &SlamControlPanel::Calibrate);
-
-  auto posesPathEdit = new QLineEdit;
-  connect(posesPathEdit, &QLineEdit::textChanged, this, &SlamControlPanel::SetPosesPath);
-
-  // Create poses space with a button and a line edit to set a path
-  auto calibrateLayout = new QHBoxLayout;
-  calibrateLayout->addWidget(this->CalibrateButton);
-  calibrateLayout->addWidget(posesPathEdit);
+ // Calibrate with external poses
+  auto calibrateButton = new QPushButton;
+  calibrateButton->setText("Calibrate");
+  calibrateButton->setToolTip("Estimate the calibration between\n"
+                              "the frame tracked by the SLAM and\n"
+                              "the frame tracked in the input file.\n"
+                              "The file must contain the fields\n"
+                              "<t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2>\n"
+                              "t being the time, x,y,z being the position and \n"
+                              "xi,yi,zi being an axis of the 3D frame \n"
+                              "of the trajectory pose (ith column\n"
+                              "of the rotation matrix).");
+  connect(calibrateButton, &QPushButton::clicked, this, &SlamControlPanel::Calibrate);
 
   // Create the whole command space
   auto commandLayout = new QVBoxLayout;
@@ -123,9 +135,9 @@ void SlamControlPanel::CreateLayout()
   commandLayout->addWidget(enableMapExpansionButton);
   commandLayout->addWidget(enableMapUpdateButton);
   commandLayout->addWidget(switchOnOffButton);
-  commandLayout->addLayout(trajLayout);
-  commandLayout->addLayout(mapsLayout);
-  commandLayout->addLayout(calibrateLayout);
+  commandLayout->addWidget(saveTrajButton);
+  commandLayout->addWidget(saveMapsButton);
+  commandLayout->addWidget(calibrateButton);
 
   auto commandBox = new QGroupBox;
   commandBox->setLayout(commandLayout);
@@ -183,7 +195,11 @@ void SlamControlPanel::CreateLayout()
 //----------------------------------------------------------------------------
 void SlamControlPanel::ResetSlamState()
 {
+  // Send command to reset the SLAM algorithm
   this->SendCommand(lidar_slam::msg::SlamCommand::RESET_SLAM);
+  // Call service for aggregation node
+  auto req = std::make_shared<lidar_slam::srv::Reset::Request>();
+  this->ResetClient->async_send_request(req);
 }
 
 //----------------------------------------------------------------------------
@@ -213,40 +229,36 @@ void SlamControlPanel::SwitchOnOff()
 //----------------------------------------------------------------------------
 void SlamControlPanel::SaveTraj()
 {
-  this->SendCommand(lidar_slam::msg::SlamCommand::SAVE_TRAJECTORY, this->TrajectoryPath);
-}
-
-//----------------------------------------------------------------------------
-void SlamControlPanel::SetTrajPath(const QString &text)
-{
-  this->SaveTrajButton->setDisabled(false);
-  this->TrajectoryPath = text.toStdString();
+  QString filePath = QFileDialog::getSaveFileName(this, "Create a CSV file", "", "Trajectory Files (*.csv)");
+  QFileInfo fileInfo(filePath);
+  QString extension = fileInfo.suffix();
+  if (extension != "csv")
+    filePath = fileInfo.path() + "/" + fileInfo.baseName() + ".csv";
+  this->SendCommand(lidar_slam::msg::SlamCommand::SAVE_TRAJECTORY, filePath.toStdString());
 }
 
 //----------------------------------------------------------------------------
 void SlamControlPanel::SaveMaps()
 {
-  this->SendCommand(lidar_slam::msg::SlamCommand::SAVE_FILTERED_KEYPOINTS_MAPS, this->MapsPath);
-}
-
-//----------------------------------------------------------------------------
-void SlamControlPanel::SetMapsPath(const QString &text)
-{
-  this->SaveMapsButton->setDisabled(false);
-  this->MapsPath = text.toStdString();
+  QString filePath = QFileDialog::getSaveFileName(this, "Create a file prefix", "", "Prefix");
+  QFileInfo fileInfo(filePath);
+  QString extension = fileInfo.suffix();
+  if (extension != "")
+    filePath = fileInfo.path() + "/" + fileInfo.baseName();
+  // Save SLAM keypoint maps
+  this->SendCommand(lidar_slam::msg::SlamCommand::SAVE_FILTERED_KEYPOINTS_MAPS, filePath.toStdString());
+  // Save aggregated points if available
+  auto srv = std::make_shared<lidar_slam::srv::SavePc::Request>();
+  srv->output_prefix_path = filePath.toStdString();
+  srv->format = 0;
+  this->SavePcClient->async_send_request(srv);
 }
 
 //----------------------------------------------------------------------------
 void SlamControlPanel::Calibrate()
 {
-  this->SendCommand(lidar_slam::msg::SlamCommand::CALIBRATE_WITH_POSES, this->PosesPath);
-}
-
-//----------------------------------------------------------------------------
-void SlamControlPanel::SetPosesPath(const QString &text)
-{
-  this->CalibrateButton->setDisabled(false);
-  this->PosesPath = text.toStdString();
+  QString filePath = QFileDialog::getOpenFileName(this, tr("Open File"), "/home", tr("Trajectory files (*.csv)"));
+  this->SendCommand(lidar_slam::msg::SlamCommand::CALIBRATE_WITH_POSES, filePath.toStdString());
 }
 
 //----------------------------------------------------------------------------

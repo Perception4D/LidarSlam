@@ -6,6 +6,9 @@
 odometry_frame: "odom"       # Frame in which SLAM odometry and maps are expressed (default: odom)
 tracking_frame: "base_link"  # Frame to track (ensure a valid TF tree is published to link input pointcloud frame_id) (default: base_link)
 
+lidars_nb: 1      # Number of lidars used. When various lidars used, keypoints extraction parameters need to be specify for each sensor.
+frames_mode: 1   # The frames collection mode. 0: wait a specific time to collect frames; 1: wait for all lidar devices
+frames_waiting_time: 0.2 # Time to wait to receive frames (second)
 # Input LiDAR frames topics, expected as sensor_msgs/PointCloud2 messages with the following fields:
 # - x, y, z (float): point coordinates
 # - time (double): time offset to add to the pointcloud header timestamp to get approximate point-wise acquisition timestamp
@@ -76,7 +79,10 @@ external_sensors:
                        # use header timestamp to synchronize data.
                        # If not, we use message reception time as reference.
   time_offset: 0.      # [s] Offset to apply on external sensor time data to get lidar time
-  # Optional GPS position use (if 'gps/use_gps'=true), subscribing to Odometry msg on 'gps_odom' topic.
+  calibration:
+    planar_trajectory: false # Notify that the trajectory to use to calibrate
+                             # is planar so a degree of liberty is missing
+  # Optional GPS position use (if 'gps/enable'=true), subscribing to Odometry msg on 'gps_odom' topic.
   # It allows to estimate calibration between GPS and SLAM trajectories,
   # or post-optimize SLAM trajectory with pose graph optimization (PGO).
   gps:
@@ -84,11 +90,11 @@ external_sensors:
     # Optional GPS positions use to calibrate output SLAM pose to world coordinates and/or optimize SLAM trajectory.
     # If true, subscribes to topic 'gps_odom' (nav_msgs/Odometry), and logs GPS positions during 'slam/logging_timeout' seconds.
     # (WARNING Can be overridden launch files with 'gps' arg).
-    use_gps: false
+    enable: false
 
   # Optional landmark detector (e.g. camera) use
   landmark_detector:
-    use_tags: false          # [bool] To receive and use tags
+    enable: false            # [bool] To receive and use tags
     weight: 0.               # Weight to apply to one landmark constraint in the local optimization
                              # 0 disables the feature
                              # It is to be compared to each geometric constraint defined by a keypoint match
@@ -109,18 +115,17 @@ external_sensors:
                              # /!\ The order of the elements matters.
     publish_tags: false      # [bool] To publish the tags as tf
   camera:
-    use_camera: false        # [bool] To receive and use RGB images from a camera
+    enable: false            # [bool] To receive and use RGB images from a camera
     weight: 0.               # Weight to apply to one pixel match constraint in the local optimization
                              # 0 disables the feature
                              # It is to be compared to each geometric constraint defined by a keypoint match
     saturation_distance: 10. # Pixelic distance threshold to discard a pixel match from optical flow
+  external_poses:
+    enable: false            # [bool] To receive and use the external poses in SLAM (local opt or pose graph opt)
+    weight: 0.               # Weight to apply to the constraint built on external poses
 
 graph:
   g2o_file_name: ""    # File where to store the g2o log info (viewable with g2o_viewer tool)
-  fix_first: false     # Fix the first pose of the graph. Can be done if one is sure
-                       # about the first pose or want a map at the first pose origin
-  fix_last: false      # Fix the last pose of the graph. Can be done if one wants to ensure
-                       # the continuity of the motion
   publish_path: false  # If true, publish optimized SLAM trajectory to 'pgo_slam_path' latched topic
   covariance_scale: 1. # Scale to apply to SLAM pose covariances in pose graph optimization
   iterations_nb: 100   # Number of iterations to perform to optimize the graph
@@ -290,6 +295,13 @@ slam:
     #          *SlamCommand::ENABLE_SLAM_MAP_UPDATE
     # to 'slam_command' topic at startup.
     update_maps: 2
+    # How to extract a submap to reduce the search:
+    #  0) Extract the bounding box of the current frame.
+    #     This makes submap extraction fast but more points might be implied in the search.
+    #  1) Extract the profile of the current frame (implied voxels + direct neighboring voxels)
+    #     This makes the submap extraction heavier but less points might be implied in the search.
+    #     This is generally a bit longer (<3ms) but can solve some local minima issues.
+    submap_extraction_mode: 0
     leaf_size:
       edges: 0.2             # [m] Resolution used to downsample the edges map with a VoxelGrid filter.
       intensity_edges: 0.2   # [m] Resolution used to downsample the edges map with a VoxelGrid filter.

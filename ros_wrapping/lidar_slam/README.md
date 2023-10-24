@@ -5,6 +5,7 @@
     - [Description and basic usage](#description-and-basic-usage)
     - [More advanced usage](#more-advanced-usage)
       - [Detailed pipeline](#detailed-pipeline)
+      - [Multiple lidar sensors](#multiple-lidar-sensors)
       - [Online configuration](#online-configuration)
         - [Reset state](#reset-state)
         - [Map update modes](#map-update-modes)
@@ -50,20 +51,22 @@ With velodyne launch file:
 roslaunch lidar_slam slam_velodyne.launch   # in 1st shell
 rosbag play --clock <my_bag_file>  # in 2nd shell
 ```
-- When using it in real live conditions, use :
+- When using it in real live conditions, with the velodyne driver in parallel :
 ```bash
-roslaunch lidar_slam slam_velodyne.launch use_sim_time:=false
+roslaunch lidar_slam slam_velodyne.launch use_sim_time:=false vlp16_driver:=true device_ip:=<my_device_ip>
 ```
 
+**NOTE** : Ouster_driver has been tested on [this version](https://github.com/ouster-lidar/ouster-ros/commit/3f01e1d7001d8d21ac984566d17505b98905fa86) of Ouster Driver.
+It is not guaranteed to work with a future version.
 With ouster launch file:
 - To start SLAM when replaying a ouster rosbag file, run :
 ```bash
 roslaunch lidar_slam slam_ouster.launch   # in 1st shell
 rosbag play --clock <my_bag_file>  # in 2nd shell
 ```
-- When using it in real live conditions, use :
+- When using it in real live conditions, with the ouster driver in parallel :
 ```bash
-roslaunch lidar_slam slam_ouster.launch replay:=false
+roslaunch lidar_slam slam_ouster.launch replay:=false os_driver:=true sensor_hostname:=<sensor_ip>
 ```
 
 These launch files will start :
@@ -102,6 +105,17 @@ SLAM outputs can also be configured out to publish :
 UTM/GPS conversion node can output SLAM pose as a *gps_common/GPSFix* message on topic '*slam_fix*'.
 
 **NOTE** : It is possible to track any *tracking_frame* in *odometry_frame*, using a pointcloud expressed in an *lidar_frame*. However, please ensure that a valid TF tree is beeing published to link *lidar_frame* to *tracking_frame*.
+
+#### Multiple LiDAR sensors
+
+When there are multiple LiDAR devices, frames coming from different devices should be collected. There are two collection modes: waiting for all lidars or waiting for a time duration.
+
+A SLAM iteration runs when:
+* Only one LiDAR sensor is implied,
+* Frames collection mode is "waiting for all LiDAR sensors" and frames from all lidar devices have arrived,
+* Frames collection mode is "waiting for a time duration" and interval is greater than waiting time (0.2s).
+
+The **device_id** of LiDAR sensors need to be precised when setting keypoint extraction parameters.
 
 #### Online configuration
 
@@ -403,4 +417,11 @@ All possible formats are :
 - **Binary** : 1
 - **Binary compressed** : 2
 
-**NOTE** : **aggregation_node** can be directly run from the launch files, adding the argument *aggregation:=true* to the launch command.
+Another service called **reset** allows to reset the ongoing map with current input.
+```bash
+rosservice call lidar_slam/reset
+```
+
+**NOTE** : **aggregation_node** can be directly run from the launch files, adding the argument *aggregate:=true* to the launch command.
+
+**NOTE** : The services are available through the visualization plugin.

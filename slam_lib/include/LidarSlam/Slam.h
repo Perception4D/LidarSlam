@@ -191,9 +191,9 @@ struct Parameters
   // Parameters for the loop closure detection
 
   // Which method to use to detect loop closure
-  // Manual detector: users need to indicate the query frame index and the revisited frame index for loop closure.
+  // EXTERNAL detector: users need to indicate the query frame index and the revisited frame index for loop closure.
   // TEASERPP detector: automatic detection of loop closure by teaser registration
-  LoopClosureDetector Detector = LoopClosureDetector::NONE;
+  LoopClosureDetector Detector = LoopClosureDetector::EXTERNAL;
 
   // When a query frame searches its revisited frame,
   // there is very little possibility that the loop is in the last travel distance.
@@ -219,10 +219,6 @@ struct Parameters
   #endif
 
   // Parameters for the loop closure registration
-
-  // Frame indices to indicate where the loop closure is formed.
-  unsigned int QueryIdx = 0;
-  unsigned int RevisitedIdx = 0;
 
   // The submaps size in meters around the query frame or the revisited frame for loop closure.
   // To build sub maps around query frame, use frames in the range [QueryIdx - 5m, QueryIdx + 5m].
@@ -256,6 +252,17 @@ struct Parameters
     // UndistortionMode Undistortion, bool enableExternalConstraints
     UndistortionMode::NONE, false
   };
+};
+
+struct LoopIndices
+{
+  // Frame indices to indicate where the loop closure is formed.
+  unsigned int QueryIdx = 0;
+  unsigned int RevisitedIdx = 0;
+  // The detection time
+  double Time = -1;
+  LoopIndices(unsigned int queryIdx, unsigned int revisitedIdx, double time):
+    QueryIdx(queryIdx), RevisitedIdx(revisitedIdx), Time(time) {};
 };
 } // end of LoopClosure namespace
 
@@ -354,15 +361,34 @@ public:
   // the computation time if this function is to be called on successive timestamps.
   Eigen::Isometry3d GetTworld(double time = -1., bool trackTime = false);
 
-  // Set world transform with an initial guess (usually from GPS after calibration).
-  void SetWorldTransformFromGuess(const Eigen::Isometry3d& poseGuess);
+  // Set current pose and notify a discontinuity in the trajectory
+  // For interpolations/extrapolations and IMU preintegration
+  // WARNING : this function may break the map, a reset might be needed
+  // before calling this function
+  void SetTworld(const Eigen::Isometry3d& pose);
 
-  // Initialize pose using pose measurements
-  // This allows to represent the maps and the trajectory of Lidar
-  // in an external frame (not first Lidar frame)
-  // the time of the synchronized pose is input so no Lidar frame needs
-  // to have been loaded to use this function
-  bool InitTworldWithPoseMeasurement(double time = -1);
+  // Change the reference frame of the Lidar trajectory and maps
+  // odom <- odom * transform
+  // This can allow to recenter the trajectory to origin and to limit
+  // errors due to numbers precision
+  // It can also be used to place the Lidar in a map initially
+  void TransformOdom(const Eigen::Isometry3d& transform);
+
+  // Make TworldInit the first logged pose
+  // This is useful to keep a consistent map
+  // even after the logged poses have been updated
+  // and allow to keep odom frame consistent after PGO
+  // WARNING : the maps are not updated with the new trajectory
+  void ResetTrajWithTworldInit();
+
+  // Move odom to reference frame of external pose measurements:
+  // the whole trajectory is moved rigidly.
+  // As the trajectory may have drifted, a time is required to choose
+  // which poses to superimpose to derive the reference frames offset.
+  // If no time is input, the last logged state is used.
+  // If no Lidar frames are logged, the external pose
+  // at time is used as initial SLAM pose
+  bool MoveOdomToExtPosesRefFrame(double time = -1);
 
   // Save keypoints maps to disk for later use
   // Keypoints maps are rebuilt to recover removed points if the time threshold (DecayingThreshold) is set
@@ -373,6 +399,10 @@ public:
 
   // Reset trajectory pose in LogStates
   void ResetStatePoses(ExternalSensors::PoseManager& newTrajectoryManager);
+
+  // Notify the IMU and the ego-motion that
+  // there has been a discontinuity in the trajectory
+  void NotifyDiscontinuity();
 
   // ---------------------------------------------------------------------------
   //   General parameters
@@ -415,12 +445,6 @@ public:
 
   GetMacro(G2oFileName, std::string)
   SetMacro(G2oFileName, std::string)
-
-  GetMacro(FixFirstVertex, bool)
-  SetMacro(FixFirstVertex, bool)
-
-  GetMacro(FixLastVertex, bool)
-  SetMacro(FixLastVertex, bool)
 
   GetMacro(CovarianceScale, float)
   SetMacro(CovarianceScale, float)
@@ -638,11 +662,6 @@ public:
 
   bool GpsHasData() const {return this->GpsManager && this->GpsManager->HasData();}
 
-  // Transform the whole trajectory (including current pose) to GPS reference frame (e.g. UTM)
-  // Warning : in trajectory, the position is remained odometric i.e. only the orientation
-  // is adapted for precision purposes but the offset position is stored in GPS manager
-  bool CalibrateWithGps();
-
   // Pose
   double GetPoseWeight() const;
   void SetPoseWeight(double weight);
@@ -659,7 +678,7 @@ public:
 
   // Find the calibration offset between the base frame and the frame tracked by the external poses
   // The two trajectories can be represented in different global frames
-  bool CalibrateWithExtPoses();
+  bool CalibrateWithExtPoses(bool reset = false, bool planarTrajectory = false);
 
   Eigen::Isometry3d GetPoseCalibration() const;
   void SetPoseCalibration(const Eigen::Isometry3d& calib);
@@ -693,6 +712,9 @@ public:
   GetMacro(MapUpdate, MappingMode)
   SetMacro(MapUpdate, MappingMode)
 
+  GetMacro(SubmapMode, PreSearchMode)
+  SetMacro(SubmapMode, PreSearchMode)
+
   double GetVoxelGridDecayingThreshold() const;
   void SetVoxelGridDecayingThreshold(double decay);
 
@@ -712,14 +734,18 @@ public:
   // ---------------------------------------------------------------------------
   //   Loop Closure parameters
   // ---------------------------------------------------------------------------
+
+  // Detect a loop for the current frame
+  bool DetectLoopClosureIndices(LoopClosure::LoopIndices& loop);
+
+  // Add indices of a loop into vector LoopDetections
+  void AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFrame = false);
+
+  // Reset LoopDetections vector
+  void ClearLoopDetections();
+
   GetStructParamsMacro(Loop, Detector, LoopClosureDetector)
   SetStructParamsMacro(Loop, Detector, LoopClosureDetector)
-
-  GetStructParamsMacro(Loop, QueryIdx, unsigned int)
-  SetStructParamsMacro(Loop, QueryIdx, unsigned int)
-
-  GetStructParamsMacro(Loop, RevisitedIdx, unsigned int)
-  SetStructParamsMacro(Loop, RevisitedIdx, unsigned int)
 
   GetStructParamsMacro(Loop, QueryMapStartRange, double)
   SetStructParamsMacro(Loop, QueryMapStartRange, double)
@@ -912,8 +938,11 @@ private:
   // This pose is the pose of BASE in WORLD coordinates, at the time
   // corresponding to the timestamp in the header of input Lidar scan.
   Eigen::Isometry3d Tworld = Eigen::Isometry3d::Identity();
-  // Variable to store initial Tworld value (might be set by SetWorldTransformFromGuess)
+  // Variable to store the oldest logged pose
+  // before logging, it is set to the first pose that is found
+  // (set from outside or set using the external poses)
   // It is used to reset the pose in case of failure
+  // or to keep the odom frame link in case of PGO
   Eigen::Isometry3d TworldInit = Eigen::Isometry3d::Identity();
 
   // Reflect the success of the optimization for current input frames
@@ -999,6 +1028,12 @@ private:
   // from current scanned points depending on the initial map reliability.
   MappingMode MapUpdate = MappingMode::UPDATE;
 
+  // How to extract the submap
+  // The submap can be extracted using a bounding box (extraction fast but kdtree heavy)
+  // or using a profile of the current frame (extraction heavy but kdtree fast)
+  // The use of one mode or the other depends on the environment and the needs
+  PreSearchMode SubmapMode = PreSearchMode::BOUNDING_BOX;
+
   // How to downsample the points in the keypoints' maps
   // This mode parameter allows to choose how to select the remaining point in each voxel.
   // It can be taking the first/last acquired point, taking the max intensity point,
@@ -1012,8 +1047,11 @@ private:
   //   Loop closure
   // ---------------------------------------------------------------------------
 
-  // Loop closure parameters
+  // Loop closure parameters for the detection and the registration
   LoopClosure::Parameters LoopParams;
+
+  // Store the frame indices of detected loops
+  std::vector<LoopClosure::LoopIndices> LoopDetections;
 
   // Transform between the query frame and the revisited frame that has been found by the automatic loop detector
   // This pose can be used as a pose prior in LoopClosureRegistration step
@@ -1180,15 +1218,15 @@ private:
   // Log info from g2o, if empty, log is not stored
   std::string G2oFileName;
 
-  // Boolean to decide if we want to some vertices of the graph
-  bool FixFirstVertex = false;
-  bool FixLastVertex = false;
   // Scale to increase or decrease SLAM pose covariances
   float CovarianceScale = 1.f;
   int NbGraphIterations = 100;
 
   // Booleans to decide whether to use a pose graph constraint for the optimization
-  std::map<PGOConstraint, bool> UsePGOConstraints = {{LOOP_CLOSURE, true}, {LANDMARK, true}, {PGO_GPS, true}};
+  std::map<PGOConstraint, bool> UsePGOConstraints = {{LOOP_CLOSURE, true},
+                                                     {LANDMARK, true},
+                                                     {PGO_GPS, true},
+                                                     {PGO_EXT_POSE, true}};
 
   // ---------------------------------------------------------------------------
   //   Confidence estimation
@@ -1279,9 +1317,10 @@ private:
   //   Loop Closure usage
   // ---------------------------------------------------------------------------
 
-  // If use manual detection, check whether the inputs of loop closure frame indices are stored in the LogStates
-  // if use teaserpp detector, detect automatically a revisited frame index for the current frame by using teaserpp registration
-  bool DetectLoopClosureIndices(std::list<LidarState>::iterator& itQueryState, std::list<LidarState>::iterator& itRevisitedState);
+  // Get the iterator of LogStates for an input frame index
+  // It is possible that the input frame index does not correspond to a keyframe
+  // In this case, output the nearest neighbor keyframe iterator
+  std::list<LidarState>::iterator GetKeyStateIterator(unsigned int& frameIdx);
 
   // Return true if a loop closure has been found and update itRevisitedState iterator, if not return false.
   bool DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, std::list<LidarState>::iterator& itRevisitedState);
