@@ -367,7 +367,7 @@ void LidarSlamNode::ImageCallback(const sensor_msgs::Image& imageMsg)
   if (!this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA])
     return;
 
-  // Transform to apply to points represented in GPS frame to express them in base frame
+  // Transform between base link and the camera
   Eigen::Isometry3d baseToCamera;
   if (Utils::Tf2LookupTransform(baseToCamera, this->TfBuffer, this->TrackingFrameId, imageMsg.header.frame_id, imageMsg.header.stamp))
   {
