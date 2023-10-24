@@ -74,9 +74,9 @@ void SlamControlPanel::CreateLayout()
 
   // Disable the update of the maps, they will remain the same
   auto disableMapUpdateButton = new QPushButton;
+  disableMapUpdateButton->setText("Disable map update");
   disableMapUpdateButton->setToolTip("Fix the map to its current state\n"
                                      "new keypoints will not be added.");
-  disableMapUpdateButton->setText("Disable map update");
   connect(disableMapUpdateButton, &QPushButton::clicked, this, &SlamControlPanel::DisableMapUpdate);
 
   // Enable the expansion of the maps, keeping the initial one

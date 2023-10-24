@@ -108,7 +108,7 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
   // Init ROS publishers
 
   #define initPublisher(publisher, topic, type, rosParam, publishDefault, queue, latch)   \
-    this->get_parameter_or<bool>(rosParam, this->Publish[publisher], publishDefault);   \
+    this->get_parameter_or<bool>(rosParam, this->Publish[publisher], publishDefault);     \
     if (this->Publish[publisher])                                                         \
       this->Publishers[publisher] = this->create_publisher<type>(topic, queue);
 
@@ -1137,9 +1137,9 @@ void LidarSlamNode::PublishOutput()
   #define publishPointCloud(publisher, pc)                                                  \
   if (this->Publish[publisher] && this->Publishers[publisher]->get_subscription_count())    \
     {                                                                                       \
-      Pcl2_msg pcl_msg;                                                \
+      Pcl2_msg pcl_msg;                                                                     \
       pcl::toROSMsg(*pc, pcl_msg);                                                          \
-      publishWithCast(this->Publishers[publisher], Pcl2_msg, pcl_msg)  \
+      publishWithCast(this->Publishers[publisher], Pcl2_msg, pcl_msg)                       \
     }
 
   // Keypoints maps
@@ -1355,7 +1355,7 @@ void LidarSlamNode::SetSlamParameters()
   SetSlamParam(double, "slam.localization.final_saturation_distance", LocalizationFinalSaturationDistance)
 
   // External sensors
-  SetSlamParam(int,  "external_sensors.max_measures", SensorMaxMeasures)
+  SetSlamParam(int,    "external_sensors.max_measures", SensorMaxMeasures)
   SetSlamParam(float,  "external_sensors.time_threshold", SensorTimeThreshold)
   this->get_parameter_or<bool>("external_sensors.lidar_is_posix", this->LidarTimePosix, true);
   SetSlamParam(float,   "external_sensors.time_offset", SensorTimeOffset)

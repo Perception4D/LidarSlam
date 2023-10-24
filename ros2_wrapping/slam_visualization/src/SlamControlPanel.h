@@ -36,7 +36,7 @@
 namespace slam_visualization
 {
 
-class SlamControlPanel : 
+class SlamControlPanel :
         public rviz_common::Panel
 {
 
@@ -106,7 +106,7 @@ public Q_SLOTS:
 
   //----------------------------------------------------------------------------
   /*!
-   * @brief Open a dialog to choose a csv calibration file 
+   * @brief Open a dialog to choose a csv calibration file
    *        and send a CALIBRATE_WITH_POSES command to the slam node.
    */
   void Calibrate();
