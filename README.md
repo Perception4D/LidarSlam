@@ -220,9 +220,9 @@ Example in parent directory of your catkin workspace (e.g. catkin_ws/..) :
  cmake --build . -j
  # Build Slam ROS package using superbuild installed dependencies
  cd ../catkin_ws
- catkin_make -j --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install
+ catkin_make -j --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/SB-build/install
   OR
- catkin build -j --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install
+ catkin build -j --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/SB-build/install
 ```
 
 **Advanced** : The default behavior is that the ROS wrapping builds the SLAM library, but the superbuild can also install the SLAM library. It is possible to use the superbuild one by setting the BUILD_SLAM_SHARED_LIB variable to ON in superbuild build and BUILD_SLAM_LIB to OFF in ROS wrapping build.
@@ -233,7 +233,7 @@ _Example_ :
  cmake ../catkin_ws/src/slam/slam-superbuild -GNinja -DCMAKE_BUILD_TYPE=Release -DINSTALL_PCL=OFF -DBUILD_SLAM_SHARED_LIB=ON
  cmake --build . -j
  cd ../catkin_ws
- catkin build -j --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install -DBUILD_SLAM_LIB=OFF
+ catkin build -j --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/SB-build/install -DBUILD_SLAM_LIB=OFF
 ```
 
 ### Live usage
@@ -294,7 +294,7 @@ This applies if you have installed all the dependencies on your system, e.g. whe
 **NOTE** : The only mandatory missing dependency should be nanoflann at this point. Example to install it with apt : `sudo apt-get install -y libnanoflann-dev`.
 
 Run `colcon build --base-paths src/slam/ros2_wrapping` or `colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release` (to turn on optimizations, highly recommended when using Eigen). the variable base_paths must point to the path of the ros2_wrapping folder.
-By default, this will build *LidarSlam* lib before ROS2 packages. If you want to use your system LidarSlam, you need to set the cmake variable BUILD_SLAM_LIB to OFF : 
+By default, this will build *LidarSlam* lib before ROS2 packages. If you want to use your system LidarSlam, you need to set the cmake variable BUILD_SLAM_LIB to OFF :
 `colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_SLAM_LIB=OFF`
 
 #### With local dependencies
@@ -333,7 +333,7 @@ _Full installation with superbuild example_ :
  # Build Slam ROS package pointing to the superbuild install directory
  cd ../ros2_ws
  call path\to\ros2_humble\local_setup.bat
- colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install
+ colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/SB-build/install
 ```
 
 The default behavior is that the ROS2 wrapping builds the SLAM library, but the superbuild can also install the SLAM library.
@@ -345,7 +345,7 @@ Example :
  cmake ../ws_ros2/src/slam/slam-superbuild -GNinja -DCMAKE_BUILD_TYPE=Release -DINSTALL_PCL=OFF -DBUILD_SLAM_SHARED_LIB=ON
  cmake --build . -j
  cd ../ws_ros2
- colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install -DBUILD_SLAM_LIB=OFF
+ colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/SB-build/install -DBUILD_SLAM_LIB=OFF
 ```
 
 ### Live usage
@@ -417,7 +417,7 @@ cmake -E make_directory ws_ros2
 dir ws_ros2
 git clone https://gitlab.kitware.com/keu-computervision/slam -b feat/ROS2
 call path\to\ros2_humble\local_setup.bat
-colcon build --base-paths=src\slam\ros2_wrapping  --merge-install --cmake-args  -DCMAKE_BUILD_TYPE=Release -DENABLE_OpenCV=OFF -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install
+colcon build --base-paths=src\slam\ros2_wrapping  --merge-install --cmake-args  -DCMAKE_BUILD_TYPE=Release -DENABLE_OpenCV=OFF -DSUPERBUILD_INSTALL_DIR=absolute/path/to/Slam_SB/install
 ```
 source the SLAM
 ```
