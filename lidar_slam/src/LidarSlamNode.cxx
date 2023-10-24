@@ -1366,6 +1366,7 @@ void LidarSlamNode::SetSlamParameters()
   SetSlamParam(float,  "external_sensors.camera.weight", CameraWeight)
   SetSlamParam(float,  "external_sensors.camera.saturation_distance", CameraSaturationDistance)
   this->get_parameter<bool>("external_sensors.calibration.planar_trajectory", this->PlanarTrajectory);
+  SetSlamParam(float,  "external_sensors.external_poses.weight", PoseWeight)
 
 
   // Graph parameters
