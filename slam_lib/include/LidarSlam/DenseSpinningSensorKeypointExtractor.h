@@ -27,6 +27,26 @@
 
 namespace LidarSlam
 {
+
+struct PtFeat
+{
+  int Index;
+  float Depth;
+  float SpaceGap;
+  float DepthGap;
+  float IntensityGap;
+  float Angle;
+  std::bitset<Keypoint::nKeypointTypes> KptTypes;
+
+  PtFeat() : Index(0), Depth(0.0f), SpaceGap(-1.0f), DepthGap(-1.0f), IntensityGap(-1.0f), Angle(-1.0f), KptTypes({}) {}
+};
+
+struct IdxVM
+{
+  int Row;
+  int Col;
+};
+
 class DenseSpinningSensorKeypointExtractor : public KeypointExtractor
 {
 public:
@@ -43,6 +63,20 @@ public:
   std::unordered_map<std::string, std::vector<float>> GetDebugArray() const override;
 
 private:
+
+  // Find the pointer to PtFeat of a point in the scan (designated by its index in the scan)
+  // (PtFeat containing the features of the point : space gap, depth...)
+  std::shared_ptr<PtFeat> GetPtFeat(int idxInScan) const;
+
+  // Count the number of non null ptr in a scanline
+  int GetScanLineSize(const std::vector<std::shared_ptr<PtFeat>>& scanLine);
+
+  // Initialize LaserIdMap, NbLaserRings, AzimuthalResolution and Pc2VmIndices
+  void InitInternalParameters();
+
+  // Create vertex map from input pointcloud using indices stored in Pc2VmIndices
+  void CreateVertexMap();
+
   // Compute the curvature features within each scan line : depth
   // space gap, intensity gap and line angle
   void ComputeCurvature() override;
@@ -60,7 +94,7 @@ private:
   // Add all keypoints of the type k that comply with the threshold criteria for these values
   // The threshold can be a minimum or maximum value (threshIsMax)
   // The weight basis allow to weight the keypoint depending on its certainty
-  void AddKptsUsingCriterion (Keypoint k);
+  void AddKptsUsingCriterion(Keypoint k);
 
   // ---------------------------------------------------------------------------
   //   Parameters
@@ -72,8 +106,18 @@ private:
   //   Internal variables
   // ---------------------------------------------------------------------------
 
-  //TODO
+  // Dimensions of the Vertex Map
+  int HeightVM;
+  int WidthVM;
 
+  // Map of laser_id to fit random laser_ids into {0, ..., NbLaserRings-1}
+  std::unordered_map<int, int> LaserIdMap;
+
+  // Vector linking the index of a point in the pointcloud to its index in the Vertex Map
+  std::vector<IdxVM> Pc2VmIndices;
+
+  // Vertex Map of points' indices in the pointcloud
+  std::vector<std::vector<std::shared_ptr<PtFeat>>> VertexMap;
 };
 
 } // namespace LidarSlam

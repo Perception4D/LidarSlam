@@ -368,6 +368,22 @@ void ComputeMeanAndPCA(const pcl::PointCloud<PointT>& cloud,
   pcl::eigen33(covarianceMatrix, eigenVectors, eigenValues);
 }
 
+//----------------------------------------------------------------------------
+/*!
+ * @brief Deduce the rotation sense of the lidar
+ * @return true if the LiDAR rotates clockwise, false otherwise.
+ * @param cloud PointCloud published by lidar driver
+ * @param nbLasers Number of lasers of the lidar
+ */
+template<typename PointT>
+inline bool IsRotationClockwise(const pcl::PointCloud<PointT>& cloud, unsigned int nbLasers)
+{
+  Eigen::Vector2d firstPoint({cloud.front().x, cloud.front().y});
+  Eigen::Vector2d secondPoint({cloud[nbLasers].x, cloud[nbLasers].y});
+  double crossZ = firstPoint.x() * secondPoint.y() - firstPoint.y() * secondPoint.x();
+  return crossZ > 0;
+}
+
 //==============================================================================
 //   Covariance helpers
 //==========================================================================
