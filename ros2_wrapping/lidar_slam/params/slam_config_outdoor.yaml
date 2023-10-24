@@ -1,15 +1,16 @@
+#########################################################
+#  Real-time LiDAR SLAM parameters for outdoor contexts #
+#########################################################
+
 /lidar_slam:
   ros__parameters:
-    #########################################################
-    #  Real-time LiDAR SLAM parameters for outdoor contexts #
-    #########################################################
 
     # SLAM will compute the pose of tracking_frame in odometry_frame coordinates system, using measurements in input pointcloud frames.
     odometry_frame: "odom"       # Frame in which SLAM odometry and maps are expressed (default: odom)
     tracking_frame: "base_link"  # Frame to track (ensure a valid TF tree is published to link input pointcloud frame_id) (default: base_link)
 
-    lidars_nb: 1     # Number of lidars used. When various lidars used, keypoints extraction parameters need to be specify for each sensor.
-    frames_mode: 1   # The frames collection mode. 0: wait a specific time to collect frames; 1: wait for all lidar devices
+    lidars_nb: 1             # Number of lidars used. When various lidars used, keypoints extraction parameters need to be specify for each sensor.
+    frames_mode: 1           # The frames collection mode. 0: wait a specific time to collect frames; 1: wait for all lidar devices
     frames_waiting_time: 0.2 # Time to wait to receive frames
     # Input LiDAR frames topics, expected as sensor_msgs/PointCloud2 messages with the following fields:
     # - x, y, z (float): point coordinates
@@ -96,14 +97,14 @@
 
       # Optional landmark detector (e.g. camera) use
       landmark_detector:
-        enable: false          # [bool] To receive and use tags
+        enable: false            # [bool] To receive and use tags
         weight: 0.               # Weight to apply to one landmark constraint in the local optimization
-                                # 0 disables the feature
-                                # It is to be compared to each geometric constraint defined by a keypoint match
+                                 # 0 disables the feature
+                                 # It is to be compared to each geometric constraint defined by a keypoint match
         position_only: true      # [bool] To decide whether to use the whole tag pose (orientation + position)
-                                # in the optimization or only the position
+                                 # in the optimization or only the position
         saturation_distance: 0.5 # [m] Saturation distance beyond which the landmark constraint
-                                # is not taken into account in the local optimization
+                                 # is not taken into account in the local optimization
         # Two constraints are usable: the relative constraint and the absolute constraint
         # The absolute constraint requires loading the landmarks absolute pose in the global frame initially
         # whereas the relative constraint uses the landmarks as common keypoints.
@@ -111,17 +112,17 @@
         # - enabled if the path is set,
         # - disabled otherwise.
         landmarks_file_path: ""  # [path] File loaded at initialization containing the tag absolute poses
-                                # in the global frame (same as the initial maps)
-                                # format must be csv with one header line :
-                                # id,x,y,z,roll,pitch,yaw,cov0,[...],cov35
-                                # /!\ The order of the elements matters.
+                                 # in the global frame (same as the initial maps)
+                                 # format must be csv with one header line :
+                                 # id,x,y,z,roll,pitch,yaw,cov0,[...],cov35
+                                 # /!\ The order of the elements matters.
         publish_tags: false      # [bool] To publish the tags as tf
 
       camera:
-        enable: false        # [bool] To receive and use RGB images from a camera
+        enable: false            # [bool] To receive and use RGB images from a camera
         weight: 0.               # Weight to apply to one pixel match constraint in the local optimization
-                                # 0 disables the feature
-                                # It is to be compared to each geometric constraint defined by a keypoint match
+                                 # 0 disables the feature
+                                 # It is to be compared to each geometric constraint defined by a keypoint match
         saturation_distance: 10. # Pixelic distance threshold to discard a pixel match from optical flow
 
       external_poses:
@@ -341,7 +342,7 @@
           plane: true
           blob: false
         max_points: 1000                   # Maximum number of keypoints of each type to extract
-        voxel_grid_resolution: 1.          # [m/voxel] Size of a voxel to downsample the extracted keypoints
+        voxel_grid_resolution: 2.          # [m/voxel] Size of a voxel to downsample the extracted keypoints
         input_sampling_ratio: 1.           # Ratio of points from which to extract the keypoints (for computation time issues)
         min_distance_to_sensor: 1.5        # [m] Minimal point to sensor distance to consider a point as valid.
         max_distance_to_sensor: 200.       # [m] Maximal point to sensor distance to consider a point as valid.
@@ -371,8 +372,8 @@
         #   voxel_grid_resolution: 1.          # [m/voxel] Size of a voxel to downsample the extracted keypoints
         #   input_sampling_ratio: 0.6          # Ratio of points from which to extract the keypoints (for computation time issues)
         #   min_distance_to_sensor: 1.5        # [m] Minimal point to sensor distance to consider a point as valid.
-        #   min_azimuth: -45                   # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
-        #   max_azimuth: 45                    # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
+        #   min_azimuth: -45.                  # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
+        #   max_azimuth: 45.                   # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
         #   min_beam_surface_angle: 10.        # [°] Minimal angle between the point surface and the laser beam to consider a point as valid.
         #   neighbors_side_nb: 4               # [>1] Minimum number of neighbors used on each side to estimate curvature and detect edges and planes.
         #   neighbors_radius: 0.10             # [m] Minimum radius to define a neighborhood on each side of the studied point.
@@ -391,8 +392,8 @@
         #   voxel_grid_resolution: 1.          # [m/voxel] Size of a voxel to downsample the extracted keypoints
         #   input_sampling_ratio: 1.           # Ratio of points from which to extract the keypoints (for computation time issues)
         #   min_distance_to_sensor: 1.5        # [m] Minimal point to sensor distance to consider a point as valid.
-        #   min_azimuth: -45                   # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
-        #   max_azimuth: 45                    # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
+        #   min_azimuth: -45.                  # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
+        #   max_azimuth: 45.                   # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
         #   min_beam_surface_angle: 10.        # [°] Minimal angle between the point surface and the laser beam to consider a point as valid.
         #   neighbors_side_nb: 4               # [>1] Minimum number of neighbors used on each side to estimate curvature and detect edges and planes.
         #   neighbors_radius: 0.10             # [m] Minimum radius to define a neighborhood on each side of the studied point.
