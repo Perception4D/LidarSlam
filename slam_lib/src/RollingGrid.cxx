@@ -21,6 +21,7 @@
 #include "LidarSlam/Utilities.h"
 
 #include <pcl/common/common.h>
+#include <unordered_set>
 
 namespace LidarSlam
 {
@@ -454,6 +455,114 @@ void RollingGrid::BuildSubMapKdTree(const Eigen::Array3f& minPoint, const Eigen:
               this->SubMap->push_back(kvIn.second.point);
          }
        }
+      }
+    }
+  }
+
+  if (this->SubMap->empty())
+    PRINT_WARNING("No intersecting voxels found with current scan");
+  // Build the internal KD-Tree for fast NN queries in sub-map
+  this->KdTree.Reset(this->SubMap);
+}
+
+//------------------------------------------------------------------------------
+void RollingGrid::BuildSubMapKdTree(const PointCloud& pc, int minNbPoints)
+{
+  // Compute the position of the origin cell (0, 0, 0) of the grid
+  Eigen::Array3f voxelGridOrigin = this->VoxelGridPosition - int(this->GridSize / 2) * this->VoxelWidth;
+
+  // Reset the submap
+  this->SubMap.reset(new PointCloud);
+  // reserve too much space to not have to reallocate memory
+  this->SubMap->reserve(this->NbPoints);
+
+  // Storage for voxels in which there is at least one point of pc
+  std::unordered_map<int, Eigen::Array3i> visited;
+  visited.reserve(pc.size());
+
+  // Extract points' voxels in visited container
+  for (const auto& pt : pc)
+  {
+    // Get outer voxel of the current point
+    Eigen::Array3i voxelCoordOut = Utils::PositionToVoxel<Eigen::Array3f>(pt.getArray3fMap(), voxelGridOrigin, this->VoxelWidth);
+    int idxVoxOut = this->To1d(voxelCoordOut, this->GridSize);
+
+    // Tag the voxel as visited
+    if (this->Voxels.count(idxVoxOut))
+      visited.insert({idxVoxOut, voxelCoordOut});
+  }
+
+  // Storage for voxels to add to the submap
+  std::unordered_set<int> toAdd;
+  toAdd.reserve(pc.size());
+
+  const std::vector<Eigen::Array3i> neighbors = {{ 1,  1, 1}, { 1,  1, 0}, { 1,  1, -1},
+                                                 { 1,  0, 1}, { 1,  0, 0}, { 1,  0, -1},
+                                                 { 1, -1, 1}, { 1, -1, 0}, { 1, -1, -1},
+                                                 { 0,  1, 1}, { 0,  1, 0}, { 0,  1, -1},
+                                                 { 0,  0, 1},              { 0,  0, -1},
+                                                 { 0, -1, 1}, { 0, -1, 0}, { 0, -1, -1},
+                                                 {-1,  1, 1}, {-1,  1, 0}, {-1,  1, -1},
+                                                 {-1,  0, 1}, {-1,  0, 0}, {-1,  0, -1},
+                                                 {-1, -1, 1}, {-1, -1, 0}, {-1, -1, -1}};
+
+  // Extract the visited voxels and their neighbors in the toAdd container
+  for (const auto& vxIdxToCoords : visited)
+  {
+    // Add the visited voxel
+    toAdd.insert(vxIdxToCoords.first);
+
+    // Add the voxel neighbors
+    // if they have not been added before
+    for (const auto& neigh : neighbors)
+    {
+      int idxVoxOutN = this->To1d(vxIdxToCoords.second + neigh, this->GridSize);
+
+      // Tag the voxel as to add to the submap
+      if (this->Voxels.count(idxVoxOutN))
+        toAdd.insert(idxVoxOutN);
+    }
+  }
+
+  // If we don't want to filter moving objects
+  if (minNbPoints < 0 || this->MinFramesPerVoxel <= 1)
+  {
+    // Add the selected voxels' points to the submap
+    for (const auto& vxIdx : toAdd)
+    {
+      // Add all points in this outer voxel
+      for (const auto& kvIn : this->Voxels[vxIdx])
+        this->SubMap->push_back(kvIn.second.point);
+    }
+  }
+  // If we want to filter moving objects
+  else
+  {
+    // Add the selected voxels' points to the submap
+    for (const auto& vxIdx : toAdd)
+    {
+      // Add inner voxels that have been seen enough
+      for (const auto& kvIn : this->Voxels[vxIdx])
+      {
+        if (kvIn.second.count > this->MinFramesPerVoxel ||
+            kvIn.second.point.label == 1)
+          this->SubMap->push_back(kvIn.second.point);
+      }
+    }
+
+    // If the constraint was too strong
+    // remove the constraint and add the missing points
+    if (int(this->SubMap->size()) < minNbPoints)
+    {
+      for (const auto& vxIdx : toAdd)
+      {
+        // Re-add missing inner voxels
+        for (const auto& kvIn : this->Voxels[vxIdx])
+        {
+          if (kvIn.second.count < this->MinFramesPerVoxel &&
+              kvIn.second.point.label != 1)
+            this->SubMap->push_back(kvIn.second.point);
+        }
       }
     }
   }

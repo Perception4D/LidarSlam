@@ -215,20 +215,33 @@ enum PGOConstraint
 
   //! GPS
   PGO_GPS = 2,
+
+  //! External pose
+  PGO_EXT_POSE = 3,
+
+  nbPGOConstraints
 };
 
 //------------------------------------------------------------------------------
 //! Type of loop closure detector
 enum class LoopClosureDetector
 {
-  //! No detection is performed
-  NONE = 0,
-
-  //! Manual detection
-  MANUAL = 1,
+  //! Loop indices are provided from external source
+  EXTERNAL = 0,
 
   //! Automatic detector by teaserpp registration
-  TEASERPP = 2
+  TEASERPP = 1
+};
+
+//------------------------------------------------------------------------------
+//! Modes to extract a submap of target keypoints
+enum class PreSearchMode
+{
+  // Extract the bounding box of the current frame
+  BOUNDING_BOX = 0,
+
+  // Extract the voxels of the current frame and their neighbors
+  PROFILE = 1
 };
 
 } // end of LidarSlam namespace

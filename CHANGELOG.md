@@ -1,6 +1,74 @@
 # SLAM changes history
 
-## *v2.0 (2022/03/23)*
+## *v2.1 (2023/07/30)*
+
+This release mainly brings 4 new features : loop closure automatic detection, failure detection and recovery mode, calibration estimation and the handling of Livox sensors in ROS. It also contains many fixes relatively to previous version on pose graph optimization and on the build and install cmake process. The link with boost is also fixed. Performances are also improved modifying the keypoints extraction and the submap extraction. The ROS interface is improved.
+
+The changes are summarized below.
+
+### Core lib
+
+**Major new features:**
+
+* Add automatic loop closure detection (!218, !250)
+* Allow to upload a list of loop closures (!250)
+* Add failure detector and recovery mode (!251, !255)
+* Find calibration with external trajectory  (!236, !263, !233)
+* Add pose graph optimization with ext poses (!233, !270)
+* Add calibration computation for GPS (!260)
+
+**Refactoring and code architecture changes:**
+
+* refactor loop closure parameters (!240)
+* refactor tworld and odom frame management (!233)
+
+**Performance improvements:**
+
+* Fix the number of left/right neighbors even when radius is used (!256)
+* Sort only partially the kpts values (!256)
+* Allow to extract only implied map voxels (!273)
+
+**Bug fixes:**
+
+* Fix bugs in IMU integration (!234)
+* Fix pose graph with tags (!235)
+* Fix min neighbor radius (!239)
+* Fix infinite loop in windows (!247)
+* Fix compilation with clang (!252)
+* Fix blobs use (!256)
+* Fix kpts out of bounds in voxel grid (!256)
+* Make keypoints extraction deterministic for debugging purposes (!256)
+* Fix UndistortWithLogStates with base to lidar calibration (!275)
+* Fix and update GPS use (!260)
+
+**Compilation / CMake related changes / CI:**
+
+* Remove unwanted warnings in find_dependency (!232)
+* Clean CMakeLists and cmake.in (!238, !241, !242)
+* Fix CI ROS test2 (!246)
+* Fix boost linking (!277)
+
+### ROS wrapping
+
+**Major new features:**
+
+* Handle livox sensors (!256)
+* Create an option to build the wrapping using an external LidarSlam library (!259)
+* Update and link aggregation node to viz plugin (!266)
+* Update interface to ouster driver (!265)
+* Refact rviz plugin (!266)
+
+**Bug fixes:**
+
+* Fix build issues and update build documentation (!237, !249, !256)
+
+### ParaView wrapping
+
+**Major new features:**
+
+* Adapt to new LidarView version (!254, !253)
+
+## *v2.0 (2023/03/23)*
 
 This release mainly brings 4 new features : loop closure (without detection), IMU raw data integration, RGB camera integration and interpolation model choice. It also contains some refactoring, notably in the interpolation steps. An external superbuild is added as submodule. This new superbuild is cross-platform and was used to update the CI. Note that the poses accessibility from the library and in the wrapping has been improved.
 
@@ -25,7 +93,7 @@ The changes are summarized below.
 * Remove the MotionModel class and create an interpolator class (!206)
 * Remove WithinFrameMotion object (!206)
 * Uniformize external sensors (!212)
-* Refactore AddExternalSensor function in PoseGraphOptimizer (!235)
+* refactor AddExternalSensor function in PoseGraphOptimizer (!235)
 
 **Performance improvements:**
 
@@ -46,9 +114,10 @@ The changes are summarized below.
 * Add OpenCV as optional dependency (!180)
 * Fix link with PCL + add PCL variable for compilation (!225)
 * Remove Ceres warning of deprecated functions (!227, !237)
-* CMakify the library so it can be built, installed and called as a target on cmake (!228, !229, !232, !238, !241, !242, !243)
+* CMakify the library so it can be built, installed and called as a target on cmake (!228, !229, !232, !238, !241, !242)
 * Add a cross platform external superbuild with all required dependencies (update the CI to use it) (!226)
 * Fix CI ROS test 2 (!246)
+* Fix CI on windows (!243)
 
 ### ROS wrapping
 

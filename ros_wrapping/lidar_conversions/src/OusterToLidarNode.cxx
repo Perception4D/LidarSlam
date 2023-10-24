@@ -43,7 +43,7 @@ OusterToLidarNode::OusterToLidarNode(ros::NodeHandle& nh, ros::NodeHandle& priv_
   this->Talker = nh.advertise<CloudS>("lidar_points", 1);
 
   // Init ROS subscriber
-  this->Listener = nh.subscribe("os_cloud_node/points", 1, &OusterToLidarNode::Callback, this);
+  this->Listener = nh.subscribe("ouster/points", 1, &OusterToLidarNode::Callback, this);
 
   ROS_INFO_STREAM(BOLD_GREEN("Ouster data converter is ready !"));
 }
@@ -74,8 +74,8 @@ void OusterToLidarNode::Callback(const CloudV& cloudO)
   // Build SLAM pointcloud
   for (const PointO& ousterPoint : cloudO)
   {
-    // Remove no return points
-    if (ousterPoint.getVector3fMap().norm() < 1e-3)
+    // Remove no return points by checking unvalid values (NaNs or zeros)
+    if (!Utils::IsPointValid(ousterPoint))
       continue;
 
     PointS slamPoint;

@@ -71,6 +71,10 @@ void LivoxToLidarNode::PointCloud2Callback(const CloudL& cloudL)
   double prevTime = -0.1;
   for (const PointL& livoxPoint : cloudL)
   {
+    // Remove no return points by checking unvalid values (NaNs or zeros)
+    if (!Utils::IsPointValid(livoxPoint))
+      continue;
+
     PointS slamPoint;
     slamPoint.x = livoxPoint.x;
     slamPoint.y = livoxPoint.y;
