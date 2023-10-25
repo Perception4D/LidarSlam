@@ -77,6 +77,9 @@ private:
   // Create vertex map from input pointcloud using indices stored in Pc2VmIndices
   void CreateVertexMap();
 
+  // Output separate point features contained in Vertex Map in pgm format to visualize as 2D image
+  void OutputFeatures(std::string path);
+
   // Compute the curvature features within each scan line : depth
   // space gap, intensity gap and line angle
   void ComputeCurvature() override;

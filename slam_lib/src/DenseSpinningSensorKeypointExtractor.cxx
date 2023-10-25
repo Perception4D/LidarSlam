@@ -26,6 +26,8 @@
 
 #include <random>
 
+#include <fstream>
+
 namespace LidarSlam
 {
 
@@ -120,6 +122,46 @@ void DenseSpinningSensorKeypointExtractor::CreateVertexMap()
     this->VertexMap[indices.Row][indices.Col]->Index = i;
     this->VertexMap[indices.Row][indices.Col]->Depth = point.getVector3fMap().norm();
   }
+}
+
+//-----------------------------------------------------------------------------
+#define OUTPUT_FEATURE(filename, featName, maxValue, specialValue, minValue)                                      \
+{                                                                                                                 \
+  int maxPix = 255;                                                                                               \
+  int specialPix = 30;                                                                                            \
+  std::ofstream file(filename);                                                                                   \
+  file << "P2\n";                                                                                                 \
+  file << this->WidthVM << " " << this->HeightVM << "\n";                                                         \
+  file << maxPix << "\n";                                                                                         \
+  for (int i = 0; i < this->HeightVM; ++i)                                                                        \
+  {                                                                                                               \
+    for (int j = 0; j < this->WidthVM; ++j)                                                                       \
+    {                                                                                                             \
+      if (this->VertexMap[i][j] == nullptr)                                                                       \
+        file << 0 << " ";                                                                                         \
+      else                                                                                                        \
+      {                                                                                                           \
+        float value = this->VertexMap[i][j]->featName;                                                            \
+        if (std::abs(value - specialValue) < 1e-6)                                                                \
+          file << specialPix << " ";                                                                              \
+        else                                                                                                      \
+        {                                                                                                         \
+          value = std::min(static_cast<int>(value), static_cast<int>(maxValue));                                  \
+          value = std::max(static_cast<int>(value), static_cast<int>(minValue));                                  \
+          file << int((value - maxValue) * (maxPix - (specialPix + 1)) / (maxValue - minValue)) + maxPix << " ";  \
+        }                                                                                                         \
+      }                                                                                                           \
+    }                                                                                                             \
+    file << "\n";                                                                                                 \
+  }                                                                                                               \
+  file.close();                                                                                                   \
+}                                                                                                                 \
+
+void DenseSpinningSensorKeypointExtractor::OutputFeatures(std::string path)
+{
+  int totalSize = this->WidthVM * this->HeightVM;
+  OUTPUT_FEATURE(path + "Index.pgm", Index, totalSize, 0., 0.);
+  OUTPUT_FEATURE(path + "Depth.pgm", Depth, 20., 0., 0.);
 }
 
 //-----------------------------------------------------------------------------
