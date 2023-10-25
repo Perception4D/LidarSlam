@@ -739,7 +739,7 @@ public:
   bool DetectLoopClosureIndices(LoopClosure::LoopIndices& loop);
 
   // Add indices of a loop into vector LoopDetections
-  void AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFrame = false);
+  void AddLoopClosureIndices(LoopClosure::LoopIndices& loop);
 
   // Reset LoopDetections vector
   void ClearLoopDetections();
@@ -1223,10 +1223,10 @@ private:
   int NbGraphIterations = 100;
 
   // Booleans to decide whether to use a pose graph constraint for the optimization
-  std::map<PGOConstraint, bool> UsePGOConstraints = {{LOOP_CLOSURE, true},
-                                                     {LANDMARK, true},
-                                                     {PGO_GPS, true},
-                                                     {PGO_EXT_POSE, true}};
+  std::map<PGOConstraint, bool> UsePGOConstraints = {{PGOConstraint::LOOP_CLOSURE, true},
+                                                     {PGOConstraint::LANDMARK,     true},
+                                                     {PGOConstraint::GPS,          true},
+                                                     {PGOConstraint::EXT_POSE,     true}};
 
   // ---------------------------------------------------------------------------
   //   Confidence estimation

@@ -720,10 +720,10 @@ bool Slam::OptimizeGraph()
     return false;
   }
 
-  if ((!this->UsePGOConstraints[LANDMARK]     || !this->LmHasData())  &&
-      (!this->UsePGOConstraints[PGO_GPS]      || !this->GpsHasData()) &&
-      (!this->UsePGOConstraints[PGO_EXT_POSE] || !this->PoseHasData()) &&
-      !this->UsePGOConstraints[LOOP_CLOSURE])
+  if ((!this->UsePGOConstraints[PGOConstraint::LANDMARK]     || !this->LmHasData())  &&
+      (!this->UsePGOConstraints[PGOConstraint::GPS]          || !this->GpsHasData()) &&
+      (!this->UsePGOConstraints[PGOConstraint::EXT_POSE]     || !this->PoseHasData()) &&
+      (!this->UsePGOConstraints[PGOConstraint::LOOP_CLOSURE] || !this->LoopDetections.empty()))
   {
     PRINT_WARNING("No external constraint found, graph cannot be optimized");
     return false;
@@ -747,35 +747,38 @@ bool Slam::OptimizeGraph()
   bool externalConstraint = false;
 
   // Look for loop closure constraints
-  if (this->UsePGOConstraints[LOOP_CLOSURE])
+  if (this->UsePGOConstraints[PGOConstraint::LOOP_CLOSURE] && !this->LoopDetections.empty())
   {
-    if(!this->LoopDetections.empty())
+    // Check all pairs of loop indices saved in the LoopDetections vector
+    for (auto& loop : this->LoopDetections)
     {
-      // Check all pairs of loop indices saved in the LoopDetections vector
-      for (auto& loop : this->LoopDetections)
+      if (loop.QueryIdx < this->LogStates.front().Index || loop.QueryIdx > this->LogStates.back().Index ||
+          loop.RevisitedIdx < this->LogStates.front().Index || loop.RevisitedIdx > this->LogStates.back().Index)
       {
-        auto itQueryState     = this->GetKeyStateIterator(loop.QueryIdx);
-        auto itRevisitedState = this->GetKeyStateIterator(loop.RevisitedIdx);
-        // Compute a loopClosureTransform from the revisited frame to the query frame
-        // by registering the keypoints of the query frame onto the keypoints of the revisited frame
-        Eigen::Isometry3d loopClosureTransform;
-        Eigen::Matrix6d loopClosureCovariance;
-        if (this->LoopClosureRegistration(itQueryState, itRevisitedState,
-                                          loopClosureTransform, loopClosureCovariance))
-        {
-          // Add loop closure constraint into pose graph
-          graphManager.AddLoopClosureConstraint(loop.QueryIdx, loop.RevisitedIdx,
-                                                loopClosureTransform, loopClosureCovariance);
-          externalConstraint = true;
-        }
+        PRINT_WARNING("QueryIdx #" << loop.QueryIdx << " and Revisitedidx #" << loop.RevisitedIdx
+                      << " will not be added into pose graph as loop closure constraint.\n"
+                      << "At least one index is not in the range of  logged states");
+        continue;
+      }
+      auto itQueryState     = this->GetKeyStateIterator(loop.QueryIdx);
+      auto itRevisitedState = this->GetKeyStateIterator(loop.RevisitedIdx);
+      // Compute a loopClosureTransform from the revisited frame to the query frame
+      // by registering the keypoints of the query frame onto the keypoints of the revisited frame
+      Eigen::Isometry3d loopClosureTransform;
+      Eigen::Matrix6d loopClosureCovariance;
+      if (this->LoopClosureRegistration(itQueryState, itRevisitedState,
+                                        loopClosureTransform, loopClosureCovariance))
+      {
+        // Add loop closure constraint into pose graph
+        graphManager.AddLoopClosureConstraint(loop.QueryIdx, loop.RevisitedIdx,
+                                              loopClosureTransform, loopClosureCovariance);
+        externalConstraint = true;
       }
     }
-    else
-      PRINT_WARNING("No loop closure is detected for pose graph optimization.")
   }
 
   // Look for landmark constraints
-  if (this->UsePGOConstraints[LANDMARK] && this->LmHasData())
+  if (this->UsePGOConstraints[PGOConstraint::LANDMARK] && this->LmHasData())
   {
     // Allow the rotation of the covariances when interpolating the measurements
     this->SetLandmarkCovarianceRotation(true);
@@ -811,7 +814,7 @@ bool Slam::OptimizeGraph()
   }
 
   // Look for GPS constraints
-  if (this->UsePGOConstraints[PGO_GPS] && this->GpsHasData())
+  if (this->UsePGOConstraints[PGOConstraint::GPS] && this->GpsHasData())
   {
     // For the first optimization, we may not know the offset
     // between GPS reference frame (utm/enu/map) and Lidar SLAM reference frame (odom)
@@ -848,7 +851,7 @@ bool Slam::OptimizeGraph()
   }
 
   // Look for ext pose constraints
-  if (this->UsePGOConstraints[PGO_EXT_POSE] && this->PoseHasData())
+  if (this->UsePGOConstraints[PGOConstraint::EXT_POSE] && this->PoseHasData())
   {
     // Compute offset between SLAM referential frame
     // and external poses referential frame
@@ -929,14 +932,14 @@ bool Slam::OptimizeGraph()
   // and T_GPS is defined by : T_base_after_optimization * Calibration_GPS = offset_old * T_GPS
   //  -> T_GPS = offset_old^-1 * T_base_after_optimization * Calibration_GPS
   // All together in (1) : offset = T_base_before_optimization * T_base_after_optimization^-1 * offset_old
-  if (this->UsePGOConstraints[PGO_GPS] && this->GpsHasData())
+  if (this->UsePGOConstraints[PGOConstraint::GPS] && this->GpsHasData())
     this->GpsManager->RefineOffset(this->TworldInit * this->LogStates.front().Isometry.inverse());
 
   // Replace Lidar SLAM poses in odom frame
   // Warning : the Gps offset refinement needs to be done before
   // calling this function
   this->ResetTrajWithTworldInit();
-  if (this->UsePGOConstraints[PGO_EXT_POSE] && this->PoseHasData())
+  if (this->UsePGOConstraints[PGOConstraint::EXT_POSE] && this->PoseHasData())
     // Update offset of referential frames with new de-skewed trajectory
     this->PoseManager->UpdateOffset(this->LogStates);
 
@@ -1920,20 +1923,9 @@ bool Slam::DetectLoopClosureIndices(LoopClosure::LoopIndices& loop)
 }
 
 //-----------------------------------------------------------------------------
-void Slam::AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFrame)
+void Slam::AddLoopClosureIndices(LoopClosure::LoopIndices& loop)
 {
-  if (!checkKeyFrame)
-  {
-    this->LoopDetections.emplace_back(loop);
-    return;
-  }
-  // Get query frames
-  // It is possible that the input frame indices are not keyframes
-  // but only the keyframes have been logged.
-  // In this case, output the nearest neighbor keyframe
-  auto itQueryState     = this->GetKeyStateIterator(loop.QueryIdx);
-  auto itRevisitedState = this->GetKeyStateIterator(loop.RevisitedIdx);
-  this->LoopDetections.emplace_back(itQueryState->Index, itRevisitedState->Index, loop.Time);
+  this->LoopDetections.emplace_back(loop);
 }
 
 //-----------------------------------------------------------------------------

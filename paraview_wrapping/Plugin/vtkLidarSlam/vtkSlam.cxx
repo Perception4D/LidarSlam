@@ -235,7 +235,6 @@ void vtkSlam::ClearLoopDetections()
 //-----------------------------------------------------------------------------
 void vtkSlam::OptimizeGraph()
 {
-  const std::list<LidarSlam::LidarState>& initLidarStates = this->SlamAlgo->GetLogStates();
   if (!this->SlamAlgo->OptimizeGraph())
     return;
   // Update trajectory poses that have been optimized by the SLAM
@@ -265,13 +264,13 @@ void vtkSlam::EnablePGOConstraintLandmark(bool enabled)
 void vtkSlam::EnablePGOConstraintGPS(bool enabled)
 {
   vtkDebugMacro(<< "Enabling GPS constraint for pose graph optimization");
-  this->SlamAlgo->EnablePGOConstraint(LidarSlam::PGOConstraint::PGO_GPS, enabled);
+  this->SlamAlgo->EnablePGOConstraint(LidarSlam::PGOConstraint::GPS, enabled);
 }
 
 void vtkSlam::EnablePGOConstraintExtPose(bool enabled)
 {
   vtkDebugMacro(<< "Enabling ext pose constraint for pose graph optimization");
-  this->SlamAlgo->EnablePGOConstraint(LidarSlam::PGOConstraint::PGO_EXT_POSE, enabled);
+  this->SlamAlgo->EnablePGOConstraint(LidarSlam::PGOConstraint::EXT_POSE, enabled);
 }
 
 //-----------------------------------------------------------------------------
@@ -297,7 +296,7 @@ bool vtkSlam::GetPGOConstraintLandmark()
 
 bool vtkSlam::GetPGOConstraintGPS()
 {
-  bool enabled = this->SlamAlgo->IsPGOConstraintEnabled(LidarSlam::PGOConstraint::PGO_GPS);
+  bool enabled = this->SlamAlgo->IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS);
   if (enabled)
     vtkDebugMacro(<< "GPS constraint for PGO is enabled");
   else
@@ -307,7 +306,7 @@ bool vtkSlam::GetPGOConstraintGPS()
 
 bool vtkSlam::GetPGOConstraintExtPose()
 {
-  bool enabled = this->SlamAlgo->IsPGOConstraintEnabled(LidarSlam::PGOConstraint::PGO_EXT_POSE);
+  bool enabled = this->SlamAlgo->IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE);
   if (enabled)
     vtkDebugMacro(<< "Ext pose constraint for PGO is enabled");
   else
@@ -2086,7 +2085,7 @@ void vtkSlam::LoadLoopDetectionIndices(const std::string& fileName)
   for (vtkIdType i = 0; i < numLoops; ++i)
   {
     LidarSlam::LoopClosure::LoopIndices loop(arrayQueryIdx->GetTuple1(i), arrayRevisitedIdx->GetTuple1(i), -1);
-    this->SlamAlgo->AddLoopClosureIndices(loop, true);
+    this->SlamAlgo->AddLoopClosureIndices(loop);
   }
 
   PRINT_INFO("Loop closure indices are loaded successfully from external source!");

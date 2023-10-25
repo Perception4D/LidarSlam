@@ -273,20 +273,32 @@ Finally, the user can choose which synchronization to perform (timestamps suppli
 
 ## Using loop closure in LidarView
 
-Loop closure consists in correcting the whole SLAM trajectory when some place is revisited after a period of time. We can use this information to reduce the mapping noise. This loop closure is triggered by the user. The user has to specify a revisited frame with which a query frame is closing a loop. This feature should be triggered as a postprocess (because it is not real time and played on the same thread as local SLAM).
+Loop closure consists in correcting the whole SLAM trajectory when some place is revisited after a period of time. We can use this information to reduce the mapping noise.
 
-To use loop closure in LidarView:
+This loop closure is triggered by the user. The user has to specify a revisited frame with which a query frame is closing a loop by loading a file containing loop closure indices. Or the use can use our loop closure detector to find the revisited frame for the current frame. This feature should be triggered as a postprocess (because it is not real time and played on the same thread as local SLAM).
 
-1. Enable the feature **Use pose graph** in the general parameters list. Pose Graph parameters section will appear.
+To use loop closure constraint within pose graph optimization in LidarView:
+
+1. Enable the feature **Use pose graph** in the general parameters list. "Pose Graph Optimization" section will appear.
 
    *__IMPORTANT__: To use the pose graph, make sure Logging timeout value is adequately set to keep states in the memory. Only the trajectory logged will be updated.*
 
+2. Enable **Use loop closure constraint** in "Pose Graph Optimization" section. "Loop closure parameters" section will appear.
+
     ![LC use pose graph](loop_closure_parameters.png)
 
-2. Enable **External detect loop closure frame** in Loop closure parameters section.
+3. Choose **Loop closure detector** to add loop closure indices. There are two choices for now: **External** and **Teaserpp**
 
-3. Enter the **Query frame index** and the **Revisited frame index** when a loop closure is observed.
-   Click on **Apply** and then click on the **Optimize Graph** button.
+    - When choosing **External**, loop closure indices need to be provided from an external csv file. Here is an example of csv file:
+        ```
+        queryIdx,RevisitedIdx
+        123,12
+        456,23
+        343,35
+        ```
+    - When choosing **Teaserpp**, click on **Detect**, loop closure will be detected for the current frame by using teaserpp registration algorithm. The detected indices will be added.
+
+3. After adding loop closure indices, click on **Apply** and then click on the **Optimize Graph** button.
 
 4. Tune the loop closure parameters to fit your use case via **advanced settings**.
 
