@@ -149,7 +149,7 @@ inline size_t PointCloudMemorySize(const Slam::PointCloud& cloud)
 Slam::Slam()
 {
   // Allocate a default Keypoint Extractor for device 0
-  this->KeyPointsExtractors[0] = std::make_shared<SpinningSensorKeypointExtractor>();
+  this->KeyPointsExtractors["mainLidar"] = std::make_shared<SpinningSensorKeypointExtractor>();
 
   // Allocate maps
   for (auto k : this->UsableKeypoints)
@@ -1310,7 +1310,7 @@ void Slam::ExtractKeypoints()
       continue;
 
     // Get keypoints extractor to use for this LiDAR device
-    int lidarDevice = frame->front().device_id;
+    std::string lidarDevice = frame->header.frame_id;
     // Check if KE exists
     if (!this->KeyPointsExtractors.count(lidarDevice))
     {
@@ -1318,8 +1318,8 @@ void Slam::ExtractKeypoints()
       if (this->KeyPointsExtractors.size() == 1)
       {
         PRINT_WARNING("Input frame comes from LiDAR device " << lidarDevice
-                    << " but no keypoints extractor has been set for this device : using default extractor for device 0.");
-        lidarDevice = 0;
+                    << " but no keypoints extractor has been set for this device : using default extractor for the device.");
+        lidarDevice = "mainLidar";
       }
       // Otherwise ignore frame
       else
@@ -2925,7 +2925,7 @@ Slam::PointCloud::Ptr Slam::AggregateFrames(const std::vector<PointCloud::Ptr>& 
     // Modify point-wise time offsets to match header.stamp
     // And transform points from LIDAR to BASE or WORLD coordinate system
     double timeOffset = Utils::PclStampToSec(frame->header.stamp) - Utils::PclStampToSec(aggregatedFrames->header.stamp);
-    Eigen::Isometry3d baseToLidar = this->GetBaseToLidarOffset(frame->front().device_id);
+    Eigen::Isometry3d baseToLidar = this->GetBaseToLidarOffset(frame->header.frame_id);
 
     // Undistort to represent all points from startIdx in base at current time
     // Rigid transform from LIDAR to BASE then undistortion from BASE to WORLD
@@ -3588,31 +3588,31 @@ void Slam::SetCameraSaturationDistance(float dist)
 //==============================================================================
 
 //-----------------------------------------------------------------------------
-std::map<uint8_t, Slam::KeypointExtractorPtr> Slam::GetKeyPointsExtractors() const
+std::map<std::string, Slam::KeypointExtractorPtr> Slam::GetKeyPointsExtractors() const
 {
   return this->KeyPointsExtractors;
 }
-void Slam::SetKeyPointsExtractors(const std::map<uint8_t, KeypointExtractorPtr>& extractors)
+void Slam::SetKeyPointsExtractors(const std::map<std::string, KeypointExtractorPtr>& extractors)
 {
   this->KeyPointsExtractors = extractors;
 }
 
 //-----------------------------------------------------------------------------
-Slam::KeypointExtractorPtr Slam::GetKeyPointsExtractor(uint8_t deviceId) const
+Slam::KeypointExtractorPtr Slam::GetKeyPointsExtractor(std::string deviceId) const
 {
   return this->KeyPointsExtractors.count(deviceId) ? this->KeyPointsExtractors.at(deviceId) : KeypointExtractorPtr();
 }
-void Slam::SetKeyPointsExtractor(KeypointExtractorPtr extractor, uint8_t deviceId)
+void Slam::SetKeyPointsExtractor(KeypointExtractorPtr extractor, std::string deviceId)
 {
   this->KeyPointsExtractors[deviceId] = extractor;
 }
 
 //-----------------------------------------------------------------------------
-Eigen::Isometry3d Slam::GetBaseToLidarOffset(uint8_t deviceId) const
+Eigen::Isometry3d Slam::GetBaseToLidarOffset(std::string deviceId) const
 {
   return this->BaseToLidarOffsets.count(deviceId) ? this->BaseToLidarOffsets.at(deviceId) : Eigen::UnalignedIsometry3d::Identity();
 }
-void Slam::SetBaseToLidarOffset(const Eigen::Isometry3d& transform, uint8_t deviceId)
+void Slam::SetBaseToLidarOffset(const Eigen::Isometry3d& transform, std::string deviceId)
 {
   this->BaseToLidarOffsets[deviceId] = transform;
 }

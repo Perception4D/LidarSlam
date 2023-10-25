@@ -29,9 +29,6 @@ LivoxToLidarNode::LivoxToLidarNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh
   : Nh(nh)
   , PrivNh(priv_nh)
 {
-  //  Get LiDAR id
-  this->PrivNh.param("device_id", this->DeviceId, this->DeviceId);
-
   // Init ROS publisher
   this->Talker = nh.advertise<CloudS>("lidar_points", 1);
 
@@ -83,7 +80,6 @@ void LivoxToLidarNode::PointCloud2Callback(const CloudL& cloudL)
       continue;
     slamPoint.intensity = livoxPoint.intensity;
     slamPoint.laser_id = 0;
-    slamPoint.device_id = this->DeviceId;
 
     slamPoint.time = prevTime + 0.1/300000.; // Supposing 10 Hz and 300 000 points
     prevTime = slamPoint.time;
@@ -115,7 +111,6 @@ void LivoxToLidarNode::LivoxCustomMsgCallback(const CustomMsg& cloudLmsg)
       continue;
     slamPoint.intensity = cloudLmsg.points[i].reflectivity;
     slamPoint.laser_id = cloudLmsg.points[i].line;
-    slamPoint.device_id = cloudLmsg.lidar_id;
 
     slamPoint.time = double(cloudLmsg.points[i].offset_time) * 1e-9; // seconds
     cloudS.push_back(slamPoint);

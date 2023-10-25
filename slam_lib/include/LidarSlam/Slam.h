@@ -472,18 +472,18 @@ public:
   // ---------------------------------------------------------------------------
 
   // Get/Set all keypoints extractors
-  std::map<uint8_t, KeypointExtractorPtr> GetKeyPointsExtractors() const;
-  void SetKeyPointsExtractors(const std::map<uint8_t, KeypointExtractorPtr>& extractors);
+  std::map<std::string, KeypointExtractorPtr> GetKeyPointsExtractors() const;
+  void SetKeyPointsExtractors(const std::map<std::string, KeypointExtractorPtr>& extractors);
 
   // Get/Set a specific keypoints extractor
   // NOTE: If no keypoint extractor exists for the requested deviceId, the returned pointer is null.
-  KeypointExtractorPtr GetKeyPointsExtractor(uint8_t deviceId = 0) const;
-  void SetKeyPointsExtractor(KeypointExtractorPtr extractor, uint8_t deviceId = 0);
+  KeypointExtractorPtr GetKeyPointsExtractor(std::string deviceId = "mainLidar" ) const;
+  void SetKeyPointsExtractor(KeypointExtractorPtr extractor, std::string deviceId = "mainLidar");
 
   // Get/Set a specific base to Lidar offset
   // NOTE: If no base to lidar offset exists for the requested deviceId, the returned transform is identity.
-  Eigen::Isometry3d GetBaseToLidarOffset(uint8_t deviceId = 0) const;
-  void SetBaseToLidarOffset(const Eigen::Isometry3d& transform, uint8_t deviceId = 0);
+  Eigen::Isometry3d GetBaseToLidarOffset(std::string deviceId = "mainLidar") const;
+  void SetBaseToLidarOffset(const Eigen::Isometry3d& transform, std::string deviceId = "mainLidar");
 
   // Set the keypoint types to use
   void EnableKeypointType(Keypoint k, bool enabled = true);
@@ -982,12 +982,12 @@ private:
   std::map<int, unsigned int> PreviousFramesSeq;
 
   // Keypoints extractors, 1 for each lidar device
-  std::map<uint8_t, KeypointExtractorPtr> KeyPointsExtractors;
+  std::map<std::string, KeypointExtractorPtr> KeyPointsExtractors;
 
   // Static transform to link BASE and LIDAR coordinates systems for each device.
   // It corresponds to the pose of each LIDAR device origin in BASE coordinates.
   // If the transform is not available for a given device, identity will be used.
-  std::map<uint8_t, Eigen::UnalignedIsometry3d> BaseToLidarOffsets = {{0, Eigen::UnalignedIsometry3d::Identity()}};
+  std::map<std::string, Eigen::UnalignedIsometry3d> BaseToLidarOffsets = {{"frame", Eigen::UnalignedIsometry3d::Identity()}};
 
   // ---------------------------------------------------------------------------
   //   Keypoints from current frame

@@ -251,7 +251,7 @@ void LidarSlamNode::ScanCallback(const CloudS::Ptr cloudS_ptr)
   }
 
   // Update TF from BASE to LiDAR
-  if (!this->UpdateBaseToLidarOffset(cloudS_ptr->header.frame_id, cloudS_ptr->front().device_id))
+  if (!this->UpdateBaseToLidarOffset(cloudS_ptr->header.frame_id))
     return;
 
   double timeInterval = this->Frames.empty() ? 0 : (LidarSlam::Utils::PclStampToSec(cloudS_ptr->header.stamp) - LidarSlam::Utils::PclStampToSec(this->Frames[0]->header.stamp));
@@ -1049,7 +1049,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
 //==============================================================================
 
 //------------------------------------------------------------------------------
-bool LidarSlamNode::UpdateBaseToLidarOffset(const std::string& lidarFrameId, uint8_t lidarDeviceId)
+bool LidarSlamNode::UpdateBaseToLidarOffset(const std::string& lidarFrameId)
 {
   // If tracking frame is different from input frame, get TF from LiDAR to BASE
   if (lidarFrameId != this->TrackingFrameId)
@@ -1058,7 +1058,7 @@ bool LidarSlamNode::UpdateBaseToLidarOffset(const std::string& lidarFrameId, uin
     // about timestamp and get only the latest transform
     Eigen::Isometry3d baseToLidar;
     if (Utils::Tf2LookupTransform(baseToLidar, this->TfBuffer, this->TrackingFrameId, lidarFrameId))
-      this->LidarSlam.SetBaseToLidarOffset(baseToLidar, lidarDeviceId);
+      this->LidarSlam.SetBaseToLidarOffset(baseToLidar, lidarFrameId);
     else
       return false;
   }
@@ -1298,7 +1298,7 @@ void LidarSlamNode::SetSlamParameters()
   };
 
   // Multi-LiDAR devices
-  std::vector<int> deviceIds;
+  std::vector<std::string> deviceIds;
   if (this->PrivNh.getParam("slam/ke/device_ids", deviceIds))
   {
     ROS_INFO_STREAM("Multi-LiDAR devices setup");
@@ -1308,7 +1308,7 @@ void LidarSlamNode::SetSlamParameters()
       auto ke = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
 
       // Change default parameters using ROS parameter server
-      std::string prefix = "slam/ke/device_" + std::to_string(deviceId) + "/";
+      std::string prefix = "slam/ke/device_" + deviceId + "/";
       InitKeypointsExtractor(ke, prefix);
 
       // Add extractor to SLAM
@@ -1322,7 +1322,11 @@ void LidarSlamNode::SetSlamParameters()
     ROS_INFO_STREAM("Single LiDAR device setup");
     auto ke = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
     InitKeypointsExtractor(ke, "slam/ke/");
-    this->LidarSlam.SetKeyPointsExtractor(ke);
+
+    std::string deviceId = "mainLidar";
+    this->PrivNh.getParam("slam/ke/device_id", deviceId);
+    this->LidarSlam.SetKeyPointsExtractor(ke, deviceId);
+    ROS_INFO_STREAM("Adding keypoint extractor for LiDAR device " << deviceId);
   }
 
   // Ego motion

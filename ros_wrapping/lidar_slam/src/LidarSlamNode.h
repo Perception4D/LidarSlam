@@ -72,8 +72,6 @@ public:
    *  - intensity (float): intensity/reflectivity of the point
    *  - laser_id (uint16): numeric identifier of the laser ring that shot this point.
    *    The lowest/bottom laser ring should be 0, and it should increase upward.
-   *  - device_id (uint8): numeric identifier of the LiDAR device/sensor.
-   *    This id should be the same for all points of the cloud acquired by the same sensor.
    *  - label (uint8): optional input, not yet used.
    */
   virtual void ScanCallback(const CloudS::Ptr cloudS_ptr);
@@ -139,7 +137,7 @@ protected:
    * @param[in] lidarFrameId The input LiDAR pointcloud frame_id.
    * @param[in] lidarDeviceId The numerical identifier of the LiDAR sensor.
    */
-  bool UpdateBaseToLidarOffset(const std::string& lidarFrameId, uint8_t lidarDeviceId);
+  bool UpdateBaseToLidarOffset(const std::string& lidarFrameId);
 
   //----------------------------------------------------------------------------
   /*!
