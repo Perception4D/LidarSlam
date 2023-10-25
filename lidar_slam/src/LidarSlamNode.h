@@ -279,10 +279,10 @@ protected:
   // Booleans to select which sensor to activate
   // If sensor enabled, data are received and stored
   // External sensor data can be used in local optimization or in postprocess pose graph optimization
-  std::unordered_map<LidarSlam::ExternalSensor, bool> UseExtSensor = {{LidarSlam::GPS, false},
-                                                                      {LidarSlam::LANDMARK_DETECTOR, false},
-                                                                      {LidarSlam::POSE, false},
-                                                                      {LidarSlam::CAMERA, false}};
+  std::unordered_map<LidarSlam::ExternalSensor, bool> UseExtSensor = {{LidarSlam::ExternalSensor::GPS,               false},
+                                                                      {LidarSlam::ExternalSensor::LANDMARK_DETECTOR, false},
+                                                                      {LidarSlam::ExternalSensor::POSE,              false},
+                                                                      {LidarSlam::ExternalSensor::CAMERA,            false}};
 
   // If lidar time contained in the header is not POSIX
   // The offset between network reception time
