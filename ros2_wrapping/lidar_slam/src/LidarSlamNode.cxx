@@ -90,19 +90,19 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
   this->SetSlamInitialState();
 
   // Use GPS data for GPS/SLAM calibration or Pose Graph Optimization.
-  this->get_parameter_or<bool>("external_sensors.gps.enable", this->UseExtSensor[LidarSlam::GPS], false);
-  this->LidarSlam.EnablePGOConstraint(LidarSlam::PGO_GPS, this->UseExtSensor[LidarSlam::GPS]);
+  this->get_parameter_or<bool>("external_sensors.gps.enable", this->UseExtSensor[LidarSlam::ExternalSensor::GPS], false);
+  this->LidarSlam.EnablePGOConstraint(LidarSlam::PGOConstraint::GPS, this->UseExtSensor[LidarSlam::ExternalSensor::GPS]);
 
   // Use tags data for local optimization.
-  this->get_parameter_or<bool>("external_sensors.landmark_detector.enable", this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR], false);
-  this->LidarSlam.EnablePGOConstraint(LidarSlam::LANDMARK, this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR]);
+  this->get_parameter_or<bool>("external_sensors.landmark_detector.enable", this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR], false);
+  this->LidarSlam.EnablePGOConstraint(LidarSlam::PGOConstraint::LANDMARK, this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR]);
 
   // Use camera rgb images in local optimization.
-  this->get_parameter_or<bool>("external_sensors.camera.enable", this->UseExtSensor[LidarSlam::CAMERA], false);
+  this->get_parameter_or<bool>("external_sensors.camera.enable", this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA], false);
 
   // Use external poses in local optimization or in graph optimization
-  this->get_parameter_or<bool>("external_sensors.external_poses.enable", this->UseExtSensor[LidarSlam::POSE], false);
-  this->LidarSlam.EnablePGOConstraint(LidarSlam::PGO_EXT_POSE, this->UseExtSensor[LidarSlam::POSE]);
+  this->get_parameter_or<bool>("external_sensors.external_poses.enable", this->UseExtSensor[LidarSlam::ExternalSensor::POSE], false);
+  this->LidarSlam.EnablePGOConstraint(LidarSlam::PGOConstraint::EXT_POSE, this->UseExtSensor[LidarSlam::ExternalSensor::POSE]);
 
   // ***************************************************************************
   // Init ROS publishers
@@ -150,9 +150,9 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
 
   initPublisher(CONFIDENCE, "slam_confidence", lidar_slam::msg::Confidence, "output.confidence", true, 1, false);
 
-  if (this->UseExtSensor[LidarSlam::GPS] ||
-      this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR] ||
-      this->UseExtSensor[LidarSlam::POSE])
+  if (this->UseExtSensor[LidarSlam::ExternalSensor::GPS] ||
+      this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ||
+      this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
     initPublisher(PGO_PATH, "pgo_slam_path", nav_msgs::msg::Path, "graph.publish_path", false, 1, true);
 
   // Set frequency of output pose (all poses are published at the end of the frames process)
@@ -193,27 +193,27 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
 
   // Init logging of GPS data for GPS/SLAM calibration or Pose Graph Optimization.
   // Perfect synchronization is not required as GPS data are not used in SLAM local process
-  if (this->UseExtSensor[LidarSlam::GPS])
+  if (this->UseExtSensor[LidarSlam::ExternalSensor::GPS])
     this->GpsOdomSub = this->create_subscription<nav_msgs::msg::Odometry>("gps_odom", 1,
                                                 std::bind(&LidarSlamNode::GpsCallback, this, std::placeholders::_1));
 
   // Init logging of landmark data and/or Camera data
-  if (this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR] ||
-      this->UseExtSensor[LidarSlam::CAMERA] ||
-      this->UseExtSensor[LidarSlam::POSE])
+  if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ||
+      this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] ||
+      this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
   {
     // Create an external independent spinner to get the landmarks and/or camera info in a parallel way
     this->ExternalSensorGroup = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     rclcpp::SubscriptionOptions ops;
     ops.callback_group = this->ExternalSensorGroup;
 
-    if (this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR])
+    if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR])
     {
         this->LandmarkSub = this->create_subscription<apriltag_ros::msg::AprilTagDetectionArray>("tag_detections",
                                           200, std::bind(&LidarSlamNode::TagCallback, this, std::placeholders::_1), ops);
     }
 
-    if (this->UseExtSensor[LidarSlam::CAMERA])
+    if (this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA])
     {
       this->CameraSub = this->create_subscription<sensor_msgs::msg::Image>("camera",
                                         10, std::bind(&LidarSlamNode::ImageCallback, this, std::placeholders::_1), ops);
@@ -221,7 +221,7 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
                                         10, std::bind(&LidarSlamNode::CameraInfoCallback, this, std::placeholders::_1), ops);
     }
 
-    if (this->UseExtSensor[LidarSlam::POSE])
+    if (this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
     {
       this->ExtPoseSub = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>("ext_poses",
                                         10, std::bind(&LidarSlamNode::ExtPoseCallback, this, std::placeholders::_1), ops);
@@ -368,7 +368,7 @@ void LidarSlamNode::ImageCallback(const sensor_msgs::msg::Image& imageMsg)
     return;
 
   #ifdef USE_CV_BRIDGE
-  if (!this->UseExtSensor[LidarSlam::CAMERA])
+  if (!this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA])
     return;
 
   // Transform to apply to points represented in GPS frame to express them in base frame
@@ -430,7 +430,7 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::msg::PoseWithCovariance
   if (!this->SlamEnabled)
     return;
 
-  if (!this->UseExtSensor[LidarSlam::POSE])
+  if (!this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
     return;
 
   // Set calibration
@@ -471,7 +471,7 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
   if (!this->SlamEnabled)
     return;
 
-    if (!this->UseExtSensor[LidarSlam::GPS])
+    if (!this->UseExtSensor[LidarSlam::ExternalSensor::GPS])
       return;
 
     // Calibration
@@ -531,7 +531,7 @@ void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray&
   if (!this->SlamEnabled)
     return;
 
-  if (!this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR])
+  if (!this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR])
     return;
 
   for (auto& tagInfo : tagsInfo.detections)
@@ -936,9 +936,9 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
     case lidar_slam::msg::SlamCommand::OPTIMIZE_GRAPH:
     {
 
-      if ((!this->UseExtSensor[LidarSlam::GPS] &&
-           !this->UseExtSensor[LidarSlam::LANDMARK_DETECTOR] &&
-           !this->UseExtSensor[LidarSlam::POSE]) ||
+      if ((!this->UseExtSensor[LidarSlam::ExternalSensor::GPS] &&
+           !this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] &&
+           !this->UseExtSensor[LidarSlam::ExternalSensor::POSE]) ||
            this->LidarSlam.GetSensorMaxMeasures() < 2 || this->LidarSlam.GetLoggingTimeout() < 0.2)
       {
         RCLCPP_ERROR_STREAM(this->get_logger(),
