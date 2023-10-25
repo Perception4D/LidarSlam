@@ -188,7 +188,7 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
     else if (field.name == "t")
       FIND_TYPE_AND_FILL_ARRAY(T, t, times);
     else
-      RCLCPP_ERROR_STREAM(this->get_logger(), "Unknown field name : " << field.name);
+      RCLCPP_WARN_STREAM(this->get_logger(), "Unknown field name : " << field.name);
   }
 
   // Check if time field looks properly set
