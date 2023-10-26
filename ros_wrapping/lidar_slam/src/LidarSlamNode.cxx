@@ -1394,11 +1394,8 @@ void LidarSlamNode::SetSlamParameters()
     ROS_INFO_STREAM("Single LiDAR device setup");
     auto ke = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
     initKeypointsExtractor(ke, "slam/ke/");
-
-    std::string deviceId = "mainLidar";
-    this->PrivNh.getParam("slam/ke/device_id", deviceId);
-    this->LidarSlam.SetKeyPointsExtractor(ke, deviceId);
-    ROS_INFO_STREAM("Adding keypoint extractor for LiDAR device " << deviceId);
+    this->LidarSlam.SetKeyPointsExtractor(ke);
+    ROS_INFO_STREAM("Adding keypoints extractor");
   }
 
   // Ego motion

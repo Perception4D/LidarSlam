@@ -338,9 +338,8 @@ slam:
                             # and the parameterization : see leaf_size keyframes parameters for more details
 
   # Keypoint extractor for each LiDAR sensor
+  # Single LiDAR input
   ke:
-    # Single LiDAR input
-    device_id: "velodyne"
     enable:
       edge: true
       intensity_edge: true
