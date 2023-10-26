@@ -1324,11 +1324,11 @@ void Slam::ExtractKeypoints()
     if (this->KeyPointsExtractors.empty() ||
         (this->KeyPointsExtractors.size() > 1 &&
          !this->KeyPointsExtractors.count(lidarDevice)))
-      {
-        PRINT_ERROR("Input frame comes from LiDAR device " << lidarDevice
-                    << " but no keypoints extractor has been set for this device : ignoring frame.");
-        continue;
-      }
+    {
+      PRINT_ERROR("Input frame comes from LiDAR device " << lidarDevice
+                  << " but no keypoints extractor has been set for this device : ignoring frame.");
+      continue;
+    }
     KeypointExtractorPtr& ke = this->KeyPointsExtractors.size() == 1 ?
                                this->KeyPointsExtractors.begin()->second :
                                this->KeyPointsExtractors[lidarDevice];
@@ -3643,21 +3643,25 @@ void Slam::SetKeyPointsExtractors(const std::map<std::string, KeypointExtractorP
 }
 
 //-----------------------------------------------------------------------------
-Slam::KeypointExtractorPtr Slam::GetKeyPointsExtractor(std::string deviceId) const
+Slam::KeypointExtractorPtr Slam::GetKeyPointsExtractor(const std::string& deviceId) const
 {
-  return this->KeyPointsExtractors.count(deviceId) ? this->KeyPointsExtractors.at(deviceId) : KeypointExtractorPtr();
+  return this->KeyPointsExtractors.count(deviceId) ?
+         this->KeyPointsExtractors.at(deviceId) :
+         KeypointExtractorPtr();
 }
-void Slam::SetKeyPointsExtractor(KeypointExtractorPtr extractor, std::string deviceId)
+void Slam::SetKeyPointsExtractor(KeypointExtractorPtr extractor, const std::string& deviceId)
 {
   this->KeyPointsExtractors[deviceId] = extractor;
 }
 
 //-----------------------------------------------------------------------------
-Eigen::Isometry3d Slam::GetBaseToLidarOffset(std::string deviceId) const
+Eigen::Isometry3d Slam::GetBaseToLidarOffset(const std::string& deviceId) const
 {
-  return this->BaseToLidarOffsets.count(deviceId) ? this->BaseToLidarOffsets.at(deviceId) : Eigen::UnalignedIsometry3d::Identity();
+  return this->BaseToLidarOffsets.count(deviceId) ?
+         this->BaseToLidarOffsets.at(deviceId) :
+         Eigen::UnalignedIsometry3d::Identity();
 }
-void Slam::SetBaseToLidarOffset(const Eigen::Isometry3d& transform, std::string deviceId)
+void Slam::SetBaseToLidarOffset(const Eigen::Isometry3d& transform, const std::string& deviceId)
 {
   this->BaseToLidarOffsets[deviceId] = transform;
 }
