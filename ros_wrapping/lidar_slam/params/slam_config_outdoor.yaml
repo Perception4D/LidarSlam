@@ -138,6 +138,12 @@ graph:
   publish_path: false  # [bool] If true, publish optimized SLAM trajectory to 'pgo_slam_path' latched topic
   covariance_scale: 1. # [float] Scale to apply to SLAM pose covariances in pose graph optimization
   iterations_nb: 100   # [iterations] Number of iterations to perform to optimize the graph
+  # Pose graph constraints
+  constraint:
+    loop_closure: true # [bool] to decide whether or not to add loop closure constraints into pose graph
+    landmark: false    # [bool] to decide whether or not to add landmark constraints into pose graph
+    gps: false         # [bool] to decide whether or not to add GPS constraints into pose graph
+    ext_pose: false    # [bool] to decide whether or not to add external pose constraints into pose graph
 
 # Logging parameters
 logging:
