@@ -7,6 +7,7 @@
 
 - If all these dependencies are not installed system-wide or not visible by CMake, it is necessary to indicate where to find them on the runner. To do so, the following variables can be optionally defined in the `environment` field of the `[[runners]]` section, defined in the `config.toml` file. These variables are CMake options that will be forwarded for the configuration step. For example, on a Linux runner, we can set:
 ```
+
 environment = ["slam_cmake_option_Eigen_DIR=-DEIGEN3_INCLUDE_DIR=/home/ci/deps/install/include/eigen3",
                "slam_cmake_option_Ceres_DIR=-DCeres_DIR=/home/ci/deps/install/lib/cmake/Ceres",
                "slam_cmake_option_nanoflann_DIR=-Dnanoflann_DIR=/home/ci/deps/install/lib/cmake/nanoflann",
@@ -16,6 +17,11 @@ environment = ["slam_cmake_option_Eigen_DIR=-DEIGEN3_INCLUDE_DIR=/home/ci/deps/i
                "slam_cmake_option_Boost_DIR=-DBOOST_ROOT=/home/ci/deps/install",
                "slam_cmake_option_Qt5_DIR=-DQt5_DIR=/home/ci/deps/install/lib/cmake/Qt5"]
 ```
+
+**Note** : The jobs in the stage "superbuild" build a superbuild that can be used to resolve the dependencies.
+First, one must build the superbuild by launching manually the corresponding job : **windows_build_superbuild** for windows and **linux_build_superbuild** for linux.
+This new superbuild will be used to build the slam library.
+Eventually, the superbuild dependencies can be used in the gitlab config.toml. as described above
 
 ## About Windows
 
@@ -32,6 +38,13 @@ To register a new docker runner:
 - Install [Docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/#install-using-the-repository)
 - Get the image either from the [Package/Container Registery](../../container_registry), build it from the [Dockerfile](Dockerfile) or from an available image on the [Docker Hub](https://hub.docker.com/search?q=&type=image) .
 - Change the runner [docker pull policy](https://docs.gitlab.com/runner/executors/docker.html#using-the-if-not-present-pull-policy) to `if-not-present`. This will enable to use the local image you just get. To do so, open your [runner configuration file](https://docs.gitlab.com/runner/configuration/advanced-configuration.html).
+
+## Pushing a docker image
+
+To push a docker image on the Slam repository, execute this command
+```bash
+docker push gitlab.kitware.com:4567/keu-computervision/slam:image_name
+```
 
 ## Add a test
 
