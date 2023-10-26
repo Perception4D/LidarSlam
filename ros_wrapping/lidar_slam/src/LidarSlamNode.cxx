@@ -25,6 +25,8 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <nav_msgs/Path.h>
 
+#include <iomanip>
+
 #ifdef USE_CV_BRIDGE
 #include <cv_bridge/cv_bridge.h>
 #endif
@@ -1639,6 +1641,53 @@ void LidarSlamNode::SetSlamParameters()
       this->LidarSlam.SetVoxelGridSamplingMode(k, sampling);
     }
   }
+
+  ROS_WARN_STREAM("Please review the following parameters setting:");
+
+  // Check if or not one pgo constraint is enabled at least
+  if (!this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE) &&
+      !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LANDMARK) &&
+      !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE) &&
+      !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS))
+  {
+    ROS_INFO_STREAM("Pose graph optimization is not enabled.");
+    return;
+  }
+  if (this->LidarSlam.GetLoggingTimeout() > 0.2)
+    ROS_INFO_STREAM("Logging timeout is set to " << this->LidarSlam.GetLoggingTimeout() << "s. "
+                    "Pose graph optimization can be applied on this time window.");
+  else
+    ROS_INFO_STREAM("Logging timeout is set to " << this->LidarSlam.GetLoggingTimeout() << "s. "
+                    "Please set a convenient value to use pose graph optimization!");
+  ROS_INFO_STREAM("Loop closure constraint is "
+                  << (this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE) ? "enabled " : "disabled ")
+                  <<"for pose graph");
+  ROS_INFO_STREAM(std::setw(19) << "Sensor            |"
+                  << std::setw(13) << " is enabled |"
+                  << std::setw(22) << " can be used locally |"
+                  << std::setw(22) << " can be used for PGO |");
+  ROS_INFO_STREAM(std::setw(19) << "Camera            |"
+                  << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] ? " ON |" : " OFF |")
+                  << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] &&
+                  this->LidarSlam.GetCameraWeight() > 1e-6 ? " YES |" : " NO |")
+                  << std::setw(22) << " NO |");
+  ROS_INFO_STREAM(std::setw(19) << "Landmark detector |"
+                  << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ? " ON |" : " OFF |")
+                  << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] &&
+                  this->LidarSlam.GetLandmarkWeight() > 1e-6 ? " YES |" : "  NO |")
+                  << std::setw(22) << ((this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] &&
+                  this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LANDMARK)) ? " YES |" : " NO |"));
+  ROS_INFO_STREAM(std::setw(19) << "Pose sensor       |"
+                  << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::POSE] ? " ON |" : " OFF |")
+                  << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::POSE] &&
+                  this->LidarSlam.GetPoseWeight() > 1e-6 ? " YES |" : "  NO |")
+                  << std::setw(22) << ((this->UseExtSensor[LidarSlam::ExternalSensor::POSE] &&
+                  this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE)) ? " YES |" : " NO |"));
+  ROS_INFO_STREAM(std::setw(19) << "GPS               |"
+                  << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::GPS] ? " ON |" : " OFF |")
+                  << std::setw(22) << " NO |"
+                  << std::setw(22) << ((this->UseExtSensor[LidarSlam::ExternalSensor::GPS] &&
+                  this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS)) ? " YES |" : " NO |"));
 }
 
 //------------------------------------------------------------------------------
