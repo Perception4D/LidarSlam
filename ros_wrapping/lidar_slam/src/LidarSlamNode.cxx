@@ -1078,6 +1078,33 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       break;
     }
 
+    case lidar_slam::SlamCommand::LOAD_LOOP_INDICES:
+    {
+      // Clear current LoopDetections vector
+      this->LidarSlam.ClearLoopDetections();
+      if (!msg.string_arg.empty())
+      {
+        this->LidarSlam.SetLoopDetector(LidarSlam::LoopClosureDetector::EXTERNAL);
+        // Fill external pose manager with poses from a CSV file
+        this->ReadLoopIndices(msg.string_arg);
+      }
+      else
+      {
+        std::list<LidarSlam::LidarState> lidarStates = this->LidarSlam.GetLogStates();
+        if (lidarStates.size() < 2)
+        {
+          ROS_WARN_STREAM("Not enough states logged and no external file provided, no loop closure indices will be loaded");
+          break;
+        }
+        // Use the first and the last frame indices as loop closure indices
+        LidarSlam::LoopClosure::LoopIndices loop(lidarStates.back().Index, lidarStates.front().Index, -1);
+        this->LidarSlam.AddLoopClosureIndices(loop);
+        ROS_INFO_STREAM("No external file is provided for loop closure indices : "
+                        <<"the last and the first states are used");
+      }
+      break;
+    }
+
     case lidar_slam::SlamCommand::SWITCH_SENSOR:
     {
       // Get sensor to enable/disable

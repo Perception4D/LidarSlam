@@ -40,6 +40,11 @@ uint8 LOAD_KEYPOINTS_MAPS = 18
 # WARNING : this process is not real time.
 uint8 OPTIMIZE_GRAPH = 20
 
+# Add loop closure indices from an external file
+# containing query frame indices and revisited frame indices
+# The file should be a csv file with fields queryIdx and revisitedIdx
+uint8 LOAD_LOOP_INDICES = 23
+
 # Enable/Disable an external sensor
 # If enabled, sensor data are received and stored to then be processed.
 # External sensor data can be used in the local optimization or in
