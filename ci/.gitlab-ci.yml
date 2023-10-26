@@ -270,6 +270,7 @@ linux_ros_wrapping_build:
   tags: [linux, ros]
   stage: ros_wrapping_build
   needs: []
+  image: gitlab.kitware.com:4567/keu-computervision/slam:ros1_noetic
   cache:
     - key: "ros-build"
       paths:
@@ -293,14 +294,6 @@ linux_ros_wrapping_build:
     - source /opt/ros/noetic/setup.bash
     - catkin_make
       $cmake_option_build_type
-      $slam_cmake_option_Eigen_DIR
-      $slam_cmake_option_Eigen_INCLUDE_DIR
-      $slam_cmake_option_glog_DIR
-      $slam_cmake_option_Ceres_DIR
-      $slam_cmake_option_nanoflann_DIR
-      $slam_cmake_option_Boost_DIR
-      $slam_cmake_option_PCL_DIR
-      $slam_cmake_option_g2o_DIR
       -j 4
 
 # ------------------------------------------------------------------------------
@@ -312,6 +305,7 @@ linux_ros_wrapping_build:
   stage: ros_test
   tags: [linux, ros]
   needs: [linux_ros_wrapping_build]
+  image: gitlab.kitware.com:4567/keu-computervision/slam:ros1_noetic
   variables:
     GIT_STRATEGY: none
   cache:
@@ -358,7 +352,8 @@ hack:
 .ros_test:
   stage: ros_test
   tags: [linux, ros]
-  needs: [linux_ros_wrapping_build, hack]
+  needs: [linux_ros_wrapping_build]
+  image: gitlab.kitware.com:4567/keu-computervision/slam:ros1_noetic
   variables:
     GIT_STRATEGY: none
   cache:
