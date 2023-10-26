@@ -113,6 +113,16 @@ void SlamControlPanel::CreateLayout()
                               "of the rotation matrix).");
   connect(calibrateButton, &QPushButton::clicked, this, &SlamControlPanel::Calibrate);
 
+  // Add loop closure indices from external file
+  auto loadLoopIndicesButton = new QPushButton;
+  loadLoopIndicesButton->setText("Load loop indices");
+  loadLoopIndicesButton->setToolTip("Load loop closure indices\n"
+                                    "from an external file and add \n"
+                                    "them into LoopDetections vector.\n"
+                                    "The file must contain the fields\n"
+                                    "<queryIdx, revistedIdx>");
+  connect(loadLoopIndicesButton, &QPushButton::clicked, this, &SlamControlPanel::LoadLoopIndices);
+
   // Create the whole command space
   auto commandLayout = new QVBoxLayout;
   commandLayout->addWidget(resetStateButton);
@@ -123,6 +133,7 @@ void SlamControlPanel::CreateLayout()
   commandLayout->addWidget(saveTrajButton);
   commandLayout->addWidget(saveMapsButton);
   commandLayout->addWidget(calibrateButton);
+  commandLayout->addWidget(loadLoopIndicesButton);
 
   auto commandBox = new QGroupBox;
   commandBox->setLayout(commandLayout);
@@ -244,6 +255,13 @@ void SlamControlPanel::Calibrate()
 {
   QString filePath = QFileDialog::getOpenFileName(this, tr("Open File"), "/home", tr("Trajectory files (*.csv)"));
   this->SendCommand(lidar_slam::SlamCommand::CALIBRATE_WITH_POSES, filePath.toStdString());
+}
+
+//----------------------------------------------------------------------------
+void SlamControlPanel::LoadLoopIndices()
+{
+  QString filePath = QFileDialog::getOpenFileName(this, tr("Open File"), "/home", tr("Loop closure indices file (*.csv)"));
+  this->SendCommand(lidar_slam::SlamCommand::LOAD_LOOP_INDICES, filePath.toStdString());
 }
 
 //----------------------------------------------------------------------------
