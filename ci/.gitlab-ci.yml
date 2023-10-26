@@ -65,7 +65,6 @@ clean_superbuild:
       when: manual
   script:
     - cmake -E remove_directory $build_dir
-    - cmake -E make_directory $build_dir
 
 # Build superbuild
 .build_superbuild:
@@ -79,15 +78,18 @@ clean_superbuild:
     - if: $CI_COMMIT_BRANCH == "master"
       when: manual
   script:
+    - cmake -E make_directory $build_dir
     - cd $build_dir
     - echo "cmake ${CI_PROJECT_DIR}/slam-superbuild
       $cmake_option_GENERATOR
       $cmake_option_build_type
-      -DCMAKE_INSTALL_PREFIX=$SB_deps_install_path"
+      -DCMAKE_INSTALL_PREFIX=$SB_deps_install_path
+      -DBUILD_SLAM_SHARED_LIBS=OFF"
     - cmake "${CI_PROJECT_DIR}/slam-superbuild"
       $cmake_option_GENERATOR
       $cmake_option_build_type
       -DCMAKE_INSTALL_PREFIX="$SB_deps_install_path"
+      -DBUILD_SLAM_SHARED_LIBS=OFF
     - cmake --build . -j 4
 
 # Build superbuild on Windows
@@ -168,7 +170,7 @@ linux_slam_lib:
   extends:
     - .slam_lib
   variables:
-    slam_cmake_option_PCL_DIR: "-DPCL_DIR=${SB_deps_install_path}/share/pcl-1.10"
+    slam_cmake_option_PCL_DIR: "-DPCL_DIR=${SB_deps_install_path}/share/pcl-1.13"
 
 # Build core LidarSlam lib on Windows
 windows_slam_lib:
