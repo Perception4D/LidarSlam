@@ -112,6 +112,12 @@ public Q_SLOTS:
    */
   void LoadLoopIndices();
 
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Send an OPTIMIZE_GRAPH command to the slam node.
+   */
+  void OptimizeGraph();
+
 private:
   //----------------------------------------------------------------------------
   /*!

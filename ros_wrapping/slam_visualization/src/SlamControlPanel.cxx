@@ -123,6 +123,14 @@ void SlamControlPanel::CreateLayout()
                                     "<queryIdx, revistedIdx>");
   connect(loadLoopIndicesButton, &QPushButton::clicked, this, &SlamControlPanel::LoadLoopIndices);
 
+  // Optimize graph
+  auto optimizeGraphButton = new QPushButton;
+  optimizeGraphButton->setText("Optimize graph");
+  optimizeGraphButton->setToolTip("Launch pose graph optimization\n"
+                                  "The Logging timeout needs to be\n"
+                                  "set appropriately.");
+  connect(optimizeGraphButton, &QPushButton::clicked, this, &SlamControlPanel::OptimizeGraph);
+
   // Create the whole command space
   auto commandLayout = new QVBoxLayout;
   commandLayout->addWidget(resetStateButton);
@@ -134,6 +142,7 @@ void SlamControlPanel::CreateLayout()
   commandLayout->addWidget(saveMapsButton);
   commandLayout->addWidget(calibrateButton);
   commandLayout->addWidget(loadLoopIndicesButton);
+  commandLayout->addWidget(optimizeGraphButton);
 
   auto commandBox = new QGroupBox;
   commandBox->setLayout(commandLayout);
@@ -262,6 +271,12 @@ void SlamControlPanel::LoadLoopIndices()
 {
   QString filePath = QFileDialog::getOpenFileName(this, tr("Open File"), "/home", tr("Loop closure indices file (*.csv)"));
   this->SendCommand(lidar_slam::SlamCommand::LOAD_LOOP_INDICES, filePath.toStdString());
+}
+
+//----------------------------------------------------------------------------
+void SlamControlPanel::OptimizeGraph()
+{
+  this->SendCommand(lidar_slam::SlamCommand::OPTIMIZE_GRAPH);
 }
 
 //----------------------------------------------------------------------------
