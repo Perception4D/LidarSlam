@@ -1333,7 +1333,7 @@ void LidarSlamNode::SetSlamParameters()
   this->LidarSlam.SetBaseFrameId(this->TrackingFrameId);
 
   // Keypoint extractors
-  auto InitKeypointsExtractor = [this](auto& ke, const std::string& prefix)
+  auto initKeypointsExtractor = [this](auto& ke, const std::string& prefix)
   {
     #define SetKeypointsExtractorParam(type, rosParam, keParam) {type val; if (this->PrivNh.getParam(rosParam, val)) ke->Set##keParam(val);}
     SetKeypointsExtractorParam(int,   "slam/n_threads", NbThreads)
@@ -1381,11 +1381,11 @@ void LidarSlamNode::SetSlamParameters()
 
       // Change default parameters using ROS parameter server
       std::string prefix = "slam/ke/device_" + deviceId + "/";
-      InitKeypointsExtractor(ke, prefix);
+      initKeypointsExtractor(ke, prefix);
 
       // Add extractor to SLAM
       this->LidarSlam.SetKeyPointsExtractor(ke, deviceId);
-      ROS_INFO_STREAM("Adding keypoint extractor for LiDAR device " << deviceId);
+      ROS_INFO_STREAM("Adding keypoints extractor for LiDAR device " << deviceId);
     }
   }
   // Single LiDAR device
@@ -1393,12 +1393,9 @@ void LidarSlamNode::SetSlamParameters()
   {
     ROS_INFO_STREAM("Single LiDAR device setup");
     auto ke = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
-    InitKeypointsExtractor(ke, "slam/ke/");
-
-    std::string deviceId = "mainLidar";
-    this->PrivNh.getParam("slam/ke/device_id", deviceId);
-    this->LidarSlam.SetKeyPointsExtractor(ke, deviceId);
-    ROS_INFO_STREAM("Adding keypoint extractor for LiDAR device " << deviceId);
+    initKeypointsExtractor(ke, "slam/ke/");
+    this->LidarSlam.SetKeyPointsExtractor(ke);
+    ROS_INFO_STREAM("Adding keypoints extractor");
   }
 
   // Ego motion

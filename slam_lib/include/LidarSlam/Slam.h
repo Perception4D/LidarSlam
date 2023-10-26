@@ -477,13 +477,13 @@ public:
 
   // Get/Set a specific keypoints extractor
   // NOTE: If no keypoint extractor exists for the requested deviceId, the returned pointer is null.
-  KeypointExtractorPtr GetKeyPointsExtractor(std::string deviceId = "mainLidar" ) const;
-  void SetKeyPointsExtractor(KeypointExtractorPtr extractor, std::string deviceId = "mainLidar");
+  KeypointExtractorPtr GetKeyPointsExtractor(const std::string& deviceId = "mainLidar" ) const;
+  void SetKeyPointsExtractor(KeypointExtractorPtr extractor, const std::string& deviceId = "mainLidar");
 
   // Get/Set a specific base to Lidar offset
   // NOTE: If no base to lidar offset exists for the requested deviceId, the returned transform is identity.
-  Eigen::Isometry3d GetBaseToLidarOffset(std::string deviceId = "mainLidar") const;
-  void SetBaseToLidarOffset(const Eigen::Isometry3d& transform, std::string deviceId = "mainLidar");
+  Eigen::Isometry3d GetBaseToLidarOffset(const std::string& deviceId = "mainLidar") const;
+  void SetBaseToLidarOffset(const Eigen::Isometry3d& transform, const std::string& deviceId = "mainLidar");
 
   // Set the keypoint types to use
   void EnableKeypointType(Keypoint k, bool enabled = true);

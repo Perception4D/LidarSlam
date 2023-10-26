@@ -1319,25 +1319,20 @@ void Slam::ExtractKeypoints()
 
     // Get keypoints extractor to use for this LiDAR device
     std::string lidarDevice = frame->header.frame_id;
+
     // Check if KE exists
-    if (!this->KeyPointsExtractors.count(lidarDevice))
+    if (this->KeyPointsExtractors.empty() ||
+        (this->KeyPointsExtractors.size() > 1 &&
+         !this->KeyPointsExtractors.count(lidarDevice)))
     {
-      // If KE does not exist but we are only using a single KE, use default one
-      if (this->KeyPointsExtractors.size() == 1)
-      {
-        PRINT_WARNING("Input frame comes from LiDAR device " << lidarDevice
-                    << " but no keypoints extractor has been set for this device : using default extractor for the device.");
-        lidarDevice = "mainLidar";
-      }
-      // Otherwise ignore frame
-      else
-      {
-        PRINT_ERROR("Input frame comes from LiDAR device " << lidarDevice
-                    << " but no keypoints extractor has been set for this device : ignoring frame.");
-        continue;
-      }
+      PRINT_ERROR("Input frame comes from LiDAR device " << lidarDevice
+                  << " but no keypoints extractor has been set for this device : ignoring frame.");
+      continue;
     }
-    KeypointExtractorPtr& ke = this->KeyPointsExtractors[lidarDevice];
+    KeypointExtractorPtr& ke = this->KeyPointsExtractors.size() == 1 ?
+                               this->KeyPointsExtractors.begin()->second :
+                               this->KeyPointsExtractors[lidarDevice];
+
     ke->Enable(this->UsableKeypoints);
     // Extract keypoints from this frame
     ke->ComputeKeyPoints(frame);
@@ -3648,21 +3643,25 @@ void Slam::SetKeyPointsExtractors(const std::map<std::string, KeypointExtractorP
 }
 
 //-----------------------------------------------------------------------------
-Slam::KeypointExtractorPtr Slam::GetKeyPointsExtractor(std::string deviceId) const
+Slam::KeypointExtractorPtr Slam::GetKeyPointsExtractor(const std::string& deviceId) const
 {
-  return this->KeyPointsExtractors.count(deviceId) ? this->KeyPointsExtractors.at(deviceId) : KeypointExtractorPtr();
+  return this->KeyPointsExtractors.count(deviceId) ?
+         this->KeyPointsExtractors.at(deviceId) :
+         KeypointExtractorPtr();
 }
-void Slam::SetKeyPointsExtractor(KeypointExtractorPtr extractor, std::string deviceId)
+void Slam::SetKeyPointsExtractor(KeypointExtractorPtr extractor, const std::string& deviceId)
 {
   this->KeyPointsExtractors[deviceId] = extractor;
 }
 
 //-----------------------------------------------------------------------------
-Eigen::Isometry3d Slam::GetBaseToLidarOffset(std::string deviceId) const
+Eigen::Isometry3d Slam::GetBaseToLidarOffset(const std::string& deviceId) const
 {
-  return this->BaseToLidarOffsets.count(deviceId) ? this->BaseToLidarOffsets.at(deviceId) : Eigen::UnalignedIsometry3d::Identity();
+  return this->BaseToLidarOffsets.count(deviceId) ?
+         this->BaseToLidarOffsets.at(deviceId) :
+         Eigen::UnalignedIsometry3d::Identity();
 }
-void Slam::SetBaseToLidarOffset(const Eigen::Isometry3d& transform, std::string deviceId)
+void Slam::SetBaseToLidarOffset(const Eigen::Isometry3d& transform, const std::string& deviceId)
 {
   this->BaseToLidarOffsets[deviceId] = transform;
 }
