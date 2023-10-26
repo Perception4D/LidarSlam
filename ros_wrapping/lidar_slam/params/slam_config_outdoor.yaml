@@ -144,6 +144,17 @@ graph:
     landmark: false    # [bool] to decide whether or not to add landmark constraints into pose graph
     gps: false         # [bool] to decide whether or not to add GPS constraints into pose graph
     ext_pose: false    # [bool] to decide whether or not to add external pose constraints into pose graph
+  # Loop closure parameters
+  loop_closure:
+    query_map_start_range: -15.0      # [m] Query sub map is build with frames in [frame + start range, frame + end range]
+    query_map_end_range: 15.0         # [m] Query sub map is build with frames in [frame + start range, frame + end range]
+    revisited_map_start_range: -15.0  # [m] Revisited sub map is build with frames in [frame + start range, frame + end range]
+    revisited_map_end_range: 15.0     # [m] Revisited sub map is build with frames in [frame + start range, frame + end range]
+    enable_offset: false              # [bool] To allow to add an offset to pose prior when two frames of loop closure are too far.
+    use_submap: true                  # [bool] Enable the registration between two sub maps instead of registering a single frame to a sub map.
+    # Optimization
+    ICP_max_iter: 100                 # [iterations]Number of ICP-optim iterations (building ICP matches then optimizing them) to perform.
+    LM_max_iter: 100                  # [iterations]Max number of iterations of the Levenberg-Marquardt optimizer to solve the ICP problem.
 
 # Logging parameters
 logging:

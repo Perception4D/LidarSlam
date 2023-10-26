@@ -126,7 +126,8 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
 
   if (this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS) ||
       this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LANDMARK) ||
-      this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE))
+      this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE) ||
+      this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE))
   {
     initPublisher(PGO_PATH, "pgo_slam_path", nav_msgs::Path, "graph/publish_path", false, 1, true);
   }
@@ -1022,10 +1023,12 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
     {
       if ((!this->UseExtSensor[LidarSlam::ExternalSensor::GPS] &&
            !this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] &&
-           !this->UseExtSensor[LidarSlam::ExternalSensor::POSE]) ||
+           !this->UseExtSensor[LidarSlam::ExternalSensor::POSE]) &&
+           !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE) ||
            this->LidarSlam.GetSensorMaxMeasures() < 2 || this->LidarSlam.GetLoggingTimeout() < 0.2)
       {
-        ROS_ERROR_STREAM("Cannot optimize pose graph as sensor info logging has not been enabled. "
+        ROS_ERROR_STREAM("Cannot optimize pose graph as sensor info logging has not been enabled "
+                         "and loop closure constraint is disabled."
                          "Please make sure that one external sensor has been enabled "
                          "and that the external sensor and 'logging/timeout'"
                          "private parameters are set to convenient values.");
@@ -1531,6 +1534,16 @@ void LidarSlamNode::SetSlamParameters()
   enablePGOConstraint(LidarSlam::PGOConstraint::LANDMARK, LidarSlam::ExternalSensor::LANDMARK_DETECTOR);
   enablePGOConstraint(LidarSlam::PGOConstraint::GPS,      LidarSlam::ExternalSensor::GPS);
   enablePGOConstraint(LidarSlam::PGOConstraint::EXT_POSE, LidarSlam::ExternalSensor::POSE);
+
+  // Set loop closure parameters
+  SetSlamParam(double, "graph/loop_closure/query_map_start_range",     LoopQueryMapStartRange)
+  SetSlamParam(double, "graph/loop_closure/query_map_end_range",       LoopQueryMapEndRange)
+  SetSlamParam(double, "graph/loop_closure/revisited_map_start_range", LoopRevisitedMapStartRange)
+  SetSlamParam(double, "graph/loop_closure/revisited_map_end_range",   LoopRevisitedMapEndRange)
+  SetSlamParam(bool,   "graph/loop_closure/enable_offset",             LoopEnableOffset)
+  SetSlamParam(bool,   "graph/loop_closure/use_submap",                LoopICPWithSubmap)
+  SetSlamParam(int,    "graph/loop_closure/ICP_max_iter",              LoopICPMaxIter)
+  SetSlamParam(int,    "graph/loop_closure/LM_max_iter",               LoopLMMaxIter)
 
   // Confidence estimators
   // Overlap
