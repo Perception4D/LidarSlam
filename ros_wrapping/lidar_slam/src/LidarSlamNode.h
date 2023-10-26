@@ -33,6 +33,7 @@
 #include <apriltag_ros/AprilTagDetectionArray.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <std_msgs/Float64.h>
 
 // SLAM
 #include <LidarSlam/Slam.h>
@@ -82,6 +83,14 @@ public:
    * @param[in] msg Converted GPS pose with its associated covariance.
    */
   void GpsCallback(const nav_msgs::Odometry& msg);
+
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief         Optional wheel odometer callback, accumulating poses.
+   * @param[in] msg Wheel odometer distance measurement.
+   */
+  void WheelOdomCallback(const std_msgs::Float64& msg);
 
   //----------------------------------------------------------------------------
   /*!
@@ -246,8 +255,9 @@ protected:
   std::string OdometryFrameId = "odom";       ///< Frame in which SLAM odometry and maps are expressed.
   std::string TrackingFrameId = "base_link";  ///< Frame to track (ensure a valid TF tree is published).
   std::string MainLidarId;
-  std::string GpsFrameId = "GPS"; ///< Frame to represent GPS positions.
+  std::string GpsFrameId = "GPS";             ///< Frame to represent GPS positions.
   ros::Time GpsLastTime;
+  std::string WheelFrameId = "wheel";         ///< Frame of the wheel
   tf2_ros::Buffer TfBuffer;
   tf2_ros::TransformListener TfListener;
   tf2_ros::TransformBroadcaster TfBroadcaster;
@@ -261,15 +271,16 @@ protected:
   // Booleans to select which sensor to activate
   // If sensor enabled, data are received and stored
   // External sensor data can be used in local optimization or in postprocess pose graph optimization
-  std::unordered_map<LidarSlam::ExternalSensor, bool> UseExtSensor = {{LidarSlam::ExternalSensor::GPS,               false},
+  std::unordered_map<LidarSlam::ExternalSensor, bool> UseExtSensor = {{LidarSlam::ExternalSensor::GPS, false},
                                                                       {LidarSlam::ExternalSensor::LANDMARK_DETECTOR, false},
-                                                                      {LidarSlam::ExternalSensor::POSE,              false},
-                                                                      {LidarSlam::ExternalSensor::CAMERA,            false}};
+                                                                      {LidarSlam::ExternalSensor::POSE, false},
+                                                                      {LidarSlam::ExternalSensor::CAMERA, false},
+                                                                      {LidarSlam::ExternalSensor::WHEEL_ODOM, false}};
 
-  // If lidar time contained in the header is not POSIX
-  // The offset between network reception time
-  // and Lidar time is computed
-  bool LidarTimePosix = true;
+  // Choose whether to use the time coming from the sensors' messages header
+  // or the time of the message reception to synchronize the sensors
+  // It is always better to use the times provided by the sensors themselves when possible.
+  bool UseHeaderTime = true;
   // Offset to apply to external sensors to get lidar time
   float SensorTimeOffset = 0.;
 
@@ -297,6 +308,9 @@ protected:
   // External poses
   ros::Subscriber ExtPoseSub;
   std::string ExtPoseFrameId;
+
+  // Wheel encoder
+  ros::Subscriber WheelOdomSub;
 };
 
 #endif // LIDAR_SLAM_NODE_H

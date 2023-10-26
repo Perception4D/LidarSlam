@@ -598,9 +598,17 @@ void Slam::AddFrames(const std::vector<PointCloud::Ptr>& frames)
 //-----------------------------------------------------------------------------
 void Slam::ComputeSensorConstraints()
 {
-  if (this->WheelOdomManager && this->WheelOdomManager->CanBeUsedLocally() &&
-      this->WheelOdomManager->ComputeConstraint(this->CurrentTime))
-    PRINT_VERBOSE(3, "Wheel odometry constraint added")
+  if (this->WheelOdomManager && this->WheelOdomManager->CanBeUsedLocally())
+  {
+    if (!this->LogStates.empty())
+    {
+      if (this->WheelOdomRelative || !this->WheelOdomManager->IsInitialized())
+        this->WheelOdomManager->SetReference(this->LogStates.back().Isometry,
+                                             this->LogStates.back().Time);
+      if (this->WheelOdomManager->ComputeConstraint(this->CurrentTime))
+        PRINT_VERBOSE(3, "Wheel odometry constraint added")
+    }
+  }
   if (this->GravityManager && this->GravityManager->CanBeUsedLocally() &&
       this->GravityManager->ComputeConstraint(this->CurrentTime))
     PRINT_VERBOSE(3, "IMU gravity constraint added")
@@ -3378,20 +3386,62 @@ void Slam::SetWheelOdomWeight(double weight)
 }
 
 //-----------------------------------------------------------------------------
-bool Slam::GetWheelOdomRelative() const
+Eigen::Isometry3d Slam::GetWheelOdomCalibration() const
 {
   if(this->WheelOdomManager)
-    return this->WheelOdomManager->GetRelative();
-  PRINT_ERROR("Wheel odometer has not been set : can't get wheel odom relative boolean")
-  return false;
+    return this->WheelOdomManager->GetCalibration();
+  PRINT_ERROR("Wheel odometer has not been set : can't get wheel odom calibration")
+  return Eigen::Isometry3d::Identity();
 }
 
 //-----------------------------------------------------------------------------
-void Slam::SetWheelOdomRelative(bool isRelative)
+void Slam::SetWheelOdomCalibration(const Eigen::Isometry3d& calib)
 {
-  if(!this->WheelOdomManager)
+  if (!this->WheelOdomManager)
     this->InitWheelOdom();
-  this->WheelOdomManager->SetRelative(isRelative);
+  this->WheelOdomManager->SetCalibration(calib);
+}
+
+//-----------------------------------------------------------------------------
+float Slam::GetWheelOdomSaturationDistance() const
+{
+  if (this->WheelOdomManager)
+    return this->WheelOdomManager->GetSaturationDistance();
+  PRINT_ERROR("Wheel odometer has not been set : can't get saturation distance")
+  return -1.;
+}
+
+//-----------------------------------------------------------------------------
+void Slam::SetWheelOdomSaturationDistance(float dist)
+{
+  if (!this->WheelOdomManager)
+    this->InitWheelOdom();
+  this->WheelOdomManager->SetSaturationDistance(dist);
+}
+
+//-----------------------------------------------------------------------------
+Eigen::Vector3d Slam::GetWheelOdomReference() const
+{
+  if (this->WheelOdomManager)
+    return this->WheelOdomManager->GetRefPose().translation();
+  PRINT_ERROR("Wheel odometer has not been set : can't get reference")
+  return Eigen::Vector3d::Zero();
+}
+
+//-----------------------------------------------------------------------------
+void Slam::SetWheelOdomReference(const Eigen::Vector3d& ref)
+{
+  if (!this->WheelOdomManager)
+    this->InitWheelOdom();
+  this->WheelOdomManager->SetReference(ref);
+}
+
+//-----------------------------------------------------------------------------
+bool Slam::WheelOdomCanBeUsedLocally() const
+{
+  if (!this->WheelOdomManager)
+    return false;
+  return this->WheelOdomManager->CanBeUsedLocally();
 }
 
 // IMU gravity

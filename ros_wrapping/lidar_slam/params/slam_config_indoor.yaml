@@ -6,7 +6,7 @@
 odometry_frame: "odom"       # Frame in which SLAM odometry and maps are expressed (default: odom)
 tracking_frame: "base_link"  # Frame to track (ensure a valid TF tree is published to link input pointcloud frame_id) (default: base_link)
 
-lidars_nb: 1      # Number of lidars used. When various lidars used, keypoints extraction parameters need to be specify for each sensor.
+lidars_nb: 1     # Number of lidars used. When various lidars used, keypoints extraction parameters need to be specify for each sensor.
 frames_mode: 1   # The frames collection mode. 0: wait a specific time to collect frames; 1: wait for all lidar devices
 frames_waiting_time: 0.2 # Time to wait to receive frames (second)
 # Input LiDAR frames topics, expected as sensor_msgs/PointCloud2 messages with the following fields:
@@ -15,7 +15,7 @@ frames_waiting_time: 0.2 # Time to wait to receive frames (second)
 # - intensity (float): intensity/reflectivity of the point
 # - laser_id (uint16): numeric identifier of the laser ring that shot this point. The lowest/bottom laser ring should be 0, and it should increase upward.
 # - label (uint8): optional input, not yet used.
-input: "lidar_points"  # single LiDAR input (default: lidar_points)
+input: "lidar_points"  # Single LiDAR input (default: lidar_points)
 # input:  # multi LiDAR inputs
 #   - "lidar_points_1"  # Main topic: SLAM will be run each time a non-empty frame is received on this topic
 #   - "lidar_points_2"  # Secondary topics: non-empty frames will be buffered and added to main frame for multi-LiDAR SLAM.
@@ -73,13 +73,11 @@ external_sensors:
                       # and between two measures to interpolate
                       # /!\ For landmarks this parameter is also used to define a maximum time without seeing a tag
                       # to reset the absolute pose with new observation (only in the case no poses were initially needed).
-  lidar_is_posix: true # lidar timestamp in data header is POSIX
-                       # as we expect external sensor timestamps to be POSIX, we can directly
-                       # use header timestamp to synchronize data.
-                       # If not, we use message reception time as reference.
-  time_offset: 0.      # [s] Offset to apply on external sensor time data to get lidar time
+  use_header_time: false # [bool] Use the time from the header messages
+                         # If false, ROS time from message reception is used
+  time_offset: 0.        # [s] Offset to apply on external sensor time data to get lidar time
   calibration:
-    planar_trajectory: false # Notify that the trajectory to use to calibrate
+    planar_trajectory: false # [bool] Notify that the trajectory to use to calibrate
                              # is planar so a degree of liberty is missing
   # Optional GPS position use (if 'gps/enable'=true), subscribing to Odometry msg on 'gps_odom' topic.
   # It allows to estimate calibration between GPS and SLAM trajectories,
@@ -88,18 +86,18 @@ external_sensors:
 
     # Optional GPS positions use to calibrate output SLAM pose to world coordinates and/or optimize SLAM trajectory.
     # If true, subscribes to topic 'gps_odom' (nav_msgs/Odometry), and logs GPS positions during 'slam/logging_timeout' seconds.
-    # (WARNING Can be overridden launch files with 'gps' arg).
+    # (WARNING Can be overridden in launch files with 'gps' arg).
     enable: false
 
   # Optional landmark detector (e.g. camera) use
   landmark_detector:
     enable: false            # [bool] To receive and use tags
-    weight: 0.               # Weight to apply to one landmark constraint in the local optimization
+    weight: 0.               # [float] Weight to apply to one landmark constraint in the local optimization
                              # 0 disables the feature
                              # It is to be compared to each geometric constraint defined by a keypoint match
     position_only: true      # [bool] To decide whether to use the whole tag pose (orientation + position)
                              # in the optimization or only the position
-    saturation_distance: 0.5  # [m] Saturation distance beyond which the landmark constraint
+    saturation_distance: 0.5 # [m] Saturation distance beyond which the landmark constraint
                              # is not taken into account in the local optimization
     # Two constraints are usable: the relative constraint and the absolute constraint
     # The absolute constraint requires loading the landmarks absolute pose in the global frame initially
@@ -113,28 +111,40 @@ external_sensors:
                              # id,x,y,z,roll,pitch,yaw,cov0,[...],cov35
                              # /!\ The order of the elements matters.
     publish_tags: false      # [bool] To publish the tags as tf
+
   camera:
     enable: false            # [bool] To receive and use RGB images from a camera
-    weight: 0.               # Weight to apply to one pixel match constraint in the local optimization
+    weight: 0.               # [float] Weight to apply to one pixel match constraint in the local optimization
                              # 0 disables the feature
                              # It is to be compared to each geometric constraint defined by a keypoint match
-    saturation_distance: 10. # Pixelic distance threshold to discard a pixel match from optical flow
+    saturation_distance: 10. # [pix] Pixelic distance threshold to discard a pixel match from optical flow
+
   external_poses:
     enable: false            # [bool] To receive and use the external poses in SLAM (local opt or pose graph opt)
-    weight: 0.               # Weight to apply to the constraint built on external poses
+    weight: 0.               # [float] Weight to apply to the constraint built on external poses
+
+  # Wheel encoder appliable for ground wheels for translation
+  # only motion or if relative mode is ON or with cable for any transformation
+  wheel_encoder:
+    enable: false            # [bool] To receive and use a wheel encoder (distance measurement)
+    relative: false          # [bool] To set the constraint from reference or from previous frame
+    weight: 0.               # [float] Weight to apply onto the wheel encoder constraint in the front end optimization
+    saturation_distance: 0.5 # [m] Spatial distance threshold to discard the measurement in SLAM optimization
+    reference: [0., 0., 0.]  # [m, m, m] Reference point for the odometry measure
+                             # Do not set if relative mode is true, [0.,0.,0.] deactivates the feature
 
 graph:
-  g2o_file_name: ""    # File where to store the g2o log info (viewable with g2o_viewer tool)
-  publish_path: false  # If true, publish optimized SLAM trajectory to 'pgo_slam_path' latched topic
-  covariance_scale: 1. # Scale to apply to SLAM pose covariances in pose graph optimization
-  iterations_nb: 100   # Number of iterations to perform to optimize the graph
+  g2o_file_name: ""    # [string] File where to store the g2o log info (viewable with g2o_viewer tool)
+  publish_path: false  # [bool] If true, publish optimized SLAM trajectory to 'pgo_slam_path' latched topic
+  covariance_scale: 1. # [float] Scale to apply to SLAM pose covariances in pose graph optimization
+  iterations_nb: 100   # [iterations] Number of iterations to perform to optimize the graph
 
 # SLAM parameters (see Slam.h for description). Comment parameter to get default value.
 slam:
 
   # General parameters
-  n_threads: 4      # Max number of threads to use for parallel processing (default: 1)
-  2d_mode: false    # Optimize only 2D pose (X, Y, rZ) of tracking_frame relatively to odometry_frame.
+  n_threads: 1      # [threads] Max number of threads to use for parallel processing (default: 1)
+  2d_mode: false    # [bool] Optimize only 2D pose (X, Y, rZ) of tracking_frame relatively to odometry_frame.
 
   # How to estimate Ego-Motion (approximate relative motion since last frame).
   # The ego-motion step aims to give a fast and approximate initialization of new
@@ -210,8 +220,7 @@ slam:
 
     # Decide whether to log all frames or only keyframes
     # /!\ All log frames are used in post graph processing
-    only_keyframes: false
-
+    only_keyframes: false # [bool]
 
   # ICP and LM parameters for Ego-Motion registration step (used only if ego_motion is 2 or 3)
   ego_motion_registration:
@@ -223,12 +232,12 @@ slam:
     edge_max_model_error: 0.1       # [m] Max RMSE allowed between neighborhood and its fitted line model to create a point to line constraint.
     # Point to plane match
     plane_nb_neighbors: 5           # [>=3] Number of plane neighbors to extract to approximate the corresponding plane model.
-    planarity_threshold: 0.04       # Min ratio between the 2 highest eigen values of the plane neighborhood to create a point to plane constraint :
-                                    # Contained in [0, 1]. OK if l1/l2 > planarity_threshold (with l2>l1>l0)
+    planarity_threshold: 0.04       # [0-1] Min ratio between the 2 highest eigen values of the plane neighborhood to create a point to plane constraint :
+                                    # OK if l1/l2 > planarity_threshold (with l2>l1>l0)
     plane_max_model_error: 0.1      # [m] Max RMSE allowed between neighborhood and its fitted plane model to create a point to plane constraint.
     # Optimization
-    ICP_max_iter: 4                 # Number of ICP-optim iterations (building ICP matches then optimizing them) to perform.
-    LM_max_iter: 15                 # Max number of iterations of the Levenberg-Marquardt optimizer to solve the ICP problem.
+    ICP_max_iter: 4                 # [iterations] Number of ICP-optim iterations (building ICP matches then optimizing them) to perform.
+    LM_max_iter: 15                 # [iterations] Max number of iterations of the Levenberg-Marquardt optimizer to solve the ICP problem.
     init_saturation_distance: 5.    # [m] Initial distance beyond which residuals are saturated using Tukey loss to limit outlier contribution.
     final_saturation_distance: 1.   # [m] Final distance beyond which residuals are saturated using Tukey loss to limit outlier contribution.
   # ICP and LM parameters for Localization step
@@ -241,14 +250,14 @@ slam:
     edge_max_model_error: 0.1       # [m] Max RMSE allowed between neighborhood and its fitted line model to create a point to line constraint.
     # Point to plane match
     plane_nb_neighbors: 7           # [>=3] Number of plane neighbors to extract to approximate the corresponding plane model.
-    planarity_threshold: 0.04       # Min ratio between the 2 highest eigen values of the plane neighborhood to create a point to plane constraint :
-                                    # Contained in [0, 1]. OK if l1/l2 > planarity_threshold (with l2>l1>l0)
+    planarity_threshold: 0.04       # [0-1] Min ratio between the 2 highest eigen values of the plane neighborhood to create a point to plane constraint :
+                                    # OK if l1/l2 > planarity_threshold (with l2>l1>l0)
     plane_max_model_error: 0.1      # [m] Max RMSE allowed between neighborhood and its fitted plane model to create a point to plane constraint.
     # Point to blob match
     blob_nb_neighbors: 10           # [>=4] Number of blob neighbors to extract to approximate the corresponding ellipsoid model.
     # Optimization
-    ICP_max_iter: 3                 # Number of ICP-optim iterations (building ICP matches then optimizing them) to perform.
-    LM_max_iter: 15                 # Max number of iterations of the Levenberg-Marquardt optimizer to solve the ICP problem.
+    ICP_max_iter: 3                 # [iterations] Number of ICP-optim iterations (building ICP matches then optimizing them) to perform.
+    LM_max_iter: 15                 # [iterations] Max number of iterations of the Levenberg-Marquardt optimizer to solve the ICP problem.
     init_saturation_distance: 2.    # [m] Initial distance beyond which residuals are saturated using Tukey loss to limit outlier contribution.
     final_saturation_distance: 0.5  # [m] Final distance beyond which residuals are saturated using Tukey loss to limit outlier contribution.
 
@@ -261,11 +270,11 @@ slam:
 
   # Confidence estimators on pose output
   confidence:
-    window: 10                   # Nb of frames to define a window to denoise and derivate values
+    window: 10                   # [frames] Nb of frames to define a window to denoise and derivate values
     overlap:                     # Estimate how much the current scan is well registered on the current maps.
       sampling_ratio: 0.33       # [0-1] Ratio of points to compute overlap on to save some time.
                                  # 1 uses all points, 0.5 uses 1 point over 2, etc., 0 disables overlap computation.
-      gap_threshold: 0.04        # Maximum authorized overlap gap, a greater gap might trigger an failure detection
+      gap_threshold: 0.04        # [0-1] Maximum authorized overlap gap, a greater gap might trigger an failure detection
 
     motion_limits:               # Physical constraints on motion to check pose credibility.
       acceleration: [.inf, .inf] # [linear_acc (m/s2), angular_acc (°/s2)] Acceleration limits.
@@ -273,11 +282,11 @@ slam:
       pose:         [.inf, .inf] # [translation (m  ), orientation (°   )] Pose limits.
 
     position_error:              # Maximum error on position estimated from optimization covariance
-      threshold: 0.15            # to consider SLAM is OK. If the error is g.t. this threshold,
+      threshold: 0.15            # [m] Threshold to consider SLAM is OK. If the error is g.t. this threshold,
                                  # a failure detection might be triggered
 
     failure_detector:
-      enable: false              # Boolean to enable the failure detection
+      enable: false              # [bool] Enable the failure detection
       recovery_time: 1.          # [s] In case of failure, duration to come back in time to previous state
 
   # Keypoints maps, saved as downsampled voxel grids
@@ -299,8 +308,8 @@ slam:
     #     This makes submap extraction fast but more points might be implied in the search.
     #  1) Extract the profile of the current frame (implied voxels + direct neighboring voxels)
     #     This makes the submap extraction heavier but less points might be implied in the search.
-    #     This is generally a bit longer (<3ms) but can solve some local minima issues.
-    submap_extraction_mode: 0
+    #     This is generally a bit longer (<3ms) but can solve some local minima issues and is a bit more memory efficient.
+    submap_extraction_mode: 1
     leaf_size:
       edges: 0.2             # [m] Resolution used to downsample the edges map with a VoxelGrid filter.
       intensity_edges: 0.2   # [m] Resolution used to downsample the edges map with a VoxelGrid filter.
@@ -308,8 +317,8 @@ slam:
       blobs: 0.3             # [m] Resolution used to downsample the blobs map with a VoxelGrid filter.
     # WARNING: the leaf sizes are linked with the confidence threshold parameter
     # if they are reduced the confidence threshold may need to by reduced as well to extract enough target keypoints
-    size: 100               # [voxels] Size of the voxel grid used to store keypoints maps : n*n*n voxels.
-    resolution: 5.          # [m/voxel] Resolution of a voxel.
+    size: 100                # [voxels] Size of the voxel grid used to store keypoints maps : n*n*n voxels.
+    resolution: 5.           # [m/voxel] Resolution of a voxel.
     # The sampling modes allow to decide which point to keep when downsampling the map using a voxel grid.
     # 0) Keep the first point scanned in the voxel,
     # 1) Get the last point scanned in the voxel,
@@ -322,7 +331,7 @@ slam:
       plane: 2
       blob: 2
     decaying_threshold: -1  # [s] Time duration after which to eliminate a not fixed keypoint from the map.
-    min_frames_per_voxel: 2 # Minimum number of frames that must have reached a map voxel
+    min_frames_per_voxel: 2 # [frames] Minimum number of frames that must have reached a map voxel
                             # to consider the voxel contains a target keypoint.
                             # It is used to reject moving objects from the map
                             # WARNING: this parameter may need to be adapted to the velocity of the robot,
@@ -337,9 +346,9 @@ slam:
       intensity_edge: true
       plane: true
       blob: false
-    max_points: 1000                   # Maximum number of keypoints of each type to extract
+    max_points: 1000                   # [points] Maximum number of keypoints of each type to extract
     voxel_grid_resolution: 1           # [m/voxel] Size of a voxel to downsample the extracted keypoints
-    input_sampling_ratio: 1.           # Ratio of points from which to extract the keypoints (for computation time issues)
+    input_sampling_ratio: 1.          # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
     min_distance_to_sensor: 1.         # [m] Minimal point to sensor distance to consider a point as valid.
     max_distance_to_sensor: 200.       # [m] Maximal point to sensor distance to consider a point as valid.
     min_azimuth: 0.                    # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
@@ -366,9 +375,9 @@ slam:
     #     intensity_edge: true
     #     plane: true
     #     blob: false
-    #   max_points: 1000                   # Maximum number of keypoints of each type to extract
+    #   max_points: 1000                   # [points] Maximum number of keypoints of each type to extract
     #   voxel_grid_resolution: 0.5         # [m/voxel] Size of a voxel to downsample the extracted keypoints
-    #   input_sampling_ratio: 1.           # Ratio of points from which to extract the keypoints (for computation time issues)
+    #   input_sampling_ratio: 1.           # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
     #   min_distance_to_sensor: 1.         # [m] Minimal point to sensor distance to consider a point as valid.
     #   min_azimuth: -90                   # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
     #   max_azimuth: 90                    # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
@@ -386,9 +395,9 @@ slam:
     #     intensity_edge: true
     #     plane: true
     #     blob: false
-    #   max_points: 1000                   # Maximum number of keypoints of each type to extract
+    #   max_points: 1000                   # [points] Maximum number of keypoints of each type to extract
     #   voxel_grid_resolution: 0.5         # [m/voxel] Size of a voxel to downsample the extracted keypoints
-    #   input_sampling_ratio: 0.6          # Ratio of points from which to extract the keypoints (for computation time issues)
+    #   input_sampling_ratio: 0.6          # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
     #   min_distance_to_sensor: 1.         # [m] Minimal point to sensor distance to consider a point as valid.
     #   min_azimuth: -45                   # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
     #   max_azimuth: 45                    # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.

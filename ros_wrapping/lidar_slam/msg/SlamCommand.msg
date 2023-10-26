@@ -46,8 +46,10 @@ uint8 OPTIMIZE_GRAPH = 20
 # a pose graph optimization in a postprocess manner
 # Use 'string_arg' to tell which sensor should be activated
 # options are :
+#   * WHEEL_ENCODER : "0"
 #   * LANDMARK_DETECTOR : "2"
 #   * GPS : "3"
+#   * POSE : "4"
 #   * CAMERA : "5"
 uint8 SWITCH_SENSOR = 25
 

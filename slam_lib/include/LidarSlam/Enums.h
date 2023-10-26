@@ -196,12 +196,12 @@ enum class ExternalSensor
   nbExternalSensors
 };
 
-static const std::map<ExternalSensor, std::string> ExternalSensorNames = { {ExternalSensor::WHEEL_ODOM,        "Wheel odometer"},
+static const std::map<ExternalSensor, std::string> ExternalSensorNames = { {ExternalSensor::WHEEL_ODOM,        "wheel odometer"},
                                                                            {ExternalSensor::IMU,               "IMU"},
-                                                                           {ExternalSensor::LANDMARK_DETECTOR, "Landmark detector"},
+                                                                           {ExternalSensor::LANDMARK_DETECTOR, "landmark detector"},
                                                                            {ExternalSensor::GPS,               "GPS"},
-                                                                           {ExternalSensor::POSE,              "POSE"},
-                                                                           {ExternalSensor::CAMERA,            "CAMERA"} };
+                                                                           {ExternalSensor::POSE,              "external pose"},
+                                                                           {ExternalSensor::CAMERA,            "camera"} };
 
 //------------------------------------------------------------------------------
 //! Type of pose graph constraints
