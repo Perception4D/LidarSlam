@@ -833,6 +833,35 @@ void LidarSlamNode::ReadTags(const std::string& path)
 }
 
 //------------------------------------------------------------------------------
+void LidarSlamNode::ReadLoopIndices(const std::string& path)
+{
+  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 2, 1);
+  if (lines.empty())
+  {
+    std::list<LidarSlam::LidarState> lidarStates = this->LidarSlam.GetLogStates();
+    if (lidarStates.size() < 2)
+    {
+      ROS_WARN_STREAM("Cannot read loop closure indices file and no enough states logged, no loop closure indices will be loaded");
+      return;
+    }
+    // Use the first and the last frame indices as loop closure indices
+    LidarSlam::LoopClosure::LoopIndices loop(lidarStates.back().Index, lidarStates.front().Index, -1);
+    this->LidarSlam.AddLoopClosureIndices(loop);
+    ROS_INFO_STREAM("Loop closure indices file is empty :"
+                    <<" the last and the first states are used");
+  }
+
+  for (const auto& l : lines)
+  {
+    LidarSlam::LoopClosure::LoopIndices loop(std::stoi(l[0]), std::stoi(l[1]), -1);
+    // Add a new loop closure indices into LoopDetections
+    this->LidarSlam.AddLoopClosureIndices(loop);
+    ROS_INFO_STREAM("Query id #" << loop.QueryIdx << " Revisited id #" << loop.RevisitedIdx<< ".");
+  }
+  ROS_INFO_STREAM("Loop closure indices have been loaded successfully from: " << path);
+}
+
+//------------------------------------------------------------------------------
 void LidarSlamNode::SetPoseCallback(const geometry_msgs::PoseWithCovarianceStamped& msg)
 {
   // Get offset between Lidar SLAM ref frame (odom)

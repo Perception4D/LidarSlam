@@ -201,6 +201,14 @@ protected:
    *        /!\ order matters
    */
   std::string ReadPoses(const std::string& path);
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Helper to get and store loop closure indices
+   *        provided in a csv file.
+   *        The fields of the file must be : queryIdx, revisitedIdx
+   *        /!\ order matters
+   */
+  void ReadLoopIndices(const std::string& path);
 
   //----------------------------------------------------------------------------
   /*!
