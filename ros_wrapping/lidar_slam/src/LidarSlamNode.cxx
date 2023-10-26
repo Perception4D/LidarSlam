@@ -1385,7 +1385,7 @@ void LidarSlamNode::SetSlamParameters()
 
       // Add extractor to SLAM
       this->LidarSlam.SetKeyPointsExtractor(ke, deviceId);
-      ROS_INFO_STREAM("Adding keypoint extractor for LiDAR device " << deviceId);
+      ROS_INFO_STREAM("Adding keypoints extractor for LiDAR device " << deviceId);
     }
   }
   // Single LiDAR device
