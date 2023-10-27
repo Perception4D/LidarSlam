@@ -97,6 +97,14 @@ target_compile_definitions(LidarSlam
     ${windows_def}
 )
 
+# To allow big path on windows
+if (WIN32)
+  target_compile_options(LidarSlam
+  PRIVATE
+    "/bigobj"
+  )
+endif()
+
 # Prefer rpath over runpath to bypass LD_LIBRARY_PATH at runtime (which can be set by ROS notably)
 # See https://stackoverflow.com/questions/47117443/dynamic-linking-with-rpath-not-working-under-ubuntu-17-10/47243544#47243544
 # and https://stackoverflow.com/questions/52018092/how-to-set-rpath-and-runpath-with-gcc-ld

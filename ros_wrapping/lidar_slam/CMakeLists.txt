@@ -109,30 +109,67 @@ function(SET_SB_LIB lib_name lib_install_path)
   endif()
 endfunction()
 
-# Add path to use superbuild
-if (SUPERBUILD_INSTALL_DIR)
-  # Set dependencies installed with the superbuild
-  SET_SB_LIB(glog "${SUPERBUILD_INSTALL_DIR}/lib/cmake/glog")
-  SET_SB_LIB(Eigen3 "${SUPERBUILD_INSTALL_DIR}/share/eigen3/cmake")
-  SET_SB_LIB(Ceres "${SUPERBUILD_INSTALL_DIR}/lib/cmake/Ceres")
-  SET_SB_LIB(nanoflann "${SUPERBUILD_INSTALL_DIR}/share/nanoflann/cmake")
-  SET_SB_LIB(Boost "${SUPERBUILD_INSTALL_DIR}/lib/cmake/Boost-1.76.0")
-  if (EXISTS "${SUPERBUILD_INSTALL_DIR}/install/include/boost")
-    set(BOOST_ROOT  "${SUPERBUILD_INSTALL_DIR}/install")
-    message("BOOST_ROOT set to ${SUPERBUILD_INSTALL_DIR}/install")
+# Do the same thing as previous function but with a wildcard search
+function(SET_WILCARD_SB_LIB lib_name lib_wc_path)
+  file(GLOB lib_install_path "${lib_wc_path}*")
+  if (lib_install_path)
+    set("${lib_name}_DIR" ${lib_install_path} CACHE PATH "PATH to ${lib_name} directory")
+    message("${lib_name}_DIR set to ${lib_install_path}")
   else()
-    message("BOOST_ROOT not found in SuperBuild")
+    message("${lib_name} not found in SuperBuild")
   endif()
+endfunction()
+
+# Add path to use superbuild
+if (DEFINED SUPERBUILD_INSTALL_DIR)
+  # Set dependencies installed with the superbuild
+  # glog
+  SET_SB_LIB(glog "${SUPERBUILD_INSTALL_DIR}/lib/cmake/glog")
+  # Eigen
+  SET_SB_LIB(Eigen3 "${SUPERBUILD_INSTALL_DIR}/share/eigen3/cmake")
+  # Ceres
+  SET_SB_LIB(Ceres "${SUPERBUILD_INSTALL_DIR}/lib/cmake/Ceres")
+  # nanoflann
+  SET_SB_LIB(nanoflann "${SUPERBUILD_INSTALL_DIR}/share/nanoflann/cmake")
+  # Gtsam
   SET_SB_LIB(GTSAM "${SUPERBUILD_INSTALL_DIR}/lib/cmake/GTSAM")
+  # g2o
   SET_SB_LIB(g2o "${SUPERBUILD_INSTALL_DIR}/lib/cmake/g2o")
-  if (EXISTS "${SUPERBUILD_INSTALL_DIR}/include/pcl-1.10")
-    message(FATAL_ERROR "PCL was built within the superbuild : this would cause runtime issues so the process is aborted.
-    Rebuild the superbuild from scratch without PCL (`-DINSTALL_PCL=OFF`) and rebuild the ROS package afterwards.")
-  endif()
+  # PCL
+  SET_WILCARD_SB_LIB(PCL "${SUPERBUILD_INSTALL_DIR}/share/pcl")
+  # Boost
+  SET_WILCARD_SB_LIB(Boost "${SUPERBUILD_INSTALL_DIR}/lib/cmake/Boost")
+  if (EXISTS "${SUPERBUILD_INSTALL_DIR}/include/boost")
+    set(BOOST_ROOT "${SUPERBUILD_INSTALL_DIR}")
+    message("BOOST_ROOT set to ${SUPERBUILD_INSTALL_DIR}")
+  else ()
+    message("BOOST_ROOT not found in SuperBuild")
+  endif ()
+  # SLAM library
+  # If SLAM library should not be built in this wrapping
+  # and superbuild is ON, use the SLAM library from the superbuild
+  # by default
   if (NOT BUILD_SLAM_LIB)
     SET_SB_LIB(LidarSlam "${SUPERBUILD_INSTALL_DIR}/lib/cmake/LidarSlam")
-  endif()
-endif()
+  endif ()
+
+  # Print warnings for Boost and PCL
+  if (UNIX AND DEFINED BOOST_ROOT)
+    message(WARNING "Boost was built in the superbuild : this can cause link/runtime issues "
+                    "if other ROS package dependencies have been built with another Boost version "
+                    "(e.g. pcl_ros). If this is the case, rebuild the superbuild "
+                    "from scratch without Boost (`-DINSTALL_Boost=OFF`) and "
+                    "rebuild this package afterwards.")
+  endif ()
+  file(GLOB pcl_install_sb "${SUPERBUILD_INSTALL_DIR}/share/pcl*")
+  if (UNIX AND pcl_install_sb)
+      message(WARNING "PCL was built in the superbuild : this can cause link/runtime issues "
+                      "if other ROS package dependencies have been built with another PCL version "
+                      "(e.g. pcl_ros). If this is the case, rebuild the superbuild "
+                      "from scratch without Boost (`-DINSTALL_PCL=OFF`) and "
+                      "rebuild this package afterwards.")
+  endif ()
+endif ()
 
 ###########
 ## Build ##
