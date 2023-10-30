@@ -21,6 +21,7 @@
         - [Switch ON/OFF the process](#switch-onoff-the-process)
         - [Calibrate with external pose sensor](#calibrate-with-external-pose-sensor)
       - [Failure detection](#failure-detection)
+      - [Optional loop closure use](#optional-loop-closure-use)
   - [Optional external sensors use](#optional-external-sensors-use)
     - [Optional GPS use](#optional-gps-use)
       - [Map (GPS) / Odom (SLAM) calibration](#map-gps--odom-slam-calibration)
@@ -296,6 +297,45 @@ If this feature is disabled during recovery, the state is reset as before the re
 
 **/!\ Warning** : in recovery mode, some of the parameters are modified. Namely, the *map update mode*, the *ego-motion mode*, the *undistortion mode*, the *maximum number of ICP iterations*, the *maximum distance between nearest neighbors* and the *initial saturation distance* are set to recovery values.
  If you change these parameters during the recovery mode, they will be reset as **before** the recovery mode after relocalization.
+
+#### Optional loop closure use
+
+Loop closure consists in correcting the whole SLAM trajectory when some place is revisited after a period of time. We can use this information to reduce the mapping noise.
+
+To use loop closure constraint for pose graph optimization:
+- enable loop closure: `graph.constraint.loop_closure: true`
+- set suitable parameters for loop closure: for example, `graph.loop_closure.ICP_max_iter: 100 `
+`slam.voxel_grid.decaying_threshold: 50.` (this parameter can avoid a doubled map or oscillated poses when a loop appears)
+`logging.timeout: 3000.`
+
+This loop closure is triggered by the user. The user has to specify a revisited frame with which a query frame is closing a loop by loading a file containing loop closure indices. Here is an example of csv file:
+
+```
+queryIdx,RevisitedIdx
+123,12
+456,23
+343,35
+```
+
+To load loop closure indices file, you can click on `Load loop indices` button in rviz or you can use:
+```bash
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 23, string_arg: path/to/loopClosureIndices.csv}"
+```
+
+Then trigger pose graph optimization when needed by clicking on `Optimize graph` button in rviz or using:
+
+```bash
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 20"
+```
+**NOTE** : You can save your slam trajectory before launch a pose graph optimization so that you can go back to states before PGO by re-setting slam trajectory.
+To save slam trajectory, you can click on `Save trajectory` button in rviz or you can use:
+```bash
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 14, string_arg: path/to/slamTrajectoryBeforePGO.csv}"
+```
+Then if you want to reload a slam trajectory, you can click on `Reset trajectory` button in rviz or you can use:
+```bash
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 11, string_arg: path/to/slamTrajectoryBeforePGO.csv}"
+```
 
 ## Optional external sensors use
 
