@@ -149,7 +149,7 @@ inline size_t PointCloudMemorySize(const Slam::PointCloud& cloud)
 Slam::Slam()
 {
   // Allocate a default Keypoint Extractor for device 0
-  this->KeyPointsExtractors[0] = std::make_shared<SpinningSensorKeypointExtractor>();
+  this->KeyPointsExtractors["mainLidar"] = std::make_shared<SpinningSensorKeypointExtractor>();
 
   // Allocate maps
   for (auto k : this->UsableKeypoints)
@@ -598,9 +598,17 @@ void Slam::AddFrames(const std::vector<PointCloud::Ptr>& frames)
 //-----------------------------------------------------------------------------
 void Slam::ComputeSensorConstraints()
 {
-  if (this->WheelOdomManager && this->WheelOdomManager->CanBeUsedLocally() &&
-      this->WheelOdomManager->ComputeConstraint(this->CurrentTime))
-    PRINT_VERBOSE(3, "Wheel odometry constraint added")
+  if (this->WheelOdomManager && this->WheelOdomManager->CanBeUsedLocally())
+  {
+    if (!this->LogStates.empty())
+    {
+      if (this->WheelOdomRelative || !this->WheelOdomManager->IsInitialized())
+        this->WheelOdomManager->SetReference(this->LogStates.back().Isometry,
+                                             this->LogStates.back().Time);
+      if (this->WheelOdomManager->ComputeConstraint(this->CurrentTime))
+        PRINT_VERBOSE(3, "Wheel odometry constraint added")
+    }
+  }
   if (this->GravityManager && this->GravityManager->CanBeUsedLocally() &&
       this->GravityManager->ComputeConstraint(this->CurrentTime))
     PRINT_VERBOSE(3, "IMU gravity constraint added")
@@ -720,10 +728,10 @@ bool Slam::OptimizeGraph()
     return false;
   }
 
-  if ((!this->UsePGOConstraints[LANDMARK]     || !this->LmHasData())  &&
-      (!this->UsePGOConstraints[PGO_GPS]      || !this->GpsHasData()) &&
-      (!this->UsePGOConstraints[PGO_EXT_POSE] || !this->PoseHasData()) &&
-      !this->UsePGOConstraints[LOOP_CLOSURE])
+  if ((!this->UsePGOConstraints[PGOConstraint::LANDMARK]     || !this->LmHasData())  &&
+      (!this->UsePGOConstraints[PGOConstraint::GPS]          || !this->GpsHasData()) &&
+      (!this->UsePGOConstraints[PGOConstraint::EXT_POSE]     || !this->PoseHasData()) &&
+      (!this->UsePGOConstraints[PGOConstraint::LOOP_CLOSURE] || !this->LoopDetections.empty()))
   {
     PRINT_WARNING("No external constraint found, graph cannot be optimized");
     return false;
@@ -747,35 +755,38 @@ bool Slam::OptimizeGraph()
   bool externalConstraint = false;
 
   // Look for loop closure constraints
-  if (this->UsePGOConstraints[LOOP_CLOSURE])
+  if (this->UsePGOConstraints[PGOConstraint::LOOP_CLOSURE] && !this->LoopDetections.empty())
   {
-    if(!this->LoopDetections.empty())
+    // Check all pairs of loop indices saved in the LoopDetections vector
+    for (auto& loop : this->LoopDetections)
     {
-      // Check all pairs of loop indices saved in the LoopDetections vector
-      for (auto& loop : this->LoopDetections)
+      if (loop.QueryIdx < this->LogStates.front().Index || loop.QueryIdx > this->LogStates.back().Index ||
+          loop.RevisitedIdx < this->LogStates.front().Index || loop.RevisitedIdx > this->LogStates.back().Index)
       {
-        auto itQueryState     = this->GetKeyStateIterator(loop.QueryIdx);
-        auto itRevisitedState = this->GetKeyStateIterator(loop.RevisitedIdx);
-        // Compute a loopClosureTransform from the revisited frame to the query frame
-        // by registering the keypoints of the query frame onto the keypoints of the revisited frame
-        Eigen::Isometry3d loopClosureTransform;
-        Eigen::Matrix6d loopClosureCovariance;
-        if (this->LoopClosureRegistration(itQueryState, itRevisitedState,
-                                          loopClosureTransform, loopClosureCovariance))
-        {
-          // Add loop closure constraint into pose graph
-          graphManager.AddLoopClosureConstraint(loop.QueryIdx, loop.RevisitedIdx,
-                                                loopClosureTransform, loopClosureCovariance);
-          externalConstraint = true;
-        }
+        PRINT_WARNING("QueryIdx #" << loop.QueryIdx << " and Revisitedidx #" << loop.RevisitedIdx
+                      << " will not be added into pose graph as loop closure constraint.\n"
+                      << "At least one index is not in the range of  logged states");
+        continue;
+      }
+      auto itQueryState     = this->GetKeyStateIterator(loop.QueryIdx);
+      auto itRevisitedState = this->GetKeyStateIterator(loop.RevisitedIdx);
+      // Compute a loopClosureTransform from the revisited frame to the query frame
+      // by registering the keypoints of the query frame onto the keypoints of the revisited frame
+      Eigen::Isometry3d loopClosureTransform;
+      Eigen::Matrix6d loopClosureCovariance;
+      if (this->LoopClosureRegistration(itQueryState, itRevisitedState,
+                                        loopClosureTransform, loopClosureCovariance))
+      {
+        // Add loop closure constraint into pose graph
+        graphManager.AddLoopClosureConstraint(loop.QueryIdx, loop.RevisitedIdx,
+                                              loopClosureTransform, loopClosureCovariance);
+        externalConstraint = true;
       }
     }
-    else
-      PRINT_WARNING("No loop closure is detected for pose graph optimization.")
   }
 
   // Look for landmark constraints
-  if (this->UsePGOConstraints[LANDMARK] && this->LmHasData())
+  if (this->UsePGOConstraints[PGOConstraint::LANDMARK] && this->LmHasData())
   {
     // Allow the rotation of the covariances when interpolating the measurements
     this->SetLandmarkCovarianceRotation(true);
@@ -811,7 +822,7 @@ bool Slam::OptimizeGraph()
   }
 
   // Look for GPS constraints
-  if (this->UsePGOConstraints[PGO_GPS] && this->GpsHasData())
+  if (this->UsePGOConstraints[PGOConstraint::GPS] && this->GpsHasData())
   {
     // For the first optimization, we may not know the offset
     // between GPS reference frame (utm/enu/map) and Lidar SLAM reference frame (odom)
@@ -848,7 +859,7 @@ bool Slam::OptimizeGraph()
   }
 
   // Look for ext pose constraints
-  if (this->UsePGOConstraints[PGO_EXT_POSE] && this->PoseHasData())
+  if (this->UsePGOConstraints[PGOConstraint::EXT_POSE] && this->PoseHasData())
   {
     // Compute offset between SLAM referential frame
     // and external poses referential frame
@@ -929,14 +940,14 @@ bool Slam::OptimizeGraph()
   // and T_GPS is defined by : T_base_after_optimization * Calibration_GPS = offset_old * T_GPS
   //  -> T_GPS = offset_old^-1 * T_base_after_optimization * Calibration_GPS
   // All together in (1) : offset = T_base_before_optimization * T_base_after_optimization^-1 * offset_old
-  if (this->UsePGOConstraints[PGO_GPS] && this->GpsHasData())
+  if (this->UsePGOConstraints[PGOConstraint::GPS] && this->GpsHasData())
     this->GpsManager->RefineOffset(this->TworldInit * this->LogStates.front().Isometry.inverse());
 
   // Replace Lidar SLAM poses in odom frame
   // Warning : the Gps offset refinement needs to be done before
   // calling this function
   this->ResetTrajWithTworldInit();
-  if (this->UsePGOConstraints[PGO_EXT_POSE] && this->PoseHasData())
+  if (this->UsePGOConstraints[PGOConstraint::EXT_POSE] && this->PoseHasData())
     // Update offset of referential frames with new de-skewed trajectory
     this->PoseManager->UpdateOffset(this->LogStates);
 
@@ -1307,26 +1318,21 @@ void Slam::ExtractKeypoints()
       continue;
 
     // Get keypoints extractor to use for this LiDAR device
-    int lidarDevice = frame->front().device_id;
+    std::string lidarDevice = frame->header.frame_id;
+
     // Check if KE exists
-    if (!this->KeyPointsExtractors.count(lidarDevice))
+    if (this->KeyPointsExtractors.empty() ||
+        (this->KeyPointsExtractors.size() > 1 &&
+         !this->KeyPointsExtractors.count(lidarDevice)))
     {
-      // If KE does not exist but we are only using a single KE, use default one
-      if (this->KeyPointsExtractors.size() == 1)
-      {
-        PRINT_WARNING("Input frame comes from LiDAR device " << lidarDevice
-                    << " but no keypoints extractor has been set for this device : using default extractor for device 0.");
-        lidarDevice = 0;
-      }
-      // Otherwise ignore frame
-      else
-      {
-        PRINT_ERROR("Input frame comes from LiDAR device " << lidarDevice
-                    << " but no keypoints extractor has been set for this device : ignoring frame.");
-        continue;
-      }
+      PRINT_ERROR("Input frame comes from LiDAR device " << lidarDevice
+                  << " but no keypoints extractor has been set for this device : ignoring frame.");
+      continue;
     }
-    KeypointExtractorPtr& ke = this->KeyPointsExtractors[lidarDevice];
+    KeypointExtractorPtr& ke = this->KeyPointsExtractors.size() == 1 ?
+                               this->KeyPointsExtractors.begin()->second :
+                               this->KeyPointsExtractors[lidarDevice];
+
     ke->Enable(this->UsableKeypoints);
     // Extract keypoints from this frame
     ke->ComputeKeyPoints(frame);
@@ -1920,20 +1926,9 @@ bool Slam::DetectLoopClosureIndices(LoopClosure::LoopIndices& loop)
 }
 
 //-----------------------------------------------------------------------------
-void Slam::AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFrame)
+void Slam::AddLoopClosureIndices(LoopClosure::LoopIndices& loop)
 {
-  if (!checkKeyFrame)
-  {
-    this->LoopDetections.emplace_back(loop);
-    return;
-  }
-  // Get query frames
-  // It is possible that the input frame indices are not keyframes
-  // but only the keyframes have been logged.
-  // In this case, output the nearest neighbor keyframe
-  auto itQueryState     = this->GetKeyStateIterator(loop.QueryIdx);
-  auto itRevisitedState = this->GetKeyStateIterator(loop.RevisitedIdx);
-  this->LoopDetections.emplace_back(itQueryState->Index, itRevisitedState->Index, loop.Time);
+  this->LoopDetections.emplace_back(loop);
 }
 
 //-----------------------------------------------------------------------------
@@ -2933,7 +2928,7 @@ Slam::PointCloud::Ptr Slam::AggregateFrames(const std::vector<PointCloud::Ptr>& 
     // Modify point-wise time offsets to match header.stamp
     // And transform points from LIDAR to BASE or WORLD coordinate system
     double timeOffset = Utils::PclStampToSec(frame->header.stamp) - Utils::PclStampToSec(aggregatedFrames->header.stamp);
-    Eigen::Isometry3d baseToLidar = this->GetBaseToLidarOffset(frame->front().device_id);
+    Eigen::Isometry3d baseToLidar = this->GetBaseToLidarOffset(frame->header.frame_id);
 
     // Undistort to represent all points from startIdx in base at current time
     // Rigid transform from LIDAR to BASE then undistortion from BASE to WORLD
@@ -3386,20 +3381,62 @@ void Slam::SetWheelOdomWeight(double weight)
 }
 
 //-----------------------------------------------------------------------------
-bool Slam::GetWheelOdomRelative() const
+Eigen::Isometry3d Slam::GetWheelOdomCalibration() const
 {
   if(this->WheelOdomManager)
-    return this->WheelOdomManager->GetRelative();
-  PRINT_ERROR("Wheel odometer has not been set : can't get wheel odom relative boolean")
-  return false;
+    return this->WheelOdomManager->GetCalibration();
+  PRINT_ERROR("Wheel odometer has not been set : can't get wheel odom calibration")
+  return Eigen::Isometry3d::Identity();
 }
 
 //-----------------------------------------------------------------------------
-void Slam::SetWheelOdomRelative(bool isRelative)
+void Slam::SetWheelOdomCalibration(const Eigen::Isometry3d& calib)
 {
-  if(!this->WheelOdomManager)
+  if (!this->WheelOdomManager)
     this->InitWheelOdom();
-  this->WheelOdomManager->SetRelative(isRelative);
+  this->WheelOdomManager->SetCalibration(calib);
+}
+
+//-----------------------------------------------------------------------------
+float Slam::GetWheelOdomSaturationDistance() const
+{
+  if (this->WheelOdomManager)
+    return this->WheelOdomManager->GetSaturationDistance();
+  PRINT_ERROR("Wheel odometer has not been set : can't get saturation distance")
+  return -1.;
+}
+
+//-----------------------------------------------------------------------------
+void Slam::SetWheelOdomSaturationDistance(float dist)
+{
+  if (!this->WheelOdomManager)
+    this->InitWheelOdom();
+  this->WheelOdomManager->SetSaturationDistance(dist);
+}
+
+//-----------------------------------------------------------------------------
+Eigen::Vector3d Slam::GetWheelOdomReference() const
+{
+  if (this->WheelOdomManager)
+    return this->WheelOdomManager->GetRefPose().translation();
+  PRINT_ERROR("Wheel odometer has not been set : can't get reference")
+  return Eigen::Vector3d::Zero();
+}
+
+//-----------------------------------------------------------------------------
+void Slam::SetWheelOdomReference(const Eigen::Vector3d& ref)
+{
+  if (!this->WheelOdomManager)
+    this->InitWheelOdom();
+  this->WheelOdomManager->SetReference(ref);
+}
+
+//-----------------------------------------------------------------------------
+bool Slam::WheelOdomCanBeUsedLocally() const
+{
+  if (!this->WheelOdomManager)
+    return false;
+  return this->WheelOdomManager->CanBeUsedLocally();
 }
 
 // IMU gravity
@@ -3596,31 +3633,35 @@ void Slam::SetCameraSaturationDistance(float dist)
 //==============================================================================
 
 //-----------------------------------------------------------------------------
-std::map<uint8_t, Slam::KeypointExtractorPtr> Slam::GetKeyPointsExtractors() const
+std::map<std::string, Slam::KeypointExtractorPtr> Slam::GetKeyPointsExtractors() const
 {
   return this->KeyPointsExtractors;
 }
-void Slam::SetKeyPointsExtractors(const std::map<uint8_t, KeypointExtractorPtr>& extractors)
+void Slam::SetKeyPointsExtractors(const std::map<std::string, KeypointExtractorPtr>& extractors)
 {
   this->KeyPointsExtractors = extractors;
 }
 
 //-----------------------------------------------------------------------------
-Slam::KeypointExtractorPtr Slam::GetKeyPointsExtractor(uint8_t deviceId) const
+Slam::KeypointExtractorPtr Slam::GetKeyPointsExtractor(const std::string& deviceId) const
 {
-  return this->KeyPointsExtractors.count(deviceId) ? this->KeyPointsExtractors.at(deviceId) : KeypointExtractorPtr();
+  return this->KeyPointsExtractors.count(deviceId) ?
+         this->KeyPointsExtractors.at(deviceId) :
+         KeypointExtractorPtr();
 }
-void Slam::SetKeyPointsExtractor(KeypointExtractorPtr extractor, uint8_t deviceId)
+void Slam::SetKeyPointsExtractor(KeypointExtractorPtr extractor, const std::string& deviceId)
 {
   this->KeyPointsExtractors[deviceId] = extractor;
 }
 
 //-----------------------------------------------------------------------------
-Eigen::Isometry3d Slam::GetBaseToLidarOffset(uint8_t deviceId) const
+Eigen::Isometry3d Slam::GetBaseToLidarOffset(const std::string& deviceId) const
 {
-  return this->BaseToLidarOffsets.count(deviceId) ? this->BaseToLidarOffsets.at(deviceId) : Eigen::UnalignedIsometry3d::Identity();
+  return this->BaseToLidarOffsets.count(deviceId) ?
+         this->BaseToLidarOffsets.at(deviceId) :
+         Eigen::UnalignedIsometry3d::Identity();
 }
-void Slam::SetBaseToLidarOffset(const Eigen::Isometry3d& transform, uint8_t deviceId)
+void Slam::SetBaseToLidarOffset(const Eigen::Isometry3d& transform, const std::string& deviceId)
 {
   this->BaseToLidarOffsets[deviceId] = transform;
 }

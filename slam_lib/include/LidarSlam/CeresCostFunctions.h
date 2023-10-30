@@ -322,23 +322,27 @@ private:
  */
 struct OdometerDistanceResidual
 {
-  OdometerDistanceResidual(const Eigen::Vector3d& previousPos,
-                           double distanceToPreviousPose)
-    : PreviousPos(previousPos)
-    , DistanceToPreviousPose(distanceToPreviousPose)
+  OdometerDistanceResidual(const Eigen::Vector3d& refPos,
+                           const Eigen::Isometry3d& calibration,
+                           double distance)
+    : RefPos(refPos)
+    , Calibration(calibration)
+    , Distance(distance)
   {}
 
   template <typename T>
-  bool operator()(const T* const t, T* residual) const
+  bool operator()(const T* const w, T* residual) const
   {
-    // Get translation part
     using Vector3T = Eigen::Matrix<T, 3, 1>;
-    Eigen::Map<const Vector3T> pos(t);
+    using Isometry3T = Eigen::Transform<T, 3, Eigen::Isometry>;
+
+    // Compute transform matrix of current pose from position and Euler angles (RPY convention)
+    Isometry3T basePoseTransform = Utils::XYZRPYtoIsometry(w[0], w[1], w[2], w[3], w[4], w[5]);
 
     // Compute residual
-    T motionSqNorm = (pos - PreviousPos).squaredNorm();
-    T motionNorm = (motionSqNorm < 1e-6) ? T(0) : ceres::sqrt(motionSqNorm);
-    residual[0] = motionNorm - DistanceToPreviousPose;
+    Isometry3T wheelPoseTransform = basePoseTransform * this->Calibration.cast<T>();
+    *residual = (wheelPoseTransform.translation() - this->RefPos.cast<T>()).norm() - this->Distance;
+
     return true;
   }
 
@@ -346,8 +350,9 @@ struct OdometerDistanceResidual
   RESIDUAL_FACTORY(OdometerDistanceResidual, 1, 6)
 
 private:
-  const Eigen::Vector3d PreviousPos;
-  const double DistanceToPreviousPose;
+  const Eigen::Vector3d RefPos;
+  const Eigen::Isometry3d Calibration;
+  const double Distance;
 };
 
 //------------------------------------------------------------------------------
