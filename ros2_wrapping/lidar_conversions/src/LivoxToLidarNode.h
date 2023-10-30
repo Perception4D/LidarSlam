@@ -77,8 +77,6 @@ private:
   rclcpp::Subscription<LivoxCustomMsg>::SharedPtr LivoxMsgListener;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
 
-  std::unordered_map<std::string, uint8_t> DeviceIdMap;  ///< Map to store the device id of each device (in case of multilidar).
-
   bool IsPcl2 = false;
 };
 

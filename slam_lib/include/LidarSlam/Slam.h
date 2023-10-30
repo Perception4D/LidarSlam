@@ -472,18 +472,18 @@ public:
   // ---------------------------------------------------------------------------
 
   // Get/Set all keypoints extractors
-  std::map<uint8_t, KeypointExtractorPtr> GetKeyPointsExtractors() const;
-  void SetKeyPointsExtractors(const std::map<uint8_t, KeypointExtractorPtr>& extractors);
+  std::map<std::string, KeypointExtractorPtr> GetKeyPointsExtractors() const;
+  void SetKeyPointsExtractors(const std::map<std::string, KeypointExtractorPtr>& extractors);
 
   // Get/Set a specific keypoints extractor
   // NOTE: If no keypoint extractor exists for the requested deviceId, the returned pointer is null.
-  KeypointExtractorPtr GetKeyPointsExtractor(uint8_t deviceId = 0) const;
-  void SetKeyPointsExtractor(KeypointExtractorPtr extractor, uint8_t deviceId = 0);
+  KeypointExtractorPtr GetKeyPointsExtractor(const std::string& deviceId = "mainLidar" ) const;
+  void SetKeyPointsExtractor(KeypointExtractorPtr extractor, const std::string& deviceId = "mainLidar");
 
   // Get/Set a specific base to Lidar offset
   // NOTE: If no base to lidar offset exists for the requested deviceId, the returned transform is identity.
-  Eigen::Isometry3d GetBaseToLidarOffset(uint8_t deviceId = 0) const;
-  void SetBaseToLidarOffset(const Eigen::Isometry3d& transform, uint8_t deviceId = 0);
+  Eigen::Isometry3d GetBaseToLidarOffset(const std::string& deviceId = "mainLidar") const;
+  void SetBaseToLidarOffset(const Eigen::Isometry3d& transform, const std::string& deviceId = "mainLidar");
 
   // Set the keypoint types to use
   void EnableKeypointType(Keypoint k, bool enabled = true);
@@ -591,12 +591,23 @@ public:
   double GetWheelOdomWeight() const;
   void SetWheelOdomWeight(double weight);
 
-  bool GetWheelOdomRelative() const;
-  void SetWheelOdomRelative(bool relative);
+  float GetWheelOdomSaturationDistance() const;
+  void SetWheelOdomSaturationDistance(float dist);
+
+  SetMacro(WheelOdomRelative, bool)
+  GetMacro(WheelOdomRelative, bool)
+
+  void SetWheelOdomCalibration(const Eigen::Isometry3d& calib);
+  Eigen::Isometry3d GetWheelOdomCalibration() const;
+
+  void SetWheelOdomReference(const Eigen::Vector3d& ref);
+  Eigen::Vector3d GetWheelOdomReference() const;
 
   void AddWheelOdomMeasurement(const ExternalSensors::WheelOdomMeasurement& om);
 
   bool WheelOdomHasData() const {return this->WheelOdomManager && this->WheelOdomManager->HasData();}
+
+  bool WheelOdomCanBeUsedLocally() const;
 
   // Gravity from IMU
   double GetGravityWeight() const;
@@ -739,7 +750,7 @@ public:
   bool DetectLoopClosureIndices(LoopClosure::LoopIndices& loop);
 
   // Add indices of a loop into vector LoopDetections
-  void AddLoopClosureIndices(LoopClosure::LoopIndices& loop, bool checkKeyFrame = false);
+  void AddLoopClosureIndices(LoopClosure::LoopIndices& loop);
 
   // Reset LoopDetections vector
   void ClearLoopDetections();
@@ -982,12 +993,12 @@ private:
   std::map<int, unsigned int> PreviousFramesSeq;
 
   // Keypoints extractors, 1 for each lidar device
-  std::map<uint8_t, KeypointExtractorPtr> KeyPointsExtractors;
+  std::map<std::string, KeypointExtractorPtr> KeyPointsExtractors;
 
   // Static transform to link BASE and LIDAR coordinates systems for each device.
   // It corresponds to the pose of each LIDAR device origin in BASE coordinates.
   // If the transform is not available for a given device, identity will be used.
-  std::map<uint8_t, Eigen::UnalignedIsometry3d> BaseToLidarOffsets = {{0, Eigen::UnalignedIsometry3d::Identity()}};
+  std::map<std::string, Eigen::UnalignedIsometry3d> BaseToLidarOffsets = {{"frame", Eigen::UnalignedIsometry3d::Identity()}};
 
   // ---------------------------------------------------------------------------
   //   Keypoints from current frame
@@ -1076,6 +1087,9 @@ private:
   // The odometry measurements must be filled from outside this lib
   // using External Sensors interface
   std::shared_ptr<ExternalSensors::WheelOdometryManager> WheelOdomManager;
+  // Whether the wheel odometer constraint apply relatively to the first pose
+  // or between successive poses
+  bool WheelOdomRelative = false;
 
   // IMU managers
   // Gravity manager
@@ -1223,10 +1237,10 @@ private:
   int NbGraphIterations = 100;
 
   // Booleans to decide whether to use a pose graph constraint for the optimization
-  std::map<PGOConstraint, bool> UsePGOConstraints = {{LOOP_CLOSURE, true},
-                                                     {LANDMARK, true},
-                                                     {PGO_GPS, true},
-                                                     {PGO_EXT_POSE, true}};
+  std::map<PGOConstraint, bool> UsePGOConstraints = {{PGOConstraint::LOOP_CLOSURE, true},
+                                                     {PGOConstraint::LANDMARK,     true},
+                                                     {PGOConstraint::GPS,          true},
+                                                     {PGOConstraint::EXT_POSE,     true}};
 
   // ---------------------------------------------------------------------------
   //   Confidence estimation

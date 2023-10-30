@@ -76,8 +76,6 @@ public:
    *  - intensity (float): intensity/reflectivity of the point
    *  - laser_id (uint16): numeric identifier of the laser ring that shot this point.
    *    The lowest/bottom laser ring should be 0, and it should increase upward.
-   *  - device_id (uint8): numeric identifier of the LiDAR device/sensor.
-   *    This id should be the same for all points of the cloud acquired by the same sensor.
    *  - label (uint8): optional input, not yet used.
    */
   virtual void ScanCallback(const Pcl2_msg& pcl_msg);
@@ -143,7 +141,7 @@ protected:
    * @param[in] lidarFrameId The input LiDAR pointcloud frame_id.
    * @param[in] lidarDeviceId The numerical identifier of the LiDAR sensor.
    */
-  bool UpdateBaseToLidarOffset(const std::string& lidarFrameId, uint8_t lidarDeviceId);
+  bool UpdateBaseToLidarOffset(const std::string& lidarFrameId);
 
   //----------------------------------------------------------------------------
   /*!
@@ -237,7 +235,7 @@ protected:
   // Number of Lidars connected to the SLAM process
   int MultiLidarsNb = 1;
   // To save the lidar devices id from which frames are received and count the number of frames of each lidar
-  std::unordered_map<uint8_t, int> MultiLidarsCounter;
+  std::unordered_map<std::string, int> MultiLidarsCounter;
 
   // Enum to choose the frames collection mode when there is more than one lidar
   enum FramesCollectionMode
@@ -281,10 +279,10 @@ protected:
   // Booleans to select which sensor to activate
   // If sensor enabled, data are received and stored
   // External sensor data can be used in local optimization or in postprocess pose graph optimization
-  std::unordered_map<LidarSlam::ExternalSensor, bool> UseExtSensor = {{LidarSlam::GPS, false},
-                                                                      {LidarSlam::LANDMARK_DETECTOR, false},
-                                                                      {LidarSlam::POSE, false},
-                                                                      {LidarSlam::CAMERA, false}};
+  std::unordered_map<LidarSlam::ExternalSensor, bool> UseExtSensor = {{LidarSlam::ExternalSensor::GPS,               false},
+                                                                      {LidarSlam::ExternalSensor::LANDMARK_DETECTOR, false},
+                                                                      {LidarSlam::ExternalSensor::POSE,              false},
+                                                                      {LidarSlam::ExternalSensor::CAMERA,            false}};
 
   // If lidar time contained in the header is not POSIX
   // The offset between network reception time

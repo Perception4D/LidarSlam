@@ -17,7 +17,6 @@
     # - time (double): time offset to add to the pointcloud header timestamp to get approximate point-wise acquisition timestamp
     # - intensity (float): intensity/reflectivity of the point
     # - laser_id (uint16): numeric identifier of the laser ring that shot this point. The lowest/bottom laser ring should be 0, and it should increase upward.
-    # - device_id (uint8): numeric identifier of the LiDAR device/sensor. This id should be the same for all points of the cloud acquired by the same sensor.
     # - label (uint8): optional input, not yet used.
     input: "lidar_points"  # single LiDAR input (default: lidar_points)
     # input:  # multi LiDAR inputs
@@ -334,8 +333,8 @@
                                 # and the parameterization : see leaf_size keyframes parameters for more details
 
       # Keypoint extractor for each LiDAR sensor
+      # Single LiDAR input
       ke:
-        # Single LiDAR input
         enable:
           edge: true
           intensity_edge: true
@@ -360,9 +359,11 @@
         # # Multi LiDAR inputs
         # # The multiple devices to use for SLAM.
         # # A keypoint extractor will be initialized for each device.
-        # device_ids: [0, 10]
+        # device_ids:
+        #   - "lidar_frame_0"
+        #   - "lidar_frame_1"
         # # Keypoint extractors parameters for each LiDAR sensor "device_<device_id>"
-        # device_0:
+        # device_lidar_frame_0:
         #   enable:
         #     edge: true
         #     intensity_edge: true
@@ -382,7 +383,7 @@
         #   edge_depth_gap_threshold: 1.5      # [m] Threshold upon depth gap in neighborhood to select an edge keypoint.
         #   edge_nb_gap_points: 10             # [points] Minimum number of successive missing points to consider a space gap.
         #   edge_intensity_gap_threshold: 30.  # [0-255] Threshold upon intensity gap to select an edge keypoint.
-        # device_10:
+        # device_lidar_frame_1:
         #   enable:
         #     edge: true
         #     intensity_edge: true

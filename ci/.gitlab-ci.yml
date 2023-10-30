@@ -4,7 +4,7 @@ variables:
   cmake_option_GENERATOR: -GNinja
   cmake_option_build_type: -DCMAKE_BUILD_TYPE=Release
   cmake_option_shared: -DBUILD_SHARED_LIBS=ON
-  deps_install_path: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_SB/install"
+  SB_deps_install_path: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_SB/install"
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_SUBMODULE_DEPTH: 20
 
@@ -50,8 +50,8 @@ stages:
 
 # Clean superbuild
 clean_superbuild:
-  tags: []
   stage: superbuild
+  tags: [superbuild]
   needs: []
   variables:
     build_dir: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_SB"
@@ -62,11 +62,11 @@ clean_superbuild:
       when: manual
   script:
     - cmake -E remove_directory $build_dir
-    - cmake -E make_directory $build_dir
 
 # Build superbuild
 .build_superbuild:
   stage: superbuild
+  tags: [superbuild]
   variables:
     build_dir: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_SB"
   rules:
@@ -75,16 +75,18 @@ clean_superbuild:
     - if: $CI_COMMIT_BRANCH == "master"
       when: manual
   script:
+    - cmake -E make_directory $build_dir
     - cd $build_dir
-    - cmake -E make_directory install
-    - echo "cmake "${CI_PROJECT_DIR}/slam-superbuild"
+    - echo "cmake ${CI_PROJECT_DIR}/slam-superbuild
       $cmake_option_GENERATOR
       $cmake_option_build_type
-      -DCMAKE_INSTALL_PREFIX=${deps_install_path}""
+      -DCMAKE_INSTALL_PREFIX=$SB_deps_install_path
+      -DBUILD_SLAM_SHARED_LIBS=OFF"
     - cmake "${CI_PROJECT_DIR}/slam-superbuild"
       $cmake_option_GENERATOR
       $cmake_option_build_type
-      -DCMAKE_INSTALL_PREFIX=${deps_install_path}"
+      -DCMAKE_INSTALL_PREFIX="$SB_deps_install_path"
+      -DBUILD_SLAM_SHARED_LIBS=OFF
     - cmake --build . -j 4
 
 # Build superbuild on Windows
@@ -111,16 +113,17 @@ linux_build_superbuild:
 .slam_lib:
   stage: slam_lib
   needs: []
+  tags: [superbuild]
   variables:
     build_dir: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_slam_lib"
-    slam_cmake_option_Eigen_INCLUDE_DIR: "-DEigen_INCLUDE_DIR=${deps_install_path}/include"
-    slam_cmake_option_Eigen_DIR: "-DEigen3_DIR=${deps_install_path}/share/eigen3/cmake"
-    slam_cmake_option_glog_DIR: "-Dglog_DIR=${deps_install_path}/lib/cmake/glog"
-    slam_cmake_option_Ceres_DIR: "-DCeres_DIR=${deps_install_path}/lib/cmake/Ceres"
-    slam_cmake_option_nanoflann_DIR: "-Dnanoflann_DIR=${deps_install_path}/share/nanoflann/cmake"
-    slam_cmake_option_BOOST_ROOT: "-DBOOST_ROOT=${deps_install_path}/"
+    slam_cmake_option_Eigen_INCLUDE_DIR: "-DEigen_INCLUDE_DIR=${SB_deps_install_path}/include"
+    slam_cmake_option_Eigen_DIR: "-DEigen3_DIR=${SB_deps_install_path}/share/eigen3/cmake"
+    slam_cmake_option_glog_DIR: "-Dglog_DIR=${SB_deps_install_path}/lib/cmake/glog"
+    slam_cmake_option_Ceres_DIR: "-DCeres_DIR=${SB_deps_install_path}/lib/cmake/Ceres"
+    slam_cmake_option_nanoflann_DIR: "-Dnanoflann_DIR=${SB_deps_install_path}/share/nanoflann/cmake"
+    slam_cmake_option_BOOST_ROOT: "-DBOOST_ROOT=${SB_deps_install_path}/"
     slam_cmake_option_Boost_STATIC: "-DBoost_USE_STATIC_LIBS=OFF"
-    slam_cmake_option_g2o_DIR: "-Dg2o_DIR=${deps_install_path}/lib/cmake/g2o"
+    slam_cmake_option_g2o_DIR: "-Dg2o_DIR=${SB_deps_install_path}/lib/cmake/g2o"
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
@@ -160,11 +163,11 @@ linux_build_superbuild:
 
 # Build core LidarSlam lib on Linux
 linux_slam_lib:
-  tags: [linux, nodocker]
+  tags: [linux, superbuild]
   extends:
     - .slam_lib
   variables:
-    slam_cmake_option_PCL_DIR: "-DPCL_DIR=${deps_install_path}/share/pcl-1.10"
+    slam_cmake_option_PCL_DIR: "-DPCL_DIR=${SB_deps_install_path}/share/pcl-1.13"
 
 # Build core LidarSlam lib on Windows
 windows_slam_lib:
@@ -173,4 +176,4 @@ windows_slam_lib:
   - .windows_runner_config
   - .slam_lib
   variables:
-    slam_cmake_option_PCL_DIR: "-DPCL_DIR=${deps_install_path}/cmake"
+    slam_cmake_option_PCL_DIR: "-DPCL_DIR=${SB_deps_install_path}/cmake"

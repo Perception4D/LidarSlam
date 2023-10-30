@@ -62,10 +62,6 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
     return;
   }
 
-  // Fill the map of device_id if the device hasn't already been attributed one
-  if (this->DeviceIdMap.count(cloudRS.header.frame_id) == 0)
-    this->DeviceIdMap[cloudRS.header.frame_id] = (uint8_t)(this->DeviceIdMap.size());
-
   // Rotation duration is estimated to be used in time estimation if needed
   double currFrameTime = Utils::PclStampToSec(cloudRS.header.stamp);
   double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
@@ -109,8 +105,6 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
 
   Eigen::Vector2d firstPoint = {cloudRS[0].x, cloudRS[0].y};
 
-  uint8_t deviceId = this->DeviceIdMap[cloudRS.header.frame_id];
-
   // Build SLAM pointcloud
   #pragma omp parallel for num_threads(this->NbThreads)
   for (unsigned int i = 0; i < cloudRS.size(); ++i)
@@ -132,7 +126,6 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.y = rsPoint.y;
     slamPoint.z = rsPoint.z;
     slamPoint.intensity = rsPoint.intensity;
-    slamPoint.device_id = deviceId;
     slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nbLasers, this->Clusters);
     slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 

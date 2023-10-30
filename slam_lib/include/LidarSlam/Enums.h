@@ -173,7 +173,7 @@ enum class SamplingMode
 
 //------------------------------------------------------------------------------
 //! External sensors' references
-enum ExternalSensor
+enum class ExternalSensor
 {
   //! Wheel odometer
   WHEEL_ODOM = 0,
@@ -196,16 +196,16 @@ enum ExternalSensor
   nbExternalSensors
 };
 
-static const std::map<ExternalSensor, std::string> ExternalSensorNames = { {WHEEL_ODOM,"Wheel odometer"},
-                                                                           {IMU, "IMU"},
-                                                                           {LANDMARK_DETECTOR, "Landmark detector"},
-                                                                           {GPS, "GPS"},
-                                                                           {POSE, "POSE"},
-                                                                           {CAMERA, "CAMERA"} };
+static const std::map<ExternalSensor, std::string> ExternalSensorNames = { {ExternalSensor::WHEEL_ODOM,        "wheel odometer"},
+                                                                           {ExternalSensor::IMU,               "IMU"},
+                                                                           {ExternalSensor::LANDMARK_DETECTOR, "landmark detector"},
+                                                                           {ExternalSensor::GPS,               "GPS"},
+                                                                           {ExternalSensor::POSE,              "external pose"},
+                                                                           {ExternalSensor::CAMERA,            "camera"} };
 
 //------------------------------------------------------------------------------
 //! Type of pose graph constraints
-enum PGOConstraint
+enum class PGOConstraint
 {
   //! Loop closure
   LOOP_CLOSURE = 0,
@@ -214,13 +214,18 @@ enum PGOConstraint
   LANDMARK = 1,
 
   //! GPS
-  PGO_GPS = 2,
+  GPS = 2,
 
   //! External pose
-  PGO_EXT_POSE = 3,
+  EXT_POSE = 3,
 
   nbPGOConstraints
 };
+
+static const std::map<PGOConstraint, std::string> PGOConstraintNames = { {PGOConstraint::LOOP_CLOSURE, "loop_closure"},
+                                                                         {PGOConstraint::LANDMARK,     "landmark"},
+                                                                         {PGOConstraint::GPS,          "gps"},
+                                                                         {PGOConstraint::EXT_POSE,     "ext_pose"} };
 
 //------------------------------------------------------------------------------
 //! Type of loop closure detector
