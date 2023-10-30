@@ -60,8 +60,6 @@ public:
    *  - intensity (float): intensity/reflectivity of the point
    *  - laser_id (uint16): numeric identifier of the laser ring that shot this point.
    *    The lowest/bottom laser ring should be 0, and it should increase upward.
-   *  - device_id (uint8): numeric identifier of the LiDAR device/sensor.
-   *    This id should be the same for all points of the cloud acquired by the same sensor.
    *  - label (uint8): optional input, not yet used.
    */
   void Callback(const Pcl2_msg& registeredCloudMsg);
