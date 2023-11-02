@@ -14,6 +14,8 @@ uint8 DISABLE_SLAM_MAP_UPDATE = 8
 uint8 ENABLE_SLAM_MAP_EXPANSION = 9
 uint8 ENABLE_SLAM_MAP_UPDATE = 10
 
+# Reset slam trajectory from a trajectory file
+uint8 RESET_TRAJECTORY = 11
 # Reset the SLAM state. Clear the maps and the trajectory, set the current pose to origin.
 uint8 RESET_SLAM = 12
 # Enable/Disable the SLAM process
