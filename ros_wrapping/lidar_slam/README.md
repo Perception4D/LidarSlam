@@ -13,6 +13,7 @@
         - [Save maps](#save-maps)
         - [Set pose](#set-pose)
         - [Switch ON/OFF the process](#switch-onoff-the-process)
+        - [Switch ON/OFF the sensors](#switch-onoff-the-external-sensors)
         - [Calibrate with external pose sensor](#calibrate-with-external-pose-sensor)
       - [Failure detection](#failure-detection)
   - [Optional external sensors use](#optional-external-sensors-use)
@@ -26,6 +27,8 @@
       - [Local optimization](#local-optimization)
       - [Pose graph optimization](#pose-graph-optimization)
     - [Optional Camera use](#optional-camera-use)
+    - [Optional external pose use](#optional-external-pose-use)
+    - [Wheel encoder use](#optional-wheel-encoder-use)
   - [About the published TF tree](#about-the-published-tf-tree)
 - [Points aggregation](#points-aggregation)
 
@@ -184,6 +187,17 @@ rostopic pub -1 /slam_command lidar_slam/SlamCommand "command: 13"
 ```
 This disables the sensor messages handling of the node.
 
+##### Switch ON/OFF the external sensors
+At any time, the data reception can be enabled/disabled for any sensor using the command message :
+```bash
+rostopic pub -1 /slam_command lidar_slam/SlamCommand "command: 25, string_arg: idSensor"
+```
+with idSensor being:
+* WHEEL_ENCODER : 0
+* GPS : 3
+* POSE : 4
+* CAMERA : 5
+
 ##### Calibrate with external pose sensor
 Another command allows to find the calibration transform between the current tracked pose and the pose tracked by an external sensor and stored in a CSV file. This CSV file must have the same format as the one described in [this section](#save-the-current-trajectory).
 
@@ -228,7 +242,7 @@ A GPS, a camera and/or a tag detector can be used along with the LiDAR SLAM. Whe
 Some external sensors can be used locally (in the local SLAM optimization) or globally (in a pose graph).
 cameras, wheel odometers, IMU are usually used in the first case while GPS, as absolute poses sensor, is usually used in the second case. A tag detector can be used in both cases.
 
-To use them, a time synchronization must be possible. To do so, a parameter *lidar_is_posix* allows to synchronize using packet reception time (false) or lidar header time information (true).
+To use them, a time synchronization must be possible. To do so, a parameter *use_header_time* allows to chose whether to use the time coming from the header of the sensors messages or the messages reception times. It is always better to use the header times if the offset between reference times is known and if the sensor times are trustworthy.
 
 Moreover, the data should be stored, at least until the best time fit is found for lidar frame in case of local optimization and to select from when to update the trajectory along with the maps in case of pose graph optimization.
 
@@ -330,7 +344,7 @@ Various relative parameters are available :
 
 All these parameters are described in the supplied [config files](params).
 
-***WARNING***: Remember to set max_measures, lidar_is_posix and time_threshold to convenient values to be able to use this feature.
+***WARNING***: Remember to set max_measures, use_header_time and time_threshold to convenient values to be able to use this feature.
 
 ***WARNING***: Make sure no error occured in the file loading step in the terminal output before supplying data.
 
@@ -368,7 +382,63 @@ Images can then be used in local optimization if their timestamps are close enou
 
 A weight is parameterizable for the new camera constraint. It represents the impact of one pixel match relatively to one geometric 3D point match (built from lidar frame) in the optimization. The more we trust the optical flow, the higher this weight should be. This parameter is described in the supplied [config files](params).
 
-***WARNING***: Remember to set *max_measures*, *lidar_is_posix* and *time_threshold* to convenient values to be able to use this feature.
+***WARNING***: Remember to set *max_measures*, *use_header_time* and *time_threshold* to convenient values to be able to receive the measurements.
+
+If the data are well added and synchronized, a log output should be visible with verbosity to 3 (default).
+This output should say :
+
+```bash
+Camera constraint added
+```
+
+### Optional wheel encoder use
+
+If wheel encoder use is enabled, *LidarSlamNode* subscribes to distance messages (message containing only a float64 element called Distance) in the topic called "wheel_odom".
+The wheel encoder measurement can be used in the slam front end optimization to solve some degree of liberty (e.g. in corridors). The calibration must be sent to the TF tree to receive any data.
+
+***WARNING***: Remember to set *max_measures*, *use_header_time* and *time_threshold* to convenient values to be able to receive the measurements.
+
+Two types of constraint are allowed : relative/from reference. The relative constraint ensures the distance provided by the wheel encoder between two successive frames is the norm of the translation between those frames. For now, no direction information is used. This means that in a corridor, if the distances are small, the translation might be applied in one direction or the other.
+
+The other constraint allows to notify a distance from a point. This can be useful for a laser measuring a distance from a target or if a wire is fixed to tracking frame with a wheel encoder to measure it. The constraint will ensure that at each new frame the translation norm from the reference point is exactly the distance measurement. A parameter allows to set the reference point relatively to the wheel encoder in the wheel encoder frame. If no reference is set but the relative mode is disabled, the first couple pose/wheel encoder measurement is used to define the reference point.
+
+A weight is parameterizable for the new wheel encoder constraint. It represents the impact of the wheel encoder constraint with respect to all the points distance from the SLAM optimization. If 0., the feature is disabled.
+
+If the data are well added and synchronized, a log output should be visible with verbosity to 3 (default).
+This output should say :
+
+```bash
+Adding wheel encoder residual : W m travelled since position : X,Y,Z...
+Wheel odometry constraint added
+```
+
+### Optional external pose use
+
+External poses can be used. They can come from a INS/GNSS pair or another SLAM source for example. The slam node subscribes to a topic named *ext_poses*. The calibration must be sent to the TF tree to be able to receive the measurements.
+
+These poses can be used for different purposes:
+1. Undistort the input pointcloud
+2. Provide a prior pose
+3. Add a constraint in the optimization
+4. Be used in a pose graph as postprocess
+
+To use it to undistort the pointcloud, the undistortion mode must be set to 3. For high frequency motion, this can be really useful to get a cleaner map.
+To use them as prior pose, the egomotion mode must be set to 4 or 5. This can make the SLAM more robust for not smooth motion.
+To use them as an optimization constraint, the weight must be greater than 0. This can be useful in unconstrained environment.
+
+***WARNING***: Remember to set *max_measures*, *use_header_time* and *time_threshold* to convenient values to be able to receive the measurements.
+
+If the data are well added and synchronized, a log output should be visible with verbosity to 3 (default).
+This output should say :
+
+```bash
+External pose constraint added
+```
+
+To use them as pose graph constraints, the command OPTIMIZE_GRAPH must be sent at the end of the recording.
+Remember to save the maps and the trajectory to be sure to be able to come back if something goes wrong with the optimization.
+
+***WARNING***: Remember to set *logging/timeout* and *logging/only_keyframes* to convenient values to be able to use this feature after the SLAM.
 
 ## About the published TF tree
 

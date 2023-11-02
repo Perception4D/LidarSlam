@@ -152,15 +152,17 @@ slam:
   #  0) No ego-motion step is performed : relative motion is Identity, new estimated
   #     Tworld is equal to previous Tworld. Fast, but may lead to unstable and imprecise
   #     Localization step if motion is important.
-  #  1) Previous motion is linearly extrapolated to estimate new Tworld pose from the
+  #  1) Previous motion is extrapolated to estimate new Tworld pose from the
   #     2 previous poses. Fast and precise if motion is roughly constant and continuous
   #  2) Estimate Trelative (and therefore Tworld) by globally registering new frame
   #     on previous frame. Slower and need textured enough environment, but do not
   #     rely on constant motion hypothesis.
-  #  3) Previous motion is linearly extrapolated to estimate new Tworld pose from
+  #  3) Previous motion is extrapolated to estimate new Tworld pose from
   #     the 2 previous poses. Then this estimation is refined by globally registering
   #     new frame on previous frame. Slower and need textured enough environment,
   #     but should be more precise and rely less on constant motion hypothesis.
+  #  4) The prior motion is estimated using the external poses
+  #  5) The prior motion is estimated using the external poses when available and extrapolation otherwise
   ego_motion: 1
 
   # Undistortion mode, to correct rolling shutter distortion during frame acquisition.
@@ -170,16 +172,17 @@ slam:
   #     - End scan pose is optimized using rigid registration of raw scan and map.
   #     - Raw input scan is added to map.
   #  1) ONCE: undistortion is performed only one using estimated ego-motion:
-  #     - Begin and end scan poses are linearly interpolated using estimated ego-motion.
-  #     - Scan is linearly undistorted between begin and end scan poses.
+  #     - Begin and end scan poses are interpolated using estimated ego-motion.
+  #     - Scan is undistorted between begin and end scan poses.
   #     - Scan pose is iteratively optimized using rigid registration of undistorted scan and map.
   #     - Undistorted scan is added to map.
   #  2) REFINED: undistortion is iteratively refined using optimized ego-motion:
-  #     - Begin and end scan poses are linearly interpolated using ego-motion.
-  #     - Scan is linearly undistorted between begin and end scan poses.
+  #     - Begin and end scan poses are interpolated using ego-motion.
+  #     - Scan is undistorted between begin and end scan poses.
   #     - Scan pose is optimized using rigid registration of undistorted scan and map.
   #     - Iterate the three previous steps with updated ego-motion and poses.
   #     - Undistorted scan is added to map.
+  #  3) EXTERNAL: undistortion is performed using the external poses provided only once
   undistortion: 2
 
   # Verbosity level :
