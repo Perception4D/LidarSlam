@@ -59,9 +59,8 @@ clean_superbuild:
   variables:
     build_dir: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_SB"
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: manual
-    - if: $CI_COMMIT_BRANCH == "master"
+    # Can be launched only from the web interface
+    - if: $CI_PIPELINE_SOURCE == "web"
       when: manual
   script:
     - cmake -E remove_directory $build_dir
@@ -73,9 +72,8 @@ clean_superbuild:
   variables:
     build_dir: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_SB"
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: manual
-    - if: $CI_COMMIT_BRANCH == "master"
+    # Can be launched only from the web interface
+    - if: $CI_PIPELINE_SOURCE == "web"
       when: manual
   script:
     - cmake -E make_directory $build_dir
