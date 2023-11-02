@@ -51,6 +51,18 @@ void SlamControlPanel::CreateLayout()
                                "initial pose and empty logged info.");
   connect(resetStateButton, &QPushButton::clicked, this, &SlamControlPanel::ResetSlamState);
 
+ // Reset trajectory
+  auto resetTrajButton = new QPushButton;
+  resetTrajButton->setText("Reset trajectory");
+  resetTrajButton->setToolTip("Reset the trajectory from a CSV file with header:\n"
+                              "frame_id\n"
+                              "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n"
+                              "t being the time\n,"
+                              "x,y,z being the position and\n"
+                              "xi,yi,zi being an axis of the 3D frame\n"
+                              "of the trajectory pose (ith column of the rotation).");
+  connect(resetTrajButton, &QPushButton::clicked, this, &SlamControlPanel::ResetSlamTraj);
+
   // Turn on/off the SLAM process
   auto switchOnOffButton = new QPushButton;
   switchOnOffButton->setText("Switch on/off");
@@ -134,6 +146,7 @@ void SlamControlPanel::CreateLayout()
   // Create the whole command space
   auto commandLayout = new QVBoxLayout;
   commandLayout->addWidget(resetStateButton);
+  commandLayout->addWidget(resetTrajButton);
   commandLayout->addWidget(disableMapUpdateButton);
   commandLayout->addWidget(enableMapExpansionButton);
   commandLayout->addWidget(enableMapUpdateButton);
@@ -205,6 +218,13 @@ void SlamControlPanel::ResetSlamState()
   // Call service for aggregation node
   lidar_slam::reset srv;
   this->ResetClient.call(srv);
+}
+
+//----------------------------------------------------------------------------
+void SlamControlPanel::ResetSlamTraj()
+{
+  QString filePath = QFileDialog::getOpenFileName(this, tr("Open File"), "/home", tr("Trajectory files (*.csv)"));
+  this->SendCommand(lidar_slam::SlamCommand::RESET_TRAJECTORY, filePath.toStdString());
 }
 
 //----------------------------------------------------------------------------

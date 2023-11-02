@@ -200,7 +200,7 @@ protected:
    *        The fields of the file must be : time, x, y, z, rot(0,0), rot(1,0), rot(2,0), ..., rot(3, 3)
    *        /!\ order matters
    */
-  std::string ReadPoses(const std::string& path);
+  std::string ReadPoses(const std::string& path, bool resetTraj = false);
   //----------------------------------------------------------------------------
   /*!
    * @brief Helper to get and store loop closure indices

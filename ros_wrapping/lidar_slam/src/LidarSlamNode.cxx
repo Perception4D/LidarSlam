@@ -754,7 +754,7 @@ std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& 
 }
 
 //------------------------------------------------------------------------------
-std::string LidarSlamNode::ReadPoses(const std::string& path)
+std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
 {
   std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 13, 2);
   if (lines.empty())
@@ -776,6 +776,10 @@ std::string LidarSlamNode::ReadPoses(const std::string& path)
     }
   }
 
+
+  LidarSlam::ExternalSensors::PoseManager trajectoryManager("new trajectory");
+  trajectoryManager.SetVerbose(true);
+  trajectoryManager.SetDistanceThreshold(std::max(2., 2. * this->LidarSlam.GetKfDistanceThreshold()));
   for (auto& l : lines)
   {
     // Build pose measurement
@@ -791,8 +795,18 @@ std::string LidarSlamNode::ReadPoses(const std::string& path)
       for (int j = 0; j < 3; ++j)
         poseMeas.Pose.linear()(i, j) = std::stof(l[i + j*3 + 4]);
     }
-    this->LidarSlam.AddPoseMeasurement(poseMeas);
+    if (resetTraj)
+      trajectoryManager.AddMeasurement(poseMeas);
+    else
+      this->LidarSlam.AddPoseMeasurement(poseMeas);
   }
+
+  if (resetTraj)
+  {
+    this->LidarSlam.ResetStatePoses(trajectoryManager);
+    ROS_INFO_STREAM("Trajectory successfully loaded!");
+  }
+
   return frameID;
 }
 
