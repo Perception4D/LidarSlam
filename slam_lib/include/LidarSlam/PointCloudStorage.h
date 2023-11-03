@@ -24,8 +24,6 @@
 #define PCL_NO_PRECOMPILE
 #endif
 #include <pcl/io/pcd_io.h>
-#include <boost/filesystem.hpp>
-
 #include "LidarSlam/Utilities.h"
 
 // PCL Octree compression does not compile properly on Windows with MSVC
@@ -254,7 +252,7 @@ struct PCDFilePointCloud final : public PointCloudData<PointT>
 
   PCDFilePointCloud(CloudTPtr const& cloud, std::string const& pcdDirPath = "point_cloud_log/")
   {
-    boost::filesystem::create_directory(pcdDirPath);
+    Utils::CreateDir(pcdDirPath);
     this->PCDFilePath = pcdDirPath + std::to_string(this->PCDFileIndex) + ".pcd";
     this->PCDFileIndex++;
     this->SetCloud(cloud);
