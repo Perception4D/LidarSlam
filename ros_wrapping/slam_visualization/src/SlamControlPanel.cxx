@@ -51,6 +51,18 @@ void SlamControlPanel::CreateLayout()
                                "initial pose and empty logged info.");
   connect(resetStateButton, &QPushButton::clicked, this, &SlamControlPanel::ResetSlamState);
 
+ // Reset trajectory
+  auto resetTrajButton = new QPushButton;
+  resetTrajButton->setText("Reset trajectory");
+  resetTrajButton->setToolTip("Reset the trajectory from a CSV file with header:\n"
+                              "frame_id\n"
+                              "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n"
+                              "t being the time\n,"
+                              "x,y,z being the position and\n"
+                              "xi,yi,zi being an axis of the 3D frame\n"
+                              "of the trajectory pose (ith column of the rotation).");
+  connect(resetTrajButton, &QPushButton::clicked, this, &SlamControlPanel::ResetSlamTraj);
+
   // Turn on/off the SLAM process
   auto switchOnOffButton = new QPushButton;
   switchOnOffButton->setText("Switch on/off");
@@ -113,9 +125,28 @@ void SlamControlPanel::CreateLayout()
                               "of the rotation matrix).");
   connect(calibrateButton, &QPushButton::clicked, this, &SlamControlPanel::Calibrate);
 
+  // Add loop closure indices from external file
+  auto loadLoopIndicesButton = new QPushButton;
+  loadLoopIndicesButton->setText("Load loop indices");
+  loadLoopIndicesButton->setToolTip("Load loop closure indices\n"
+                                    "from an external file and add \n"
+                                    "them into LoopDetections vector.\n"
+                                    "The file must contain the fields\n"
+                                    "<queryIdx, revistedIdx>");
+  connect(loadLoopIndicesButton, &QPushButton::clicked, this, &SlamControlPanel::LoadLoopIndices);
+
+  // Optimize graph
+  auto optimizeGraphButton = new QPushButton;
+  optimizeGraphButton->setText("Optimize graph");
+  optimizeGraphButton->setToolTip("Launch pose graph optimization\n"
+                                  "The Logging timeout needs to be\n"
+                                  "set appropriately.");
+  connect(optimizeGraphButton, &QPushButton::clicked, this, &SlamControlPanel::OptimizeGraph);
+
   // Create the whole command space
   auto commandLayout = new QVBoxLayout;
   commandLayout->addWidget(resetStateButton);
+  commandLayout->addWidget(resetTrajButton);
   commandLayout->addWidget(disableMapUpdateButton);
   commandLayout->addWidget(enableMapExpansionButton);
   commandLayout->addWidget(enableMapUpdateButton);
@@ -123,6 +154,8 @@ void SlamControlPanel::CreateLayout()
   commandLayout->addWidget(saveTrajButton);
   commandLayout->addWidget(saveMapsButton);
   commandLayout->addWidget(calibrateButton);
+  commandLayout->addWidget(loadLoopIndicesButton);
+  commandLayout->addWidget(optimizeGraphButton);
 
   auto commandBox = new QGroupBox;
   commandBox->setLayout(commandLayout);
@@ -188,6 +221,13 @@ void SlamControlPanel::ResetSlamState()
 }
 
 //----------------------------------------------------------------------------
+void SlamControlPanel::ResetSlamTraj()
+{
+  QString filePath = QFileDialog::getOpenFileName(this, tr("Open File"), "/home", tr("Trajectory files (*.csv)"));
+  this->SendCommand(lidar_slam::SlamCommand::RESET_TRAJECTORY, filePath.toStdString());
+}
+
+//----------------------------------------------------------------------------
 void SlamControlPanel::DisableMapUpdate()
 {
   this->SendCommand(lidar_slam::SlamCommand::DISABLE_SLAM_MAP_UPDATE);
@@ -244,6 +284,19 @@ void SlamControlPanel::Calibrate()
 {
   QString filePath = QFileDialog::getOpenFileName(this, tr("Open File"), "/home", tr("Trajectory files (*.csv)"));
   this->SendCommand(lidar_slam::SlamCommand::CALIBRATE_WITH_POSES, filePath.toStdString());
+}
+
+//----------------------------------------------------------------------------
+void SlamControlPanel::LoadLoopIndices()
+{
+  QString filePath = QFileDialog::getOpenFileName(this, tr("Open File"), "/home", tr("Loop closure indices file (*.csv)"));
+  this->SendCommand(lidar_slam::SlamCommand::LOAD_LOOP_INDICES, filePath.toStdString());
+}
+
+//----------------------------------------------------------------------------
+void SlamControlPanel::OptimizeGraph()
+{
+  this->SendCommand(lidar_slam::SlamCommand::OPTIMIZE_GRAPH);
 }
 
 //----------------------------------------------------------------------------

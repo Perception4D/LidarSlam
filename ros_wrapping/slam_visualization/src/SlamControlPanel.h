@@ -54,6 +54,13 @@ public Q_SLOTS:
 
   //----------------------------------------------------------------------------
   /*!
+   * @brief Open a dialog to choose a csv trajectory file
+   *        and send a RESET_TRAJECTORY command to the slam node.
+   */
+  void ResetSlamTraj();
+
+  //----------------------------------------------------------------------------
+  /*!
    * @brief Send a DISABLE_MAP_UPDATE command to the slam node.
    */
   void DisableMapUpdate();
@@ -105,6 +112,18 @@ public Q_SLOTS:
    * @brief Send a SAVE_TRAJECTORY command to the slam node.
    */
   void Calibrate();
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Send a LOAD_LOOP_INDICES command to the slam node.
+   */
+  void LoadLoopIndices();
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Send an OPTIMIZE_GRAPH command to the slam node.
+   */
+  void OptimizeGraph();
 
 private:
   //----------------------------------------------------------------------------

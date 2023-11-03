@@ -14,6 +14,8 @@ uint8 DISABLE_SLAM_MAP_UPDATE = 8
 uint8 ENABLE_SLAM_MAP_EXPANSION = 9
 uint8 ENABLE_SLAM_MAP_UPDATE = 10
 
+# Reset slam trajectory from a trajectory file
+uint8 RESET_TRAJECTORY = 11
 # Reset the SLAM state. Clear the maps and the trajectory, set the current pose to origin.
 uint8 RESET_SLAM = 12
 # Enable/Disable the SLAM process
@@ -39,6 +41,11 @@ uint8 LOAD_KEYPOINTS_MAPS = 18
 # SLAM odometry frame to GPS world/map frame.
 # WARNING : this process is not real time.
 uint8 OPTIMIZE_GRAPH = 20
+
+# Add loop closure indices from an external file
+# containing query frame indices and revisited frame indices
+# The file should be a csv file with fields queryIdx and revisitedIdx
+uint8 LOAD_LOOP_INDICES = 23
 
 # Enable/Disable an external sensor
 # If enabled, sensor data are received and stored to then be processed.
