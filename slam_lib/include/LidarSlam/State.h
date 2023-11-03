@@ -40,7 +40,7 @@ struct LidarState
   // [s] Timestamp of data
   double Time = 0.;
   // Covariance of current pose
-  Eigen::Matrix6d Covariance = Utils::CreateDefaultCovariance();
+  Eigen::Matrix<double, 6, 6, Eigen::DontAlign> Covariance = Utils::CreateDefaultCovariance();
   // Index to link the pose graph (G2O)
   unsigned int Index = 0;
 

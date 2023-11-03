@@ -432,7 +432,7 @@ public:
   SetMacro(LogOnlyKeyframes, bool)
   GetMacro(LogOnlyKeyframes, bool)
 
-  GetMacro(LogStates, std::list<LidarState>)
+  GetMacro(LogStates, const std::list<LidarState>&)
   // Get the last states since last input frame timestamp
   // at a specified frequency
   // This will use external sensor measurements and/or poses interpolation
