@@ -341,7 +341,7 @@ struct OdometerDistanceResidual
 
     // Compute residual
     Isometry3T wheelPoseTransform = basePoseTransform * this->Calibration.cast<T>();
-    *residual = (wheelPoseTransform.translation() - this->RefPos.cast<T>()).norm() - this->Distance;
+    *residual = (wheelPoseTransform.translation() - this->RefPos.cast<T>()).squaredNorm() - this->Distance * this->Distance;
 
     return true;
   }
