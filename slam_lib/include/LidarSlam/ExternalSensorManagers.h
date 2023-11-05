@@ -321,11 +321,15 @@ protected:
                                 this->Measures.end(),
                                 lidarTime,
                                 [&](double time, const T& measure) {return time < measure.Time;});
+      if (postIt == this->Measures.end())
+        --postIt;
     }
     else
     {
+      auto lastMeasPtr = this->Measures.end();
+      --lastMeasPtr;
       // If in the continuity of search, directly look for closest measurements
-      while (postIt->Time < lidarTime && postIt != this->Measures.end())
+      while (postIt->Time < lidarTime && postIt != lastMeasPtr)
         ++postIt;
     }
 
