@@ -914,6 +914,18 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       break;
     }
 
+    // Reset the SLAM trajectory with a csv file of trajectory
+    case lidar_slam::SlamCommand::RESET_TRAJECTORY:
+    {
+      if (msg.string_arg.empty())
+      {
+        ROS_ERROR_STREAM("No path is specified, the trajectory cannot be reset");
+        break;
+      }
+      this->ReadPoses(msg.string_arg, true);
+      break;
+    }
+
     // Reset the SLAM internal state.
     case lidar_slam::SlamCommand::RESET_SLAM:
     {
