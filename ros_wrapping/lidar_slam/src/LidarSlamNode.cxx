@@ -1548,6 +1548,10 @@ void LidarSlamNode::SetSlamParameters()
       this->LidarSlam.SetWheelOdomDirection(dir);
   }
 
+  // Use IMU gravity in local optimization
+  this->UseExtSensor[LidarSlam::ExternalSensor::IMU] = this->PrivNh.param("external_sensors/imu/enable", false);
+  SetSlamParam(double, "external_sensors/imu/gravity_weight", GravityWeight)
+
   // Graph parameters
   SetSlamParam(std::string, "graph/g2o_file_name", G2oFileName)
   SetSlamParam(float,       "graph/covariance_scale", CovarianceScale)
@@ -1727,6 +1731,11 @@ void LidarSlamNode::SetSlamParameters()
                   << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] ? " ON |" : " OFF |")
                   << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] &&
                   this->LidarSlam.GetWheelOdomWeight() > 1e-6 ? " YES |" : " NO |")
+                  << std::setw(22) << " NO |");
+  ROS_INFO_STREAM(std::setw(19) << "IMU               |"
+                  << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::IMU] ? " ON |" : " OFF |")
+                  << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::IMU] &&
+                  this->LidarSlam.GetGravityWeight() > 1e-6 ? " YES |" : " NO |")
                   << std::setw(22) << " NO |");
 }
 
