@@ -1538,6 +1538,7 @@ void LidarSlamNode::SetSlamParameters()
 
   // Use external poses in local optimization or in graph optimization
   this->UseExtSensor[LidarSlam::ExternalSensor::POSE] = this->PrivNh.param("external_sensors/external_poses/enable", false);
+  SetSlamParam(double, "external_sensors/external_poses/weight", PoseWeight)
 
   // Graph parameters
   SetSlamParam(std::string, "graph/g2o_file_name", G2oFileName)
