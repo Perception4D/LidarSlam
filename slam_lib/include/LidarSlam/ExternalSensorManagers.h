@@ -448,8 +448,8 @@ protected:
 // A wheel odometer allows to get a translation information
 // For now, this manager is designed for cases where there is no rotation
 // in the whole trajectory (e.g. Lidar following a cable)
-// It builds a constraint comparing translation of base between
-// two successive poses or from a reference pose
+// It builds a constraint so the translation of the base pose is
+// consistent with the wheel encoder information (with direction or not)
 class WheelOdometryManager : public SensorManager<WheelOdomMeasurement>
 {
 public:
@@ -472,6 +472,9 @@ public:
   // Overload to reset reference pose as well
   void SetCalibration(const Eigen::Isometry3d& calib);
 
+  void SetDirection(const Eigen::Vector3d& direction);
+  GetSensorMacro(Direction, Eigen::Vector3d);
+
   bool IsInitialized() {return this->RefInitialized;}
 
   // Compute the interpolated measure to be synchronized with SLAM output (at lidarTime)
@@ -493,6 +496,8 @@ private:
   // wheel encoder pose and the reference pose
   // It should be a translation
   Eigen::Isometry3d RefOffsetInit = Eigen::Isometry3d::Identity();
+  // Optional direction of motion
+  Eigen::Vector3d Direction = Eigen::Vector3d::Zero();
 };
 
 // ---------------------------------------------------------------------------
