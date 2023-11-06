@@ -116,7 +116,7 @@ public:
   //----------------------------------------------------------------------------
   /*!
    * @brief     Optional external pose callback, adding an external pose to the SLAM
-   * @param[in] msg camera calibration
+   * @param[in] msg external pose with its associated covariance
    */
   void ExtPoseCallback(const geometry_msgs::PoseWithCovarianceStamped& poseMsg);
 
