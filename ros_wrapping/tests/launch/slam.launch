@@ -59,6 +59,8 @@
   <node name="lidar_slam" pkg="lidar_slam" type="lidar_slam_node" output="screen">
     <rosparam if="$(arg outdoor)" file="$(find lidar_slam)/params/slam_config_outdoor.yaml" command="load"/>
     <rosparam unless="$(arg outdoor)" file="$(find lidar_slam)/params/slam_config_indoor.yaml" command="load"/>
+    <param name="slam/n_threads" value="1"/>
+    <param name="slam/overlap/sampling_ratio" value="0.33"/>
     <param name="slam/verbosity" value="0"/>
   </node>
 

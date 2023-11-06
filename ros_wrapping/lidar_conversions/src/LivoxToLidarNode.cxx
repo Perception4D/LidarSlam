@@ -84,7 +84,8 @@ void LivoxToLidarNode::PointCloud2Callback(const CloudL& cloudL)
     slamPoint.time = prevTime + 0.1/300000.; // Supposing 10 Hz and 300 000 points
     prevTime = slamPoint.time;
 
-    cloudS.push_back(slamPoint);
+    if (!Utils::HasNanField(slamPoint))
+      cloudS.push_back(slamPoint);
   }
 
   this->Talker.publish(cloudS);

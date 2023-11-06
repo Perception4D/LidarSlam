@@ -91,7 +91,8 @@ void OusterToLidarNode::Callback(const CloudV& cloudO)
     double frameAdvancement = frameAdvancementEstimator(slamPoint);
     slamPoint.time = (this->TimestampFirstPacket ? frameAdvancement : frameAdvancement - 1) / this->Rpm * 60.;
 
-    cloudS.push_back(slamPoint);
+    if (!Utils::HasNanField(slamPoint))
+      cloudS.push_back(slamPoint);
   }
 
   this->Talker.publish(cloudS);

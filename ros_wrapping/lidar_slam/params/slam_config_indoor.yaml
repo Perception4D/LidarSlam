@@ -182,7 +182,7 @@ logging:
 slam:
 
   # General parameters
-  n_threads: 1      # [threads] Max number of threads to use for parallel processing (default: 1)
+  n_threads: 5      # [threads] Max number of threads to use for parallel processing (default: 1)
   2d_mode: false    # [bool] Optimize only 2D pose (X, Y, rZ) of tracking_frame relatively to odometry_frame.
 
   # How to estimate Ego-Motion (approximate relative motion since last frame).
@@ -293,7 +293,7 @@ slam:
   confidence:
     window: 10                   # [frames] Nb of frames to define a window to denoise and derivate values
     overlap:                     # Estimate how much the current scan is well registered on the current maps.
-      sampling_ratio: 0.33       # [0-1] Ratio of points to compute overlap on to save some time.
+      sampling_ratio: 0.         # [0-1] Ratio of points to compute overlap on to save some time.
                                  # 1 uses all points, 0.5 uses 1 point over 2, etc., 0 disables overlap computation.
       gap_threshold: 0.04        # [0-1] Maximum authorized overlap gap, a greater gap might trigger an failure detection
 
