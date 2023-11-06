@@ -136,7 +136,7 @@ bool WheelOdometryManager::ComputeConstraint(double lidarTime)
   this->Residual.Robustifier.reset(new ceres::ScaledLoss(NULL, this->Weight, ceres::TAKE_OWNERSHIP));
 
   if (this->Verbose)
-    PRINT_INFO(std::setprecision(2)
+    PRINT_INFO(std::setprecision(4)
                << "Adding wheel encoder residual : "
                << distDiff << " m travelled since position : "
                << this->RefPose.translation().transpose());
