@@ -1504,6 +1504,10 @@ void LidarSlamNode::SetSlamParameters()
   this->UseHeaderTime = this->PrivNh.param("external_sensors/use_header_time", true);
   SetSlamParam(float,   "external_sensors/time_offset", SensorTimeOffset)
   this->SensorTimeOffset = this->LidarSlam.GetSensorTimeOffset();
+  this->PlanarTrajectory = this->PrivNh.param("external_sensors/calibration/planar_trajectory", this->PlanarTrajectory);
+
+  // Use GPS data for GPS/SLAM calibration or Pose Graph Optimization.
+  this->UseExtSensor[LidarSlam::ExternalSensor::GPS] = this->PrivNh.param("external_sensors/gps/enable", false);
 
   // Use tags data for local optimization.
   this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] = this->PrivNh.param("external_sensors/landmark_detector/enable", false);
@@ -1517,7 +1521,10 @@ void LidarSlamNode::SetSlamParameters()
   SetSlamParam(float,  "external_sensors/camera/weight", CameraWeight)
   SetSlamParam(float,  "external_sensors/camera/saturation_distance", CameraSaturationDistance)
 
-  this->PlanarTrajectory = this->PrivNh.param("external_sensors/calibration/planar_trajectory", this->PlanarTrajectory);
+  // Use external poses in local optimization or in graph optimization
+  this->UseExtSensor[LidarSlam::ExternalSensor::POSE] = this->PrivNh.param("external_sensors/external_poses/enable", false);
+  SetSlamParam(double, "external_sensors/external_poses/weight", PoseWeight)
+
   // Use wheel encoder in local optimization
   this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] = this->PrivNh.param("external_sensors/wheel_encoder/enable", false);
   SetSlamParam(double, "external_sensors/wheel_encoder/weight", WheelOdomWeight)
@@ -1532,13 +1539,6 @@ void LidarSlamNode::SetSlamParameters()
     if (ref.norm() > 1e-6)
       this->LidarSlam.SetWheelOdomReference(ref);
   }
-
-  // Use GPS data for GPS/SLAM calibration or Pose Graph Optimization.
-  this->UseExtSensor[LidarSlam::ExternalSensor::GPS] = this->PrivNh.param("external_sensors/gps/enable", false);
-
-  // Use external poses in local optimization or in graph optimization
-  this->UseExtSensor[LidarSlam::ExternalSensor::POSE] = this->PrivNh.param("external_sensors/external_poses/enable", false);
-  SetSlamParam(double, "external_sensors/external_poses/weight", PoseWeight)
 
   // Graph parameters
   SetSlamParam(std::string, "graph/g2o_file_name", G2oFileName)
