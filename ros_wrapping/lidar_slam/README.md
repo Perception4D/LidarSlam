@@ -425,7 +425,7 @@ Camera constraint added
 ### Optional wheel encoder use
 
 If wheel encoder use is enabled, *LidarSlamNode* subscribes to distance messages (message containing only a float64 element called Distance) in the topic called "wheel_odom".
-The wheel encoder measurement can be used in the slam front end optimization to solve some degree of liberty (e.g. in corridors). The calibration must be sent to the TF tree to receive any data.
+The wheel encoder measurement can be used in the slam front end optimization to solve some degree of liberty (e.g. in corridors). The calibration (i.e. the transform between the frame **wheel** and the tracking frame which is **base_link** by default) must be sent to the TF tree to be able to receive any data.
 
 ***WARNING***: Remember to set *max_measures*, *use_header_time* and *time_threshold* to convenient values to be able to receive the measurements.
 
