@@ -172,11 +172,12 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   if (this->UseExtSensor[LidarSlam::ExternalSensor::GPS])
     this->GpsOdomSub = nh.subscribe("gps_odom", 1, &LidarSlamNode::GpsCallback, this);
 
-  // Init logging of landmark data and/or Camera data
+  // Init logging of landmark data, Camera data, external pose data, wheel encoder data and/or IMU data
   if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ||
       this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] ||
       this->UseExtSensor[LidarSlam::ExternalSensor::POSE] ||
-      this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM])
+      this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] ||
+      this->UseExtSensor[LidarSlam::ExternalSensor::IMU])
   {
     // Create an external independent spinner to get the landmarks and/or camera info in a parallel way
 
@@ -222,6 +223,16 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
                                                     this, boost::placeholders::_1));
       ops.callback_queue = &this->ExternalQueue;
       this->WheelOdomSub = nh.subscribe(ops);
+    }
+
+    if (this->UseExtSensor[LidarSlam::ExternalSensor::IMU])
+    {
+      ros::SubscribeOptions ops;
+      ops.initByFullCallbackType<sensor_msgs::Imu>("imu", 10,
+                                                   boost::bind(&LidarSlamNode::ImuCallback,
+                                                   this, boost::placeholders::_1));
+      ops.callback_queue = &this->ExternalQueue;
+      this->ImuSub = nh.subscribe(ops);
     }
 
     this->ExternalSpinnerPtr = std::make_shared<ros::AsyncSpinner>(ros::AsyncSpinner(this->LidarSlam.GetNbThreads(), &this->ExternalQueue));
@@ -640,6 +651,44 @@ void LidarSlamNode::TagCallback(const apriltag_ros::AprilTagDetectionArray& tags
     else
       ROS_WARN_STREAM("The transform between the landmark detector and the tracking frame was not found -> landmarks info ignored");
   }
+}
+
+//------------------------------------------------------------------------------
+void LidarSlamNode::ImuCallback(const sensor_msgs::Imu& imuMsg)
+{
+  double rcpTime = ros::Time::now().toSec();
+
+  if (!this->SlamEnabled)
+    return;
+
+  if (!this->UseExtSensor[LidarSlam::ExternalSensor::IMU])
+    return;
+
+  // Calibration
+  Eigen::Isometry3d baseToImu;
+  if (Utils::Tf2LookupTransform(baseToImu, this->TfBuffer, this->TrackingFrameId, imuMsg.header.frame_id, imuMsg.header.stamp))
+  {
+    // Set IMU calibration
+    if (!this->LidarSlam.GravityHasData())
+      this->LidarSlam.SetGravityCalibration(baseToImu);
+    // Get IMU data for gravity integration
+    // For now, only accelerations are used to add gravity constraint
+    LidarSlam::ExternalSensors::GravityMeasurement gravityMeasurement;
+    gravityMeasurement.Time = this->UseHeaderTime?
+                              imuMsg.header.stamp.sec + imuMsg.header.stamp.nsec * 1e-9
+                              : rcpTime;
+    gravityMeasurement.Acceleration.x() = imuMsg.linear_acceleration.x;
+    gravityMeasurement.Acceleration.y() = imuMsg.linear_acceleration.y;
+    gravityMeasurement.Acceleration.z() = imuMsg.linear_acceleration.z;
+    this->LidarSlam.AddGravityMeasurement(gravityMeasurement);
+
+    ROS_INFO_STREAM("Imu gravity data added with time "
+                    << std::fixed << std::setprecision(9)
+                    << gravityMeasurement.Time);
+  }
+  else
+    ROS_WARN_STREAM("The transform between the IMU and the tracking frame was not found -> IMU info ignored");
+
 }
 
 //------------------------------------------------------------------------------

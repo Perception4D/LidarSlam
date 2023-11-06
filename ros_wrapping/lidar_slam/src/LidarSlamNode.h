@@ -34,6 +34,7 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <std_msgs/Float64.h>
+#include <sensor_msgs/Imu.h>
 
 // SLAM
 #include <LidarSlam/Slam.h>
@@ -120,6 +121,12 @@ public:
    */
   void ExtPoseCallback(const geometry_msgs::PoseWithCovarianceStamped& poseMsg);
 
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief     Optional IMU callback, adding a gravity reference to the SLAM
+   * @param[in] msg IMU acceleration
+   */
+  void ImuCallback(const sensor_msgs::Imu& imuMsg);
   //----------------------------------------------------------------------------
   /*!
    * @brief     Set SLAM pose from external guess.
@@ -320,6 +327,9 @@ protected:
 
   // Wheel encoder
   ros::Subscriber WheelOdomSub;
+
+  // IMU
+  ros::Subscriber ImuSub;
 };
 
 #endif // LIDAR_SLAM_NODE_H
