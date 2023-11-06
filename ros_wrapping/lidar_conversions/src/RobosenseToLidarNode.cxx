@@ -113,7 +113,8 @@ void RobosenseToLidarNode::Callback(const CloudRS& cloudRS)
     double frameAdvancement = static_cast<double>(i % pointsPerRing) / pointsPerRing;
     slamPoint.time = (frameAdvancement - 1) / this->Rpm * 60.;
 
-    cloudS.push_back(slamPoint);
+    if (!Utils::HasNanField(slamPoint))
+      cloudS.push_back(slamPoint);
   }
 
   // Publish pointcloud only if non empty
