@@ -1539,6 +1539,14 @@ void LidarSlamNode::SetSlamParameters()
     if (ref.norm() > 1e-6)
       this->LidarSlam.SetWheelOdomReference(ref);
   }
+  std::vector<double> wheelOdomDir;
+  if (this->PrivNh.getParam("external_sensors/wheel_encoder/direction", wheelOdomDir) &&
+      wheelOdomDir.size() == 3)
+  {
+    Eigen::Vector3d dir = Eigen::Vector3d(wheelOdomDir[0], wheelOdomDir[1], wheelOdomDir[2]);
+    if (dir.norm() > 1e-6)
+      this->LidarSlam.SetWheelOdomDirection(dir);
+  }
 
   // Graph parameters
   SetSlamParam(std::string, "graph/g2o_file_name", G2oFileName)
