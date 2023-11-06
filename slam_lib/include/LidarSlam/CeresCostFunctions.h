@@ -357,6 +357,55 @@ private:
 
 //------------------------------------------------------------------------------
 /**
+ * \class OdometerTranslationResidual
+ * \brief Cost function to optimize the affine isometry
+ *        transformation (rotation and translation) so that the translation
+ *        fits a wheel encoder measurement
+ *
+ * This function takes one 6D parameters block :
+ *   - 3 first parameters to encode translation : X, Y, Z
+ *   - [unused] 3 last parameters to encode rotation with euler angles : rX, rY, rZ
+ *
+ * It outputs a 3D residual block.
+ */
+struct OdometerTranslationResidual
+{
+  OdometerTranslationResidual(const Eigen::Vector3d& refPos,
+                              const Eigen::Isometry3d& calibration,
+                              const Eigen::Vector3d& translation)
+    : RefPos(refPos)
+    , Calibration(calibration)
+    , Translation(translation)
+  {}
+
+  template <typename T>
+  bool operator()(const T* const w, T* residual) const
+  {
+    using Vector3T = Eigen::Matrix<T, 3, 1>;
+    using Isometry3T = Eigen::Transform<T, 3, Eigen::Isometry>;
+
+    // Compute transform matrix of current pose from position and Euler angles (RPY convention)
+    Isometry3T basePoseTransform = Utils::XYZRPYtoIsometry(w[0], w[1], w[2], w[3], w[4], w[5]);
+
+    // Compute residual
+    Isometry3T wheelPoseTransform = basePoseTransform * this->Calibration.cast<T>();
+    Eigen::Map<Vector3T> residualVec(residual);
+    residualVec = wheelPoseTransform.translation() - (this->RefPos + this->Translation).cast<T>();
+
+    return true;
+  }
+
+  // Factory to ease the construction of the auto-diff residual object
+  RESIDUAL_FACTORY(OdometerTranslationResidual, 3, 6)
+
+private:
+  const Eigen::Vector3d RefPos;
+  const Eigen::Isometry3d Calibration;
+  const Eigen::Vector3d Translation;
+};
+
+//------------------------------------------------------------------------------
+/**
  * \class ImuGravityAlignmentResidual
  * \brief Cost function to optimize the orientation of the affine
  *        isometry transformation (rotation and translation) so
