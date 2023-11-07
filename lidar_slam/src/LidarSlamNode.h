@@ -35,6 +35,7 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <std_msgs/msg/float64.hpp>
+#include <sensor_msgs/msg/imu.hpp>
 
 // SLAM
 #include <LidarSlam/Slam.h>
@@ -122,6 +123,13 @@ public:
    * @param[in] msg external pose with its associated covariance
    */
   void ExtPoseCallback(const geometry_msgs::msg::PoseWithCovarianceStamped& poseMsg);
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief     Optional IMU callback, adding a gravity reference to the SLAM
+   * @param[in] msg imu acceleration
+   */
+  void ImuCallback(const sensor_msgs::msg::Imu& imuMsg);
 
   //----------------------------------------------------------------------------
   /*!
@@ -338,6 +346,9 @@ protected:
 
   // Wheel encoder
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr WheelOdomSub;
+
+  // IMU
+  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr ImuSub;
 };
 
 #endif // LIDAR_SLAM_NODE_H
