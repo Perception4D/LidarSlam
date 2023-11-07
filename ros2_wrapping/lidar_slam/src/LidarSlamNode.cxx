@@ -1478,15 +1478,6 @@ void LidarSlamNode::SetSlamParameters()
 //------------------------------------------------------------------------------
 void LidarSlamNode::SetSlamInitialState()
 {
-  // Load initial SLAM maps if requested
-  std::string mapsPathPrefix = "";
-  this->get_parameter<std::string>("maps.initial_maps", mapsPathPrefix);
-  if (!mapsPathPrefix.empty())
-  {
-    RCLCPP_INFO_STREAM(this->get_logger(), "Loading initial keypoints maps from PCD.");
-    this->LidarSlam.LoadMapsFromPCD(mapsPathPrefix);
-  }
-
   // Load initial Landmarks poses if requested
   std::string lmpath = "";
   this->get_parameter("external_sensors.landmark_detector.landmarks_file_path", lmpath);
@@ -1511,6 +1502,15 @@ void LidarSlamNode::SetSlamInitialState()
     Eigen::Isometry3d initialTransform = LidarSlam::Utils::XYZRPYtoIsometry(initialPose.data());
     this->LidarSlam.TransformOdom(initialTransform.inverse());
     RCLCPP_INFO_STREAM(this->get_logger(), "Setting initial SLAM pose to:\n" << initialTransform.matrix());
+  }
+
+  // Load initial SLAM maps if requested
+  std::string mapsPathPrefix = "";
+  this->get_parameter<std::string>("maps.initial_maps", mapsPathPrefix);
+  if (!mapsPathPrefix.empty())
+  {
+    RCLCPP_INFO_STREAM(this->get_logger(), "Loading initial keypoints maps from PCD.");
+    this->LidarSlam.LoadMapsFromPCD(mapsPathPrefix);
   }
 }
 
