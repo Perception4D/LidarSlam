@@ -300,7 +300,8 @@ protected:
                                                                       {LidarSlam::ExternalSensor::LANDMARK_DETECTOR, false},
                                                                       {LidarSlam::ExternalSensor::POSE,              false},
                                                                       {LidarSlam::ExternalSensor::CAMERA,            false},
-                                                                      {LidarSlam::ExternalSensor::WHEEL_ODOM,        false}};
+                                                                      {LidarSlam::ExternalSensor::WHEEL_ODOM,        false},
+                                                                      {LidarSlam::ExternalSensor::IMU,               false}};
 
   // Choose whether to use the time coming from the sensors' messages header
   // or the time of the message reception to synchronize the sensors
