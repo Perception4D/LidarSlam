@@ -5,7 +5,7 @@ WORKDIR /tmp
 
 # Install Slam ROS dependencies
 RUN apt update && \
-    apt install -y ros-$ROS_DISTRO-geodesy ros-$ROS_DISTRO-gps-common
+    apt install -y ros-$ROS_DISTRO-geodesy ros-$ROS_DISTRO-gps-common ros-$ROS_DISTRO-velodyne-pointcloud
 
 # Install Slam dependencies
 COPY install_deps.sh install_deps.sh
@@ -19,6 +19,9 @@ RUN sh install_nanoflann.sh
 
 COPY install_g2o.sh install_g2o.sh
 RUN sh install_g2o.sh
+
+# Install gitlab CI utilities
+RUN apt install -y jq unzip
 
 # Graphic display on host
 RUN apt -y install libgl1-mesa-glx libgl1-mesa-dri

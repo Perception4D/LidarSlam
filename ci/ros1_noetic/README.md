@@ -1,5 +1,22 @@
 
-# Display Slam ROS with Docker
+## Create image on gitlab registry
+
+To create a container image on gitlab, you first need to build the image locally and then you can push it on the remote repository.
+
+Example to create an image in the Slam repository under the name slam/my_image
+```bash
+docker build . -t gitlab.kitware.com:4567/keu-computervision/slam:my_image
+docker push gitlab.kitware.com:4567/keu-computervision/slam:my_image
+```
+
+Now, you can use the image in the CI by adding the image name to your job:
+```yaml
+my_job:
+  image: gitlab.kitware.com:4567/keu-computervision/slam:my_image
+```
+
+
+## Display Slam output with Docker and ROS
 
 #### Create network
 sudo docker network create ros_net

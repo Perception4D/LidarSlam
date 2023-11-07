@@ -59,9 +59,8 @@ clean_superbuild:
   variables:
     build_dir: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_SB"
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: manual
-    - if: $CI_COMMIT_BRANCH == "master"
+    # Can be launched only from the web interface
+    - if: $CI_PIPELINE_SOURCE == "web"
       when: manual
   script:
     - cmake -E remove_directory $build_dir
@@ -73,9 +72,8 @@ clean_superbuild:
   variables:
     build_dir: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_SB"
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: manual
-    - if: $CI_COMMIT_BRANCH == "master"
+    # Can be launched only from the web interface
+    - if: $CI_PIPELINE_SOURCE == "web"
       when: manual
   script:
     - cmake -E make_directory $build_dir
@@ -271,16 +269,17 @@ linux_ros_wrapping_build:
   stage: ros_wrapping_build
   needs: []
   image: gitlab.kitware.com:4567/keu-computervision/slam:ros1_noetic
-  cache:
-    - key: "ros-build"
-      paths:
-        - catkin_ws/
-      policy: push
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
     - if: $CI_COMMIT_BRANCH == "master"
       when: always
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+  artifacts:
+      paths:
+        - catkin_ws
+      expire_in: "60 days"
   script:
     # Create a hidden catkin workspace folder beside sources
     # This is used to move all files from the current directory
@@ -308,45 +307,40 @@ linux_ros_wrapping_build:
   image: gitlab.kitware.com:4567/keu-computervision/slam:ros1_noetic
   variables:
     GIT_STRATEGY: none
-  cache:
-    - key: "ros-build"
-      paths:
-        - catkin_ws/
-      policy: pull
-    - key: "log"
-      paths:
-        - log/
-      policy: pull-push
-  only:
-    - master
+    PATH_REFERENCE_LOG: "log/${test_name}/reference"
+  artifacts:
+    paths:
+    - "catkin_ws/$PATH_REFERENCE_LOG"
+    expire_in: "60 days"
+  rules:
+    # Allow to manually create a reference for master from the web interface
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "master"
+      when: manual
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: always
   script:
-    - echo "Creating reference log files for $test_name for next lib improvements"
-    - cmake -E remove_directory "log/${test_name}/reference"
-    - cmake -E make_directory "log/${test_name}/reference"
     - cd catkin_ws
-    - source /opt/ros/noetic/setup.bash
+    - echo "Creating reference log files for $test_name for next lib improvements"
+    - cmake -E make_directory "$PATH_REFERENCE_LOG"
     - source devel/setup.bash
-    - roslaunch lidar_slam_test slam.launch
-      test_data:="$data_folder/${test_name}/${test_name}.bag"
+
+    - echo "roslaunch lidar_slam_test slam.launch
+      test_data:=${data_folder}/${test_name}/${test_name}.bag
       outdoor:=$outdoor
       vlp16:=$vlp16
       wait_init:=$wait_init
-      res_path:="${CI_PROJECT_DIR}/log/${test_name}/reference"
+      res_path:=${PWD}/${PATH_REFERENCE_LOG}
+      2>&1
+      | grep comparison ignored"
+    
+    - roslaunch lidar_slam_test slam.launch
+      test_data:="${data_folder}/${test_name}/${test_name}.bag"
+      outdoor:=$outdoor
+      vlp16:=$vlp16
+      wait_init:=$wait_init
+      res_path:=${PWD}/${PATH_REFERENCE_LOG}
       2>&1
       | grep "comparison ignored"
-
-# HACK
-hack:
-  stage: ros_wrapping_build
-  needs: []
-  tags: [brave]
-  variables:
-    GIT_STRATEGY: none
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: always
-  script:
-    - sudo cp /var/lib/docker/volumes/runner-rtopvnvw-project-4640-concurrent-0-cache-3c3f060a0374fc8bc39395164f415a70/_data/keu-computervision/slam/log-protected/cache.zip /var/lib/docker/volumes/runner-rtopvnvw-project-4640-concurrent-0-cache-3c3f060a0374fc8bc39395164f415a70/_data/keu-computervision/slam/log-non_protected/cache.zip
 
 # Perform test
 .ros_test:
@@ -356,32 +350,56 @@ hack:
   image: gitlab.kitware.com:4567/keu-computervision/slam:ros1_noetic
   variables:
     GIT_STRATEGY: none
-  cache:
-    - key: "ros-build"
-      paths:
-        - catkin_ws/
-      policy: pull
-    - key: "log"
-      paths:
-        - log/
-      policy: pull
+    PATH_REFERENCE_LOG: "catkin_ws/log/${test_name}/reference"
+    PATH_RESULT_LOG: "log/${test_name}/result"
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
+  artifacts:
+    paths:
+    - "catkin_ws/log/${test_name}"
+    expire_in: "60 days"
   script:
-    - echo $test_name
-    - cmake -E remove_directory "log/${test_name}/result"
-    - cmake -E make_directory "log/${test_name}/result"
     - cd catkin_ws
-    - source /opt/ros/noetic/setup.bash
+
+    # Search the id of the latest pipeline from master
+    - PIPELINE_ID=$(curl --location "https://gitlab.kitware.com/api/v4/projects/4640/pipelines/latest?ref=master" |
+      jq -r ".id")
+    # Check that the variable is set
+    - ([[ -n "$PIPELINE_ID" ]])
+
+    # Search the id of the ref_name job in the latest pipeline from master
+    - JOB_ID=$(curl "https://gitlab.kitware.com/api/v4/projects/4640/pipelines/${PIPELINE_ID}/jobs" |
+      jq -r ".[] | select(.name == \"$ref_name\") | .id")
+    # Check that the variable is set
+    - ([[ -n "$JOB_ID" ]])
+
+    # Download the artifact for the searched job
+    - echo "Downloading artifact from the job ${JOB_ID} of the pipeline ${PIPELINE_ID}"
+    - curl "https://gitlab.kitware.com/api/v4/projects/4640/jobs/${JOB_ID}/artifacts" --output artifacts_reference.zip
+    - unzip artifacts_reference.zip
+
+    # Launch test
+    - cmake -E make_directory "$PATH_RESULT_LOG"
     - source devel/setup.bash
+
+    - echo "roslaunch lidar_slam_test slam.launch
+      test_data:=${data_folder}/${test_name}/${test_name}.bag
+      outdoor:=$outdoor
+      vlp16:=$vlp16
+      wait_init:=$wait_init
+      ref_path:=${PWD}/${PATH_REFERENCE_LOG}
+      res_path:=${PWD}/${PATH_RESULT_LOG}
+      2>&1
+      | grep Test successfully passed"
+
     - roslaunch lidar_slam_test slam.launch
       test_data:="${data_folder}/${test_name}/${test_name}.bag"
       outdoor:=$outdoor
       vlp16:=$vlp16
       wait_init:=$wait_init
-      ref_path:="${CI_PROJECT_DIR}/log/${test_name}/reference"
-      res_path:="${CI_PROJECT_DIR}/log/${test_name}/result"
+      ref_path:="${PWD}/${PATH_REFERENCE_LOG}"
+      res_path:="${PWD}/${PATH_RESULT_LOG}"
       2>&1
       | grep "Test successfully passed"
 
@@ -408,6 +426,7 @@ ros_test1:
   extends: .ros_test
   variables:
     test_name: "test1"
+    ref_name: "ros_make_reference1" # job name to find the corresponding artifact
     outdoor: "true"
     vlp16: "false"
     wait_init: "2" # To have time to load the reference files
@@ -417,6 +436,7 @@ ros_test2:
   extends: .ros_test
   variables:
     test_name: "test2"
+    ref_name: "ros_make_reference2" # job name to find the corresponding artifact
     outdoor: "false"
     vlp16: "true"
     wait_init: "4" # To have time to load the reference files
