@@ -274,6 +274,8 @@ linux_ros_wrapping_build:
       when: always
     - if: $CI_COMMIT_BRANCH == "master"
       when: always
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
   artifacts:
       paths:
         - catkin_ws
@@ -311,10 +313,11 @@ linux_ros_wrapping_build:
     - "catkin_ws/$PATH_REFERENCE_LOG"
     expire_in: "60 days"
   rules:
-    - if: $CI_COMMIT_BRANCH == "master"
-      when: always
+    # Allow to manually create a reference for master from the web interface
     - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "master"
       when: manual
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: always
   script:
     - cd catkin_ws
     - echo "Creating reference log files for $test_name for next lib improvements"
