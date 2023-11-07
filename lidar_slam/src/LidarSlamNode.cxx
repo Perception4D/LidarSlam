@@ -1541,6 +1541,10 @@ void LidarSlamNode::SetSlamParameters()
       this->LidarSlam.SetWheelOdomDirection(dir);
   }
 
+  // Use IMU gravity in local optimization
+  this->get_parameter_or<bool>("external_sensors.imu.enable", this->UseExtSensor[LidarSlam::ExternalSensor::IMU], false);
+  SetSlamParam(double, "external_sensors.imu.gravity_weight", GravityWeight)
+
   // Graph parameters
   SetSlamParam(std::string, "graph.g2o_file_name", G2oFileName)
   SetSlamParam(float,       "graph.covariance_scale", CovarianceScale)
