@@ -603,6 +603,9 @@ public:
   void SetWheelOdomReference(const Eigen::Vector3d& ref);
   Eigen::Vector3d GetWheelOdomReference() const;
 
+  void SetWheelOdomDirection(const Eigen::Vector3d& dir);
+  Eigen::Vector3d GetWheelOdomDirection() const;
+
   void AddWheelOdomMeasurement(const ExternalSensors::WheelOdomMeasurement& om);
 
   bool WheelOdomHasData() const {return this->WheelOdomManager && this->WheelOdomManager->HasData();}

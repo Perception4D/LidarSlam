@@ -3371,7 +3371,7 @@ void Slam::SetSensorMaxMeasures(unsigned int max)
 //-----------------------------------------------------------------------------
 double Slam::GetWheelOdomWeight() const
 {
-  if(this->WheelOdomManager)
+  if (this->WheelOdomManager)
     return this->WheelOdomManager->GetWeight();
   PRINT_ERROR("Wheel odometer has not been set : can't get wheel odom weight")
   return 0.;
@@ -3434,6 +3434,23 @@ void Slam::SetWheelOdomReference(const Eigen::Vector3d& ref)
   if (!this->WheelOdomManager)
     this->InitWheelOdom();
   this->WheelOdomManager->SetReference(ref);
+}
+
+//-----------------------------------------------------------------------------
+Eigen::Vector3d Slam::GetWheelOdomDirection() const
+{
+  if(this->WheelOdomManager)
+    return this->WheelOdomManager->GetDirection();
+  PRINT_ERROR("Wheel odometer has not been set : can't get wheel odom direction")
+  return Eigen::Vector3d::Zero();
+}
+
+//-----------------------------------------------------------------------------
+void Slam::SetWheelOdomDirection(const Eigen::Vector3d& direction)
+{
+  if (!this->WheelOdomManager)
+    this->InitWheelOdom();
+  this->WheelOdomManager->SetDirection(direction);
 }
 
 //-----------------------------------------------------------------------------
