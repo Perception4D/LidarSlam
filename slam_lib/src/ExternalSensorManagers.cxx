@@ -81,7 +81,7 @@ void WheelOdometryManager::SetReference(const Eigen::Isometry3d& basePose, doubl
     // Case 3 : reference measure has never been estimated
     // Compute synchronized measure for reference
     WheelOdomMeasurement synchMeas; // Virtual measure with synchronized timestamp
-    if (!ComputeSynchronizedMeasure(lidarTime, synchMeas))
+    if (!this->ComputeSynchronizedMeasure(lidarTime, synchMeas))
     {
       this->RefInitialized = false;
       return;
