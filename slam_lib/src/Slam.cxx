@@ -1037,9 +1037,10 @@ void Slam::TransformOdom(const Eigen::Isometry3d& offset)
   for (auto k : this->UsableKeypoints)
   {
     PointCloud::Ptr keypoints = this->LocalMaps[k]->Get();
-    pcl::transformPointCloud(*keypoints, *keypoints, offsetInv.matrix());
+    PointCloud::Ptr transformedKeypoints(new PointCloud);
+    pcl::transformPointCloud(*keypoints, *transformedKeypoints, offsetInv.matrix());
     this->LocalMaps[k]->Reset();
-    this->LocalMaps[k]->Add(keypoints);
+    this->LocalMaps[k]->Add(transformedKeypoints);
   }
 }
 
