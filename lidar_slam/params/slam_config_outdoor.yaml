@@ -140,8 +140,8 @@
                                  # [0.,0.,0.] deactivates the feature: the residual will be 1D
 
       imu:
-        enable: false            # [bool] To receive and use a imu sensor
-        gravity_weight: 0.       # [double] Weight to apply onto the imu gravity constraint in the local optimization
+        enable: true            # [bool] To receive and use a imu sensor
+        gravity_weight: 100.       # [double] Weight to apply onto the imu gravity constraint in the local optimization
 
     graph:
       g2o_file_name: ""    # [string] File where to store the g2o log info (viewable with g2o_viewer tool)
