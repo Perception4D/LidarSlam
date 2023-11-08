@@ -176,6 +176,10 @@ bool ImuGravityManager::ComputeSynchronizedMeasure(double lidarTime, GravityMeas
   // Compute the two closest measures to current Lidar frame
   lidarTime -= this->TimeOffset;
   auto bounds = this->GetMeasureBounds(lidarTime, trackTime);
+  std::cout<<std::setprecision(14)<<" lidarTime = "<<lidarTime<<"\n";
+  std::cout<<" imu time left = "<<bounds.first->Time<<" acce = "<<bounds.first->Acceleration.x()<<", "<<bounds.first->Acceleration.y()<<", "<<bounds.first->Acceleration.z()<<"\n";
+  std::cout<<" imu time right = "<<bounds.second->Time<<" acce = "<<bounds.second->Acceleration.x()<<", "<<bounds.second->Acceleration.y()<<", "<<bounds.first->Acceleration.z()<<std::scientific<<"\n";
+
   if (bounds.first == bounds.second)
     return false;
   // Interpolate gravity measurement at LiDAR timestamp
