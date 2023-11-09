@@ -404,6 +404,8 @@ slam:
     downsampling:
       max_points: 1000                 # [points] Maximum number of keypoints of each type to extract.
       voxel_grid_resolution: 2.        # [m/voxel] Size of a voxel to downsample the extracted keypoints.
+      # Additional parameter for the dense extractor (DSSKE)
+      patch_size: 32                   # [nb] Size of a patch. It will contain at much patch_size*patch_size keypoints candidates.
 
     # # Multi LiDAR inputs
     # # The multiple devices to use for SLAM.
@@ -443,6 +445,8 @@ slam:
     #   downsampling:
     #     max_points: 1000                 # [points] Maximum number of keypoints of each type to extract.
     #     voxel_grid_resolution: 1.        # [m/voxel] Size of a voxel to downsample the extracted keypoints.
+    #     # Additional parameter for the dense extractor (DSSKE)
+    #     patch_size: 32                   # [nb] Size of a patch. It will contain at much patch_size*patch_size keypoints candidates.
     # device_lidar_frame_1:
     #   # The extractor modes allow to decide which keypoint extractor to choose
     #   # 0) Sparse extractor called SpinningSensorKeypointExtractor. Convenient for all lidars.
@@ -474,3 +478,5 @@ slam:
     #   downsampling:
     #     max_points: 1000                 # [points] Maximum number of keypoints of each type to extract.
     #     voxel_grid_resolution: 1.        # [m/voxel] Size of a voxel to downsample the extracted keypoints.
+    #     # Additional parameter for the dense extractor (DSSKE)
+    #     patch_size: 32                   # [nb] Size of a patch. It will contain at much patch_size*patch_size keypoints candidates.
