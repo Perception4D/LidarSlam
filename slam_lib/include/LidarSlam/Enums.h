@@ -117,8 +117,8 @@ static const std::map<Model, unsigned int> ModelRequiredNbData = { {LINEAR,    2
                                                                    {QUADRATIC, 3},
                                                                    {CUBIC,     4} };
 static const std::map<Model, std::string> ModelNames = { {LINEAR,    "Linear"},
-                                                    {QUADRATIC, "Quadratic"},
-                                                    {CUBIC,     "Cubic"} };
+                                                         {QUADRATIC, "Quadratic"},
+                                                         {CUBIC,     "Cubic"} };
 
 }  // end of Interpolation namespace
 
