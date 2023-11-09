@@ -1822,7 +1822,14 @@ void LidarSlamNode::SetSlamParameters()
     if (mode == LidarSlam::KeypointExtractorMode::SPARSE)
       ke = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
     else
-      ke = std::make_shared<LidarSlam::DenseSpinningSensorKeypointExtractor>();
+    {
+      auto dsske = std::make_shared<LidarSlam::DenseSpinningSensorKeypointExtractor>();
+      int patchSize;
+      // Set specific parameter for DSSKE
+      if (this->get_parameter(prefix + "downsampling.patch_size", patchSize))
+        dsske->SetPatchSize(patchSize);
+      ke = dsske;
+    }
 
     // Set keypoints extractor parameters and enable keypoints
     initKeypointsExtractor(ke, prefix);
