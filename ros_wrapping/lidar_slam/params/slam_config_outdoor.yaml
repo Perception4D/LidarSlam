@@ -135,8 +135,8 @@ external_sensors:
     direction: [0., 0., 0.]  # [m, m, m] Direction on which the odometry is measured
                              # [0.,0.,0.] deactivates the feature: the residual will be 1D
   imu:
-    enable: true            # [bool] To receive and use a imu sensor
-    gravity_weight: 100.       # [double] Weight to apply onto the imu gravity constraint in the local optimization
+    enable: false            # [bool] To receive and use a imu sensor
+    gravity_weight: 0.       # [double] Weight to apply onto the imu gravity constraint in the local optimization
 
 
 graph:
@@ -373,8 +373,8 @@ slam:
       plane: true
       blob: false
     max_points: 1000                   # [points] Maximum number of keypoints of each type to extract
-    voxel_grid_resolution: 1.          # [m/voxel] Size of a voxel to downsample the extracted keypoints
-    input_sampling_ratio: 0.5           # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
+    voxel_grid_resolution: 2.          # [m/voxel] Size of a voxel to downsample the extracted keypoints
+    input_sampling_ratio: 1.           # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
     min_distance_to_sensor: 1.5        # [m] Minimal point to sensor distance to consider a point as valid.
     max_distance_to_sensor: 200.       # [m] Maximal point to sensor distance to consider a point as valid.
     min_azimuth: 0.                    # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
