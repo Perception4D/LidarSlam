@@ -95,6 +95,10 @@ private:
   // Output separate point features contained in Vertex Map in pgm format to visualize as 2D image
   void OutputFeatures(std::string path);
 
+  // Output Keypoints in csv format to use as 3D pointcloud
+  // and in pgm format to visualize as 2D image
+  bool OutputKeypoints(std::string path);
+
   // Compute the curvature features within each scan line : depth
   // space gap, intensity gap and line angle
   void ComputeCurvature() override;
