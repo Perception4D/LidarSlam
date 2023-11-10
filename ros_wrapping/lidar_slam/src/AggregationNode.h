@@ -22,10 +22,14 @@
 // ROS
 #include <ros/ros.h>
 #include <pcl_ros/point_cloud.h>
+#include <nav_msgs/Odometry.h>
 
 // LidarSlam
 #include <LidarSlam/LidarPoint.h>
 #include <LidarSlam/RollingGrid.h>
+
+// Local
+#include "ros_transform_utils.h"
 
 #include "lidar_slam/save_pc.h"
 #include "lidar_slam/reset.h"
@@ -65,18 +69,32 @@ public:
 
   bool ResetService(lidar_slam::resetRequest& req, lidar_slam::resetResponse& res);
 
+  void PoseCallback(const nav_msgs::Odometry& poseMsg);
+
 private:
 
   // ROS node handles, subscribers and publishers
   ros::NodeHandle &Nh, &PrivNh;
   ros::Subscriber FrameSubscriber;
+  ros::Subscriber PoseSubscriber;
   ros::Publisher PointsPublisher;
+  ros::Publisher SlicePublisher;
   ros::ServiceServer SaveService;
   ros::ServiceServer RstService;
 
   // Dense map containing aggregated points from all frames
   std::shared_ptr<LidarSlam::RollingGrid> DenseMap;
   CloudS::Ptr Pointcloud;
+
+  // Slice extraction parameters
+  bool ExtractSlice = false;
+  // Optional positions logged to compute
+  // the direction to create a slice
+  std::list<Eigen::Vector3d> Positions;
+  double TrajectoryMaxLength = 0.5; // 50 cm
+  double SliceWidth = 0.2; // 20 cm
+  double SliceMaxDist = 5.; // 5 m
+  unsigned int MinSlicePtsWithoutMovObjects = 50;
 };
 
 #endif // AGGREGATION_NODE_H
