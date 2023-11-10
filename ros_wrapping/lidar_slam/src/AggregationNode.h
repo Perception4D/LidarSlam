@@ -79,6 +79,7 @@ private:
   ros::Subscriber PoseSubscriber;
   ros::Publisher PointsPublisher;
   ros::Publisher SlicePublisher;
+  ros::Publisher SliceAreaPublisher;
   ros::ServiceServer SaveService;
   ros::ServiceServer RstService;
 
@@ -95,6 +96,9 @@ private:
   double SliceWidth = 0.2; // 20 cm
   double SliceMaxDist = 5.; // 5 m
   unsigned int MinSlicePtsWithoutMovObjects = 50;
+  double AlphaShapeRadius = 0.1; // 10 cm
+  // Bin range for the circular histogram
+  double AngleStep = 3. * M_PI / 180.; // 3°
 };
 
 #endif // AGGREGATION_NODE_H

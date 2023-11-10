@@ -13,3 +13,4 @@ slice:
   traj_length: 1.      # [meters] Length of trajectory to consider to define the slice plane
   width: 0.2           # [meters] Width of the pointcloud slice to take to create the slice projection
   max_dist: 4.         # [meters] Maximal distance of the points from the trajectory position onto the slice plane
+  angle_resolution: 3. # [°] Resolution of the slice pointcloud w.r.t the trajectory position

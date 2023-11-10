@@ -25,6 +25,7 @@
 // ROS
 #include <pcl_conversions/pcl_conversions.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <std_msgs/Float64.h>
 
 // Boost
 #include <boost/filesystem.hpp>
@@ -45,7 +46,10 @@ AggregationNode::AggregationNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   // Optional publisher
   this->ExtractSlice = this->PrivNh.param("slice/enable", false);
   if (this->ExtractSlice)
+  {
     this->SlicePublisher = this->Nh.advertise<CloudS>("slice_cloud", 10, false);
+    this->SliceAreaPublisher = this->Nh.advertise<std_msgs::Float64>("slice_area", 10, false);
+  }
 
   // Init ROS subscribers
   // Lidar frame undistorted
@@ -69,6 +73,7 @@ AggregationNode::AggregationNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   this->SliceWidth = this->PrivNh.param("slice/width", 0.2);
   // Set the max distance from the pose to compute a slice
   this->SliceMaxDist = this->PrivNh.param("slice/max_dist", 5.);
+  this->AngleStep = (M_PI / 180.) * this->PrivNh.param("slice/angle_resolution", 3.);
 
   // Get max size in meters
   float maxSize = this->PrivNh.param("max_size", 200.);
@@ -178,8 +183,53 @@ void AggregationNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
     slice.back().getVector3fMap() -= (ptDistance * motionDirection).cast<float>();
   }
 
+  // Create the boundary using a moving average
+  // 1. Create a circular histogram
+  std::vector<std::vector<Eigen::Vector3d>> histogram(std::ceil((2. * M_PI + 1e-6) / this->AngleStep));
+  Eigen::Vector3d refDir = (slice.front().getVector3fMap().cast<double>() - currPosition).normalized();
+  for (const auto& pt : slice)
+  {
+    Eigen::Vector3d currVec = (pt.getVector3fMap().cast<double>() - currPosition).normalized();
+    double dotProduct = std::min(std::max(currVec.dot(refDir), -1.), 1.);
+    double angle = std::acos(dotProduct);
+    if (currVec.cross(refDir).dot(motionDirection) < 0.)
+      angle = 2. * M_PI - angle;
+    histogram[int(angle / this->AngleStep)].push_back(pt.getVector3fMap().cast<double>());
+  }
+
+  // 2. Average bins
+  CloudS boundary;
+  boundary.header = this->Pointcloud->header;
+  boundary.reserve(histogram.size());
+  for (const auto& bin : histogram)
+  {
+    if (bin.empty())
+      continue;
+    Eigen::Vector3d ptMean = Eigen::Vector3d::Zero();
+    for (const auto& pt : bin)
+      ptMean += pt;
+    ptMean /= bin.size();
+    PointS ptBoundary;
+    ptBoundary.getVector3fMap() = ptMean.cast<float>();
+    boundary.emplace_back(ptBoundary);
+  }
+
+  // Browse over the bins to build the area
+  double area = 0.;
+  for (unsigned int i = 1; i < boundary.size(); ++i)
+  {
+    Eigen::Vector3d vec1 = boundary[i].getVector3fMap().cast<double>() - currPosition;
+    Eigen::Vector3d vec2 = boundary[i - 1].getVector3fMap().cast<double>() - currPosition;
+    area += 0.5 * (vec1).cross(vec2).norm();
+  }
+
+  // Publish the area value
+  std_msgs::Float64 areaMsg;
+  areaMsg.data = area;
+  this->SliceAreaPublisher.publish(areaMsg);
+
   // Publish the slice points
-  this->SlicePublisher.publish(slice);
+  this->SlicePublisher.publish(boundary);
 }
 
 //------------------------------------------------------------------------------
