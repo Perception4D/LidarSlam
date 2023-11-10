@@ -667,16 +667,6 @@ void LidarSlamNode::ImuCallback(const sensor_msgs::msg::Imu& imuMsg)
     gravityMeasurement.Acceleration.z() = imuMsg.linear_acceleration.z;
     this->LidarSlam.AddGravityMeasurement(gravityMeasurement);
 
-    // Debug: display gravity vector
-    LidarSlam::ExternalSensors::GravityMeasurement gravityTest;
-    gravityTest.Acceleration = baseToImu * gravityMeasurement.Acceleration;
-    Eigen::Isometry3d gravityTrans = Eigen::Isometry3d::Identity();
-    // Make the normalised gravity vector be axis_z (the third column in the matrix)
-    gravityTrans.linear().col(2) = gravityTest.Acceleration.normalized();
-    gravityTrans.linear().col(0) = gravityTest.Acceleration.cross(Eigen::Vector3d::UnitX()).normalized();
-    gravityTrans.linear().col(1) = gravityTest.Acceleration.cross(gravityTrans.linear().col(0)).normalized();
-    this->PublishTransformTF(gravityMeasurement.Time, this->TrackingFrameId, "gravity", gravityTrans);
-
     RCLCPP_INFO_STREAM(this->get_logger(), "Imu acceleration added with time "
                        << std::fixed << std::setprecision(9)
                        << gravityMeasurement.Time);
