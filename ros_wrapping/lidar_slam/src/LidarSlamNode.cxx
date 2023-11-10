@@ -1723,6 +1723,11 @@ void LidarSlamNode::SetSlamParameters()
                   << std::setw(22) << " NO |"
                   << std::setw(22) << ((this->UseExtSensor[LidarSlam::ExternalSensor::GPS] &&
                   this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS)) ? " YES |" : " NO |"));
+  ROS_INFO_STREAM(std::setw(19) << "Wheel encoder     |"
+                  << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] ? " ON |" : " OFF |")
+                  << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] &&
+                  this->LidarSlam.GetWheelOdomWeight() > 1e-6 ? " YES |" : " NO |")
+                  << std::setw(22) << " NO |");
 }
 
 //------------------------------------------------------------------------------
