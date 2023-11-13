@@ -46,6 +46,9 @@ GenericConversionNode::GenericConversionNode(ros::NodeHandle& nh, ros::NodeHandl
   // Init ROS subscriber
   this->Listener = nh.subscribe("generic_points", 1, &GenericConversionNode::Callback, this);
 
+  // Init ROS service
+  this->EstimService = nh.advertiseService("lidar_conversions/estim_params", &GenericConversionNode::EstimParamsService, this);
+
   ROS_INFO_STREAM(BOLD_GREEN("Generic LiDAR data converter is ready !"));
 }
 
@@ -227,6 +230,16 @@ void GenericConversionNode::Callback(const sensor_msgs::PointCloud2& msg_receive
   if (!cloudS.empty())
     this->Talker.publish(cloudS);
 }
+
+//------------------------------------------------------------------------------
+bool GenericConversionNode::EstimParamsService(lidar_conversions::EstimParamsRequest& req, lidar_conversions::EstimParamsResponse& res)
+{
+  this->RotSenseAndClustersEstimated = false;
+  ROS_INFO_STREAM("Estimation parameters will be re-estimated with next frames.");
+  res.success = true;
+  return true;
+}
+
 }  // end of namespace lidar_conversions
 
 //------------------------------------------------------------------------------

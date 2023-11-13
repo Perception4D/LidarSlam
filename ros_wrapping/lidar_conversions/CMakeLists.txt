@@ -29,6 +29,12 @@ add_message_files(
   CustomPoint.msg
 )
 
+# Generate service in the 'srv' folder
+add_service_files(
+  FILES
+  EstimParams.srv
+)
+
 # Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
@@ -83,6 +89,8 @@ add_dependencies(livox_conversion_node lidar_conversions_generate_messages_cpp)
 # Generic converter
 add_executable(generic_conversion_node src/GenericConversionNode.cxx)
 target_link_libraries(generic_conversion_node ${catkin_LIBRARIES})
+
+add_dependencies(generic_conversion_node lidar_conversions_generate_messages_cpp)
 
 #############
 ## Install ##

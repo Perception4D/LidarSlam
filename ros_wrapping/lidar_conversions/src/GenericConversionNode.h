@@ -27,6 +27,8 @@
 #include "Utilities.h"
 #include "GenericPoint.h"
 
+#include "lidar_conversions/EstimParams.h"
+
 namespace lidar_conversions
 {
 
@@ -58,6 +60,14 @@ public:
    */
   void Callback(const sensor_msgs::PointCloud2& msg_received);
 
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Service to re-compute the estimation parameters of the conversion node.
+   * @param request Service request
+   * @param response Service response
+   */
+  bool EstimParamsService(lidar_conversions::EstimParamsRequest& req, lidar_conversions::EstimParamsResponse& res);
+
 private:
 
   //----------------------------------------------------------------------------
@@ -66,6 +76,7 @@ private:
   ros::NodeHandle &Nh, &PrivNh;
   ros::Subscriber Listener;
   ros::Publisher Talker;
+  ros::ServiceServer EstimService;
 
   // Number of lasers of the LiDAR.
   int NbLasers = 16.;
