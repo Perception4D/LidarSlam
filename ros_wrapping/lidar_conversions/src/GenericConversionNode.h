@@ -77,6 +77,11 @@ private:
   double PrevFrameTime = -1.;
   std::vector<double> PossibleFrequencies; ///< Vector of all the possible frequencies of a certain type of LiDAR
 
+  bool RotSenseAndClustersEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations
+
+  // Useful variable to estimate time
+  bool RotationIsClockwise;  ///< True if the LiDAR rotates clockwise, false otherwise.
+
   // Useful variable to estimate laser_id
   std::vector<Utils::Cluster> Clusters;
 

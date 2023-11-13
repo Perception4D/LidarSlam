@@ -166,6 +166,40 @@ inline double GetTimeFactor(double duration, double rotationDuration)
 }
 
 
+//----------------------------------------------------------------------------
+/*!
+ * @brief Deduce the rotation sense of the lidar
+ * @return true if the LiDAR rotates clockwise, false otherwise.
+ * @param cloudRaw PointCloud published by lidar driver
+ * @param nbLasers Number of lasers of the lidar
+ */
+template <typename PointType>
+inline bool IsRotationClockwise(const pcl::PointCloud<PointType> cloudRaw, int nbLasers)
+{
+  Eigen::Vector2d firstPointFirstLine ({cloudRaw.front().x, cloudRaw.front().y});
+  Eigen::Vector2d firstPointSecondLine ({cloudRaw[nbLasers].x, cloudRaw[nbLasers].y});
+  double crossZ = firstPointFirstLine.x() * firstPointSecondLine.y() - firstPointFirstLine.y() * firstPointSecondLine.x();
+  return crossZ > 0;
+}
+
+//----------------------------------------------------------------------------
+/*!
+ * @brief Estimate time of a point missing this field
+ * @return time of the current point
+ * @param currentPoint Point(x,y) extracted from current slamPoint
+ * @param rotationDuration Time for a full rotation of the lidar
+ * @param firstPoint First point of the frame
+ * @param rotationIsClockwise True if the LiDAR rotates clockwise, false otherwise.
+ */
+inline double EstimateTime(const Eigen::Vector2d& currentPoint, double rotationDuration, const Eigen::Vector2d& firstPoint, bool rotationIsClockwise = true)
+{
+  double angle_h = std::acos(firstPoint.normalized().dot(currentPoint.normalized()));
+  double crossZ = firstPoint.x() * currentPoint.y() - firstPoint.y() * currentPoint.x();
+  if ((crossZ <= 0 && rotationIsClockwise) || (crossZ > 0 && !rotationIsClockwise))
+    angle_h = 2. * M_PI - angle_h;
+  return ((angle_h / (2.*M_PI)) - 1) * rotationDuration;
+}
+
 //------------------------------------------------------------------------------
 /*!
  * @struct Helper to estimate point-wise within frame advancement for a spinning
