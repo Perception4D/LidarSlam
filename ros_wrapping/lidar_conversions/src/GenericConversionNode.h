@@ -25,6 +25,7 @@
 #include <LidarSlam/LidarPoint.h>
 
 #include "Utilities.h"
+#include "GenericPoint.h"
 
 namespace lidar_conversions
 {

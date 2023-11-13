@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include "GenericConversionNode.h"
+#include "GenericPoint.h"
 
 #include <pcl_conversions/pcl_conversions.h>
 
@@ -99,6 +100,128 @@ void GenericConversionNode::Callback(const sensor_msgs::PointCloud2& msg_receive
     this->RotSenseAndClustersEstimated = true;
   }
   Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
+
+  // Initialize vectors of optional fields
+  std::vector<float> intensities;
+  std::vector<std::uint16_t> laser_ids;
+  std::vector<double> times;
+
+  // Macro to fill arrays of optional fields
+  #define FILL_ARRAY(pointType, field, array) \
+  {  \
+    pcl::PointCloud<pointType> cloud = Utils::InitCloudRaw<pcl::PointCloud<pointType>>(msg_received); \
+    array.reserve(cloud.size()); \
+    for (const pointType& point : cloud) \
+    { \
+        array.emplace_back(point.field); \
+    } \
+  }
+
+  // Macro to handle the 8 different types for each name of field (see use below)
+  #define FIND_TYPE_AND_FILL_ARRAY(pointSuffix, fieldName, array) \
+  do { \
+    switch (field.datatype) { \
+        case pcl::PCLPointField::INT8: { \
+            FILL_ARRAY(point_conversions::Point##pointSuffix##_Int8, fieldName, array); \
+            break; \
+        } \
+        case pcl::PCLPointField::UINT8: { \
+            FILL_ARRAY(point_conversions::Point##pointSuffix##_Uint8, fieldName, array); \
+            break; \
+        } \
+        case pcl::PCLPointField::INT16: { \
+            FILL_ARRAY(point_conversions::Point##pointSuffix##_Int16, fieldName, array); \
+            break; \
+        } \
+        case pcl::PCLPointField::UINT16: { \
+            FILL_ARRAY(point_conversions::Point##pointSuffix##_Uint16, fieldName, array); \
+            break; \
+        } \
+        case pcl::PCLPointField::INT32: { \
+            FILL_ARRAY(point_conversions::Point##pointSuffix##_Int32, fieldName, array); \
+            break; \
+        } \
+        case pcl::PCLPointField::UINT32: { \
+            FILL_ARRAY(point_conversions::Point##pointSuffix##_Uint32, fieldName, array); \
+            break; \
+        } \
+        case pcl::PCLPointField::FLOAT32: { \
+            FILL_ARRAY(point_conversions::Point##pointSuffix##_Float, fieldName, array); \
+            break; \
+        } \
+        case pcl::PCLPointField::FLOAT64: { \
+            FILL_ARRAY(point_conversions::Point##pointSuffix##_Double, fieldName, array); \
+            break; \
+        } \
+        default: { \
+            ROS_ERROR_STREAM("Unknown datatype for field " << field.name); \
+            break; \
+        } \
+    } \
+  } while(0)
+
+  // Explore optional fields
+  #pragma omp parallel for num_threads(this->NbThreads)
+  for (const sensor_msgs::PointField& field : msg_received.fields)
+  {
+    if (field.name == "x" || field.name == "y" || field.name == "z")
+      continue;
+    // Intensity SlamPoint field
+    else if (field.name == "intensity")
+      FIND_TYPE_AND_FILL_ARRAY(I, intensity, intensities);
+    else if (field.name == "reflectivity")
+      FIND_TYPE_AND_FILL_ARRAY(Ref, reflectivity, intensities);
+    // Laser_id SlamPoint field
+    else if (field.name == "laser_id")
+      FIND_TYPE_AND_FILL_ARRAY(Id, laser_id, laser_ids);
+    else if (field.name == "ring")
+      FIND_TYPE_AND_FILL_ARRAY(Ring, ring, laser_ids);
+    // Time SlamPoint field
+    else if (field.name == "time")
+      FIND_TYPE_AND_FILL_ARRAY(Time, time, times);
+    else if (field.name == "t")
+      FIND_TYPE_AND_FILL_ARRAY(T, t, times);
+    else
+      ROS_WARN_STREAM("Unknown field name : " << field.name);
+  }
+
+  // Check if time field looks properly set
+  bool timeIsValid = false;
+  if (!times.empty())
+  {
+    double duration = times.back() - times.front();
+    double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
+    timeIsValid = duration > 1e-8 && duration < 2. * this->RotationDuration;
+    if (!timeIsValid)
+      ROS_WARN_STREAM("Invalid 'time' field, it will be built from azimuth advancement.");
+  }
+
+  // Build SLAM pointcloud
+  #pragma omp parallel for num_threads(this->NbThreads)
+  for (unsigned int i = 0; i < cloudRaw.size(); ++i)
+  {
+    PointXYZ& rawPoint = cloudRaw[i];
+
+    // Remove no return points by checking unvalid values (NaNs or zeros)
+    if (!Utils::IsPointValid(rawPoint))
+      continue;
+
+    if(!cloudS.empty() && std::equal(rawPoint.data, rawPoint.data + 3, cloudS.back().data))
+      continue;
+
+    // Copy space coordinates and add other slamPoint fields from previously filled vectors or computations
+    PointS slamPoint;
+
+    slamPoint.x = rawPoint.x;
+    slamPoint.y = rawPoint.y;
+    slamPoint.z = rawPoint.z;
+    slamPoint.intensity = intensities.empty() ? 0. : intensities[i];
+    slamPoint.laser_id = laser_ids.empty() ? Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nbLasers, this->Clusters) : laser_ids[i];
+    slamPoint.time = (times.empty() || !timeIsValid) ? Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise) : times[i];
+
+    if (!Utils::HasNanField(slamPoint))
+      cloudS.push_back(slamPoint);
+  }
 
   // Publish pointcloud only if non empty
   if (!cloudS.empty())
