@@ -84,6 +84,22 @@ void GenericConversionNode::Callback(const sensor_msgs::PointCloud2& msg_receive
   if (this->RotationDuration < 0.)
     return;
 
+  CloudS cloudS = Utils::InitCloudS<CloudXYZ>(cloudRaw);
+
+  const int nbLasers = ((cloudRaw.height >= 8 && cloudRaw.height <= 128)
+                   ? static_cast<int>(cloudRaw.height)
+                   : (cloudRaw.width >= 8 && cloudRaw.width <= 128)
+                     ? static_cast<int>(cloudRaw.width)
+                     : this->NbLasers);
+
+  // Init of parameters useful for laser_id and time estimations
+  if (!this->RotSenseAndClustersEstimated)
+  {
+    Utils::InitEstimationParameters<PointXYZ>(cloudRaw, nbLasers, this->Clusters, this->RotationIsClockwise, this->NbThreads);
+    this->RotSenseAndClustersEstimated = true;
+  }
+  Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
+
   // Publish pointcloud only if non empty
   if (!cloudS.empty())
     this->Talker.publish(cloudS);
