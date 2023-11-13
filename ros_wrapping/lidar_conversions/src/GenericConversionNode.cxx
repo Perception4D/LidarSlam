@@ -33,6 +33,9 @@ GenericConversionNode::GenericConversionNode(ros::NodeHandle& nh, ros::NodeHandl
   // Get number of lasers
   this->PrivNh.param("nb_laser", this->NbLasers, this->NbLasers);
 
+  // Get possible frequencies
+  this->PrivNh.param("possible_frequencies", this->PossibleFrequencies, this->PossibleFrequencies);
+
   // Get number of threads
   this->PrivNh.param("nb_threads", this->NbThreads, NbThreads);
 
@@ -55,6 +58,31 @@ void GenericConversionNode::Callback(const sensor_msgs::PointCloud2& msg_receive
     ROS_ERROR_STREAM("Input pointcloud is empty : frame ignored.");
     return;
   }
+
+  // Rotation duration is estimated to be used in time estimation if needed
+  double currFrameTime = Utils::PclStampToSec(cloudRaw.header.stamp);
+  double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
+  this->PrevFrameTime = currFrameTime;
+
+  // If the rotation duration has not been estimated
+  if (this->RotationDuration < 0.)
+  {
+    // Check if this duration is possible
+    if (Utils::CheckRotationDuration(diffTimePrevFrame, this->PossibleFrequencies))
+    {
+      // Check a confirmation of the frame duration to avoid outliers (frames dropped)
+      // For the first frame, RotationDurationPrior is -1, this condition won't be fulfilled
+      // For the second frame, RotationDurationPrior is absurd, this condition won't be fulfilled
+      // First real intempt occurs at the 3rd frame
+      if (std::abs(diffTimePrevFrame - this->RotationDurationPrior) < 5e-3) // 5ms threshold
+        this->RotationDuration = (diffTimePrevFrame + this->RotationDurationPrior) / 2.;
+      this->RotationDurationPrior = diffTimePrevFrame;
+      ROS_INFO_STREAM(std::setprecision(12) << "Difference between successive frames is :" << diffTimePrevFrame);
+    }
+  }
+
+  if (this->RotationDuration < 0.)
+    return;
 
   // Publish pointcloud only if non empty
   if (!cloudS.empty())

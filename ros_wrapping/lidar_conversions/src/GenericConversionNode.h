@@ -69,6 +69,14 @@ private:
   // Number of lasers of the LiDAR.
   int NbLasers = 16.;
 
+  // Useful variable to estimate rotation duration (itself used to estimate time)
+  // NOTE: to be precise, this rotation duration estimation requires that each input
+  // scan is an entire scan covering excatly 360°
+  double RotationDuration = -1.;
+  double RotationDurationPrior = -1.;
+  double PrevFrameTime = -1.;
+  std::vector<double> PossibleFrequencies; ///< Vector of all the possible frequencies of a certain type of LiDAR
+
   // Useful variable to estimate laser_id
   std::vector<Utils::Cluster> Clusters;
 

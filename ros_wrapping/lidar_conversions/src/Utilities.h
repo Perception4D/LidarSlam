@@ -120,6 +120,54 @@ inline bool HasNanField(const LidarSlam::LidarPoint& point)
 
 //------------------------------------------------------------------------------
 /*!
+ * @brief Check if the rotation duration has a likely value
+ * @return boolean to know if the rotation duration is correct
+ * @param rotationDuration RotationDuration of the lidar
+ */
+inline bool CheckRotationDuration(double rotationDuration, std::vector<double> possibleFrequencies)
+{
+  // We assume that if the user hasn't specified a list of possible frequencies,
+  // it's because he doesn't want to check the rotation duration or doesn't care about outliers
+  if (possibleFrequencies.empty())
+    return true;
+
+  for (double frequency : possibleFrequencies)
+  {
+    double currentFreq = 1. / rotationDuration;
+    double epsilon = 0.05 * frequency; // We accept 5% error
+    if (frequency - epsilon < currentFreq && currentFreq < frequency + epsilon)
+      return true;
+  }
+  return false;
+}
+
+//------------------------------------------------------------------------------
+/*!
+ * @brief Convert PCL timestamp (in microseconds) to seconds
+ * @param pclStampUs PCL timestamp, in microseconds
+ * @return Timestamp in seconds
+ */
+inline constexpr double PclStampToSec(uint64_t pclStampUs)
+{
+  return pclStampUs * 1e-6;
+}
+
+//------------------------------------------------------------------------------
+/*!
+ * @brief Get the factor between points time and frame time
+ * @return factor to scale point time to frame time : frame.Time = point.Time * factor
+ * @param duration difference between first point and last point of frame
+ * @param rotationDuration difference between one frame and the following one
+ */
+inline double GetTimeFactor(double duration, double rotationDuration)
+{
+  int power = std::round(std::log10(rotationDuration)) - std::round(std::log10(duration));
+  return std::pow(10, power);
+}
+
+
+//------------------------------------------------------------------------------
+/*!
  * @struct Helper to estimate point-wise within frame advancement for a spinning
  * lidar sensor using azimuth angle.
  */
