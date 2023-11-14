@@ -151,7 +151,6 @@ add_executable(aggregation_node
 ament_target_dependencies(aggregation_node
   rclcpp
   pcl_conversions
-  geometry_msgs
 )
 target_link_libraries(aggregation_node
   ${LidarSlam_target}

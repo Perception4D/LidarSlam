@@ -18,12 +18,14 @@
 
 #include "AggregationNode.h"
 
+// LidarSlam
 #include <LidarSlam/Utilities.h>
 #include <LidarSlam/PointCloudStorage.h>
 
+// ROS
 #include <pcl_conversions/pcl_conversions.h>
-#include <geometry_msgs/msg/transform_stamped.hpp>
 
+// Boost
 #include <boost/filesystem.hpp>
 
 //==============================================================================
