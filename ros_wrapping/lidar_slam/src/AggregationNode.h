@@ -73,6 +73,11 @@ public:
 
 private:
 
+  // Tool functions
+  // Extract the slice of points perpendicular to the local trajectory
+  // Compute its boundary and return its area
+  double ExtractSlice(double sliceWidth, double sliceMaxDist, double angleStep, CloudS& boundary);
+
   // ROS node handles, subscribers and publishers
   ros::NodeHandle &Nh, &PrivNh;
   ros::Subscriber FrameSubscriber;
@@ -88,7 +93,7 @@ private:
   CloudS::Ptr Pointcloud;
 
   // Slice extraction parameters
-  bool ExtractSlice = false;
+  bool DoExtractSlice = false;
   // Optional positions logged to compute
   // the direction to create a slice
   std::list<Eigen::Vector3d> Positions;

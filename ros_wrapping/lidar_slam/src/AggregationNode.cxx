@@ -44,8 +44,8 @@ AggregationNode::AggregationNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   // aggregated points with specified density
   this->PointsPublisher = this->Nh.advertise<CloudS>("aggregated_cloud", 10, false);
   // Optional publisher
-  this->ExtractSlice = this->PrivNh.param("slice/enable", false);
-  if (this->ExtractSlice)
+  this->DoExtractSlice = this->PrivNh.param("slice/enable", false);
+  if (this->DoExtractSlice)
   {
     this->SlicePublisher = this->Nh.advertise<CloudS>("slice_cloud", 10, false);
     this->SliceAreaPublisher = this->Nh.advertise<std_msgs::Float64>("slice_area", 10, false);
@@ -55,7 +55,7 @@ AggregationNode::AggregationNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   // Lidar frame undistorted
   this->FrameSubscriber = this->Nh.subscribe("slam_registered_points", 1, &AggregationNode::Callback, this);
   // Optional lidar SLAM pose
-  if (this->ExtractSlice)
+  if (this->DoExtractSlice)
     this->PoseSubscriber = this->Nh.subscribe("slam_odom", 1, &AggregationNode::PoseCallback, this);
 
   // Init service
@@ -140,18 +140,36 @@ bool AggregationNode::ResetService(lidar_slam::resetRequest& req, lidar_slam::re
 //------------------------------------------------------------------------------
 void AggregationNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
 {
-  if (!this->ExtractSlice)
+  if (!this->DoExtractSlice)
     return;
 
   // Store pose
   this->Positions.push_back(Utils::PoseMsgToIsometry(poseMsg.pose.pose).translation());
-  Eigen::Vector3d& currPosition = this->Positions.back();
-  while ((currPosition - this->Positions.front()).norm() > this->TrajectoryMaxLength)
+  while ((this->Positions.back() - this->Positions.front()).norm() > this->TrajectoryMaxLength)
     this->Positions.pop_front();
 
   if (this->Positions.size() < 2)
     return;
 
+  // Extract the slice boundary and compute its area
+  // using the last positions and the map
+  CloudS boundary;
+  double area = this->ExtractSlice(this->SliceWidth, this->SliceMaxDist, this->AngleStep, boundary);
+
+  // Publish the area value
+  std_msgs::Float64 areaMsg;
+  areaMsg.data = area;
+  this->SliceAreaPublisher.publish(areaMsg);
+
+  // Publish the slice points
+  this->SlicePublisher.publish(boundary);
+}
+
+//------------------------------------------------------------------------------
+double AggregationNode::ExtractSlice(double sliceWidth, double sliceMaxDist, double angleStep, CloudS& boundary)
+{
+  // Shortcut to last position
+  Eigen::Vector3d& currPosition = this->Positions.back();
   // Deduce the motion direction
   Eigen::Vector3d motionDirection = (currPosition - this->Positions.front()).normalized();
   // Extract the outer voxel in which lays the new pose
@@ -171,12 +189,12 @@ void AggregationNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
   for (const auto& pt : *submap)
   {
     // Check if point in sphere around the trajectory pose
-    if ((pt.getVector3fMap().cast<double>() - currPosition).norm() > this->SliceMaxDist)
+    if ((pt.getVector3fMap().cast<double>() - currPosition).norm() > sliceMaxDist)
       continue;
 
     double ptDistance = (pt.getVector3fMap().cast<double>() - currPosition).dot(motionDirection);
     // Check if the point is not too far from the trajectory point
-    if (std::abs(ptDistance) > this->SliceWidth)
+    if (std::abs(ptDistance) > sliceWidth)
       continue;
 
     slice.emplace_back(pt);
@@ -185,7 +203,7 @@ void AggregationNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
 
   // Create the boundary using a moving average
   // 1. Create a circular histogram
-  std::vector<std::vector<Eigen::Vector3d>> histogram(std::ceil((2. * M_PI + 1e-6) / this->AngleStep));
+  std::vector<std::vector<Eigen::Vector3d>> histogram(std::ceil((2. * M_PI + 1e-6) / angleStep));
   Eigen::Vector3d refDir = (slice.front().getVector3fMap().cast<double>() - currPosition).normalized();
   for (const auto& pt : slice)
   {
@@ -194,11 +212,10 @@ void AggregationNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
     double angle = std::acos(dotProduct);
     if (currVec.cross(refDir).dot(motionDirection) < 0.)
       angle = 2. * M_PI - angle;
-    histogram[int(angle / this->AngleStep)].push_back(pt.getVector3fMap().cast<double>());
+    histogram[int(angle / angleStep)].push_back(pt.getVector3fMap().cast<double>());
   }
 
-  // 2. Average bins
-  CloudS boundary;
+  // 2. Average bins and fill the boundary cloud
   boundary.header = this->Pointcloud->header;
   boundary.reserve(histogram.size());
   for (const auto& bin : histogram)
@@ -223,13 +240,7 @@ void AggregationNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
     area += 0.5 * (vec1).cross(vec2).norm();
   }
 
-  // Publish the area value
-  std_msgs::Float64 areaMsg;
-  areaMsg.data = area;
-  this->SliceAreaPublisher.publish(areaMsg);
-
-  // Publish the slice points
-  this->SlicePublisher.publish(boundary);
+  return area;
 }
 
 //------------------------------------------------------------------------------
