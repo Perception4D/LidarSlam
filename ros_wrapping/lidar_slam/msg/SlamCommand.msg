@@ -54,6 +54,7 @@ uint8 LOAD_LOOP_INDICES = 23
 # Use 'string_arg' to tell which sensor should be activated
 # options are :
 #   * WHEEL_ENCODER : "0"
+#   * IMU : "1"
 #   * LANDMARK_DETECTOR : "2"
 #   * GPS : "3"
 #   * POSE : "4"

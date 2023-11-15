@@ -3101,6 +3101,14 @@ void Slam::AddGravityMeasurement(const ExternalSensors::GravityMeasurement& gm)
 }
 
 //-----------------------------------------------------------------------------
+void Slam::SetGravityCalibration(const Eigen::Isometry3d& calib)
+{
+  if (!this->GravityManager)
+    this->InitGravity();
+  this->GravityManager->SetCalibration(calib);
+}
+
+//-----------------------------------------------------------------------------
 void Slam::AddImuMeasurement(const ExternalSensors::ImuMeasurement& m)
 {
   if (!this->ImuManager)

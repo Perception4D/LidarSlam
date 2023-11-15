@@ -29,7 +29,8 @@
       - [Pose graph optimization](#pose-graph-optimization)
     - [Optional Camera use](#optional-camera-use)
     - [Optional external pose use](#optional-external-pose-use)
-    - [Wheel encoder use](#optional-wheel-encoder-use)
+    - [Optional wheel encoder use](#optional-wheel-encoder-use)
+    - [Optional Imu gravity use](#optional-Imu-gravity-use)
   - [About the published TF tree](#about-the-published-tf-tree)
 - [Points aggregation](#points-aggregation)
 
@@ -470,6 +471,24 @@ To use them as pose graph constraints, the command OPTIMIZE_GRAPH must be sent a
 Remember to save the maps and the trajectory to be sure to be able to come back if something goes wrong with the optimization.
 
 ***WARNING***: Remember to set *logging/timeout* and *logging/only_keyframes* to convenient values to be able to use this feature after the SLAM.
+
+### Optional IMU use
+
+If IMU enabled, *LidarSlamNode* subscribes to [IMU messages](https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/Imu.html) in the topic called "imu".
+
+For now, only the linear acceleration is used to apply a gravity constraint between all frames. The gravity constraint can be used in the slam front end optimization to force the orientation of the pose so that the gravity vector corresponds to a reference.
+
+***WARNING***: Remember to set *max_measures*, *use_header_time* and *time_threshold* to convenient values to be able to receive the measurements.
+
+A weight is parameterizable for the new gravity constraint. The more we trust the IMU measurement, the higher this weight should be. If 0., the feature is disabled.
+
+If the data are well added and synchronized, a log output should be visible with verbosity to 3 (default).
+This output should say :
+
+```bash
+Adding gravity residual with gravity reference :  ...
+IMU gravity constraint added
+```
 
 ## About the published TF tree
 

@@ -616,6 +616,8 @@ public:
   double GetGravityWeight() const;
   void SetGravityWeight(double weight);
 
+  void SetGravityCalibration(const Eigen::Isometry3d& calib);
+
   void AddGravityMeasurement(const ExternalSensors::GravityMeasurement& gm);
 
   bool GravityHasData() const {return this->GravityManager && this->GravityManager->HasData();}
