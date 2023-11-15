@@ -14,19 +14,29 @@ Before, on master, the SLAM was doing this. The goal of this MR is to do this an
 
 # Results
 
-## Commands to reproduce the results
+## Reproduce
+
+### Data
+
+I have used those data to test.
+
+### Build
 
 `colcon build --base-paths slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release`
+
+### Parameters
 
 * Change the parameters :
   * leaf_size=5
   * ...
 
+### Run
+
 `ros2 launch my_launch.launch param1:=2`
 
 `ros2 bag play --clock path/to/this_bag.bag`
 
-## Results
+## Output
 
 * Here is a resulting map
 * Here is a resulting trajectory
@@ -38,8 +48,31 @@ Before, on master, the SLAM was doing this. The goal of this MR is to do this an
 * The overall SLAM process before (on master) was taking 10s
 * The overall process takes 9s
 
+# Checklist
+
+- [ ] Camel case everywhere except for ROS variables/parameters
+- [ ] Lower case for local variables and lambda functions
+- [ ] Upper case for pour members, methods and tool functions (in Utils)
+- [ ] Precise namespace when calling a function (or this->X or classe.X)
+- [ ] Align code (for multiline if and while, "&&" or "||" go in upper line to ensure alignement)
+- [ ] Space between if, while, for and parenthesis
+- [ ] Space between operators and variables: e.g. a + b
+- [ ] Space after ","
+- [ ] Mind your commit titles/desc (plurals, he/she + "s", correct tags, title should begin by a verb...)
+- [ ] Function names should start with a verb, variable names should start with a name
+- [ ] Macros should be between {}
+- [ ] Do not use negative boolean (i.e. noJoe)
+- [ ] Check minimal size of the types (double -> float -> int -> uint)
+- [ ] Check const and ref in functions arguments
+- [ ] References should be written "type& name", not "type &name"
+- [ ] Update documentation if needed
+- [ ] Add MR labels [ROS]/[ROS2]/[PV]
+- [ ] If ros/ros2, update task table [here](https://gitlab.kitware.com/keu-computervision/slam/-/issues/55)
+- [ ] Add a comment over each non trivial function in header files
+- [ ] Adda header to each new file
+
 # What remains to solve
 
-* [ ] this
-* [ ] this
-* [ ] that
+* this
+* this
+* that
