@@ -1947,7 +1947,7 @@ void Slam::ClearLoopDetections()
 }
 
 //-----------------------------------------------------------------------------
-std::list<LidarState>::iterator Slam::GetKeyStateIterator(unsigned int& frameIdx)
+std::list<LidarState>::iterator Slam::GetKeyStateIterator(const unsigned int& frameIdx)
 {
   // Get the first state iterator whose index is greater than frameIdx
   auto itState = std::upper_bound(this->LogStates.begin(),
