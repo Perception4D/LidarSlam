@@ -221,7 +221,8 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.laser_id = laser_ids.empty() ? Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nbLasers, this->Clusters) : laser_ids[i];
     slamPoint.time = (times.empty() || !timeIsValid)? Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise) : times[i];
 
-    cloudS.push_back(slamPoint);
+    if (!Utils::HasNanField(slamPoint))
+      cloudS.push_back(slamPoint);
   }
   PublishMsg(cloudS);
 }

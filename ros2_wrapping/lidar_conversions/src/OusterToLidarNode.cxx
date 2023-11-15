@@ -141,7 +141,8 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
     else
       slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 
-    cloudS.push_back(slamPoint);
+    if (!Utils::HasNanField(slamPoint))
+      cloudS.push_back(slamPoint);
   }
 
   //conversion to msg

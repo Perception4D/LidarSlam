@@ -129,7 +129,8 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.laser_id = Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nbLasers, this->Clusters);
     slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 
-    cloudS.push_back(slamPoint);
+    if (!Utils::HasNanField(slamPoint))
+      cloudS.push_back(slamPoint);
   }
 
   // Publish pointcloud only if non empty
