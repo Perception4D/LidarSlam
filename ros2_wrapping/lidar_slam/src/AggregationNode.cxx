@@ -84,7 +84,10 @@ void AggregationNode::Callback(const Pcl2_msg& registeredCloudMsg)
   pcl::fromROSMsg(registeredCloudMsg, *registeredCloud);
 
   // Aggregated points from all frames
-  this->DenseMap->Add(registeredCloud, false);
+  // Map is not rolled because if some points are wrong or a frame is bad,
+  // the whole map will be rolled and parts will be forgotten.
+  // The size of the map is relative to the first frame reveived
+  this->DenseMap->Add(registeredCloud, false, false);
   this->Pointcloud = this->DenseMap->Get(true);
   this->Pointcloud->header = registeredCloud->header;
 
