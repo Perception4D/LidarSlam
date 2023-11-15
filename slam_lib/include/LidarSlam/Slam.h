@@ -432,7 +432,7 @@ public:
   SetMacro(LogOnlyKeyframes, bool)
   GetMacro(LogOnlyKeyframes, bool)
 
-  GetMacro(LogStates, std::list<LidarState>)
+  GetMacro(LogStates, const std::list<LidarState>&)
   // Get the last states since last input frame timestamp
   // at a specified frequency
   // This will use external sensor measurements and/or poses interpolation
@@ -940,8 +940,8 @@ private:
   // **** COORDINATES SYSTEMS ****
 
   // Coordinates systems (CS) names to fill in pointclouds or poses headers
-  std::string WorldFrameId = "world";  // CS of trajectory and maps
-  std::string BaseFrameId = "base";    // CS of current keypoints
+  std::string WorldFrameId = "odom";        // CS of trajectory and maps
+  std::string BaseFrameId = "base_link";    // CS of current keypoints
 
   // **** LOCALIZATION ****
 

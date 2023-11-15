@@ -123,7 +123,7 @@ public:
   GetMacro(VoxelResolution, float)
   SetMacro(VoxelResolution, float)
 
-  GetMacro(NbLaserRings, int)
+  GetMacro(NbLaserRings, unsigned int)
 
   // Select the keypoint types to extract
   // This function resets the member map "Enabled"

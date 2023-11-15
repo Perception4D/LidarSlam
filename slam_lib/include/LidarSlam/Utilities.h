@@ -30,6 +30,13 @@
 #include <numeric>
 #include <cctype>
 #include <list>
+#include <string>
+
+#include <sys/stat.h>
+#include <errno.h>
+#ifdef WIN32
+  #include <direct.h>
+#endif
 
 //==============================================================================
 //   Usefull macros or typedefs
@@ -187,6 +194,16 @@ void SafeAdvance(It& it, int steps, const It& stop)
     --it;
   }
 }
+
+//------------------------------------------------------------------------------
+// Check if a directory exists
+bool DoesDirExist(const std::string& path);
+
+/*!
+ * @brief Create a directory
+ * This will also create recursively his parents folders
+*/
+bool CreateDir(const std::string& path);
 
 //==============================================================================
 //   Geometry helpers
