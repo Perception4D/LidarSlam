@@ -86,16 +86,35 @@ pcl::PointCloud<LidarSlam::LidarPoint> InitCloudS(CloudRawType cloudRaw)
 //------------------------------------------------------------------------------
 /*!
  * @brief Check if a PCL point is valid
- * @param point A PCL point, with possible NaN as coordinates or null.
- * @return true if all point coordinates are valid, false otherwise.
+ * @param point A PCL point, with possible unvalid coordinates.
+ * @return true if point coordinates are finite and
+ *         the point distance is in range [1e-6, 1000], false otherwise.
  */
 template<typename PointT>
 inline bool IsPointValid(const PointT& point)
 {
-  bool isZeroPoint = point.getVector3fMap().norm() < 1e-6;
-  bool isFinite = std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
-  bool isValid = isFinite && !isZeroPoint;
-  return isValid;
+  if (!std::isfinite(point.x) || !std::isfinite(point.y) || !std::isfinite(point.z))
+  return false;
+
+  float distance = point.getVector3fMap().norm();
+  return distance > 1e-6 && distance < 1000.;
+}
+
+//------------------------------------------------------------------------------
+/*!
+ * @brief Check if a lidarPoint is valid
+ * @param point A lidarpoint, with possible NaN as field values.
+ * @return true if a field value is NaN.
+ */
+inline bool HasNanField(const LidarSlam::LidarPoint& point)
+{
+  return !std::isfinite(point.x)         ||
+         !std::isfinite(point.y)         ||
+         !std::isfinite(point.z)         ||
+         !std::isfinite(point.time)      ||
+         !std::isfinite(point.intensity) ||
+         !std::isfinite(point.laser_id)  ||
+         !std::isfinite(point.label);
 }
 
 //------------------------------------------------------------------------------

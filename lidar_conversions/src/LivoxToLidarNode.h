@@ -19,7 +19,6 @@
 #pragma once
 
 #include <rclcpp/rclcpp.hpp>
-// #include <pcl_ros/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <velodyne_point.h>
 #include <LidarSlam/LidarPoint.h>

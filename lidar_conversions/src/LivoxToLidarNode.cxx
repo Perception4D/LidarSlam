@@ -88,7 +88,8 @@ void LivoxToLidarNode::PointCloud2Callback(const Pcl2_msg& msg_received)
     slamPoint.time = prevTime + 0.1/300000.; // Supposing 10 Hz and 300 000 points
     prevTime = slamPoint.time;
 
-    cloudS.push_back(slamPoint);
+    if (!Utils::HasNanField(slamPoint))
+      cloudS.push_back(slamPoint);
   }
 
   // Convertion PointCloud to msg
