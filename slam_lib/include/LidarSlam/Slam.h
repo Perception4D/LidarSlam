@@ -1334,7 +1334,7 @@ private:
   // Get the iterator of LogStates for an input frame index
   // It is possible that the input frame index does not correspond to a keyframe
   // In this case, output the nearest neighbor keyframe iterator
-  std::list<LidarState>::iterator GetKeyStateIterator(unsigned int& frameIdx);
+  std::list<LidarState>::iterator GetKeyStateIterator(const unsigned int& frameIdx);
 
   // Return true if a loop closure has been found and update itRevisitedState iterator, if not return false.
   bool DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, std::list<LidarState>::iterator& itRevisitedState);
