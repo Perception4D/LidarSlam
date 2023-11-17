@@ -185,11 +185,12 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
     this->GpsOdomSub = this->create_subscription<nav_msgs::msg::Odometry>("gps_odom", 1,
                                                                           std::bind(&LidarSlamNode::GpsCallback, this, std::placeholders::_1));
 
-  // Init logging of landmark data and/or Camera data
+  // Init logging of landmark data, Camera data, external pose data, wheel encoder data and/or IMU data
   if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ||
       this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] ||
       this->UseExtSensor[LidarSlam::ExternalSensor::POSE] ||
-      this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM])
+      this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] ||
+      this->UseExtSensor[LidarSlam::ExternalSensor::IMU])
   {
     // Create an external independent spinner to get the landmarks and/or camera info in a parallel way
     this->ExternalSensorGroup = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -220,6 +221,12 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
     {
       this->WheelOdomSub = this->create_subscription<std_msgs::msg::Float64>("wheel_odom", 10,
                                                                              std::bind(&LidarSlamNode::WheelOdomCallback, this, std::placeholders::_1), ops);
+    }
+
+    if (this->UseExtSensor[LidarSlam::ExternalSensor::IMU])
+    {
+      this->ImuSub = this->create_subscription<sensor_msgs::msg::Imu>("imu", 10,
+                                                                      std::bind(&LidarSlamNode::ImuCallback, this, std::placeholders::_1), ops);
     }
   }
 
@@ -629,6 +636,43 @@ void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray&
     else
       RCLCPP_WARN(this->get_logger(), "The transform between the landmark detector and the tracking frame was not found -> landmarks info ignored");
   }
+}
+
+//------------------------------------------------------------------------------
+void LidarSlamNode::ImuCallback(const sensor_msgs::msg::Imu& imuMsg)
+{
+  double rcpTime = this->now().seconds();
+
+  if (!this->SlamEnabled)
+    return;
+
+  if (!this->UseExtSensor[LidarSlam::ExternalSensor::IMU])
+    return;
+
+  // Calibration
+  Eigen::Isometry3d baseToImu;
+  if (Utils::Tf2LookupTransform(baseToImu, *this->TfBuffer, this->TrackingFrameId, imuMsg.header.frame_id, imuMsg.header.stamp))
+  {
+    // Set IMU calibration
+    if (!this->LidarSlam.GravityHasData())
+      this->LidarSlam.SetGravityCalibration(baseToImu);
+    // Get IMU data for gravity integration
+    // For now, only accelerations are used to add gravity constraint
+    LidarSlam::ExternalSensors::GravityMeasurement gravityMeasurement;
+    gravityMeasurement.Time = this->UseHeaderTime?
+                              imuMsg.header.stamp.sec + imuMsg.header.stamp.nanosec * 1e-9;
+                              : rcpTime;
+    gravityMeasurement.Acceleration.x() = imuMsg.linear_acceleration.x;
+    gravityMeasurement.Acceleration.y() = imuMsg.linear_acceleration.y;
+    gravityMeasurement.Acceleration.z() = imuMsg.linear_acceleration.z;
+    this->LidarSlam.AddGravityMeasurement(gravityMeasurement);
+
+    RCLCPP_INFO_STREAM(this->get_logger(), "Imu acceleration added with time "
+                       << std::fixed << std::setprecision(9)
+                       << gravityMeasurement.Time);
+  }
+  else
+    RCLCPP_WARN_STREAM(this->get_logger(), "The transform between the IMU and the tracking frame was not found -> IMU info ignored");
 }
 
 //------------------------------------------------------------------------------
@@ -1540,6 +1584,10 @@ void LidarSlamNode::SetSlamParameters()
     if (dir.norm() > 1e-6)
       this->LidarSlam.SetWheelOdomDirection(dir);
   }
+
+  // Use IMU gravity in local optimization
+  this->get_parameter_or<bool>("external_sensors.imu.enable", this->UseExtSensor[LidarSlam::ExternalSensor::IMU], false);
+  SetSlamParam(double, "external_sensors.imu.gravity_weight", GravityWeight)
 
   // Graph parameters
   SetSlamParam(std::string, "graph.g2o_file_name", G2oFileName)

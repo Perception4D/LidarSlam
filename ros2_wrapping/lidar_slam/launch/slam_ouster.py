@@ -96,7 +96,7 @@ def generate_launch_description():
     parameters=[params_conversion],
   )
 
-  # LiDAR SLAM : compute TF slam_init -> velodyne
+  # LiDAR SLAM : compute TF slam_init -> ouster
 
   # Outdoor Lidar Slam node
   with open(os.path.join(lidar_slam_share_path, 'params', "slam_config_outdoor.yaml"), 'r') as f:
@@ -167,6 +167,14 @@ def generate_launch_description():
                "--frame-id", "base_link", "--child-frame-id", "wheel"],
   )
 
+  # Base link to imu frame
+  # The calibration data is from: https://data.ouster.io/downloads/software-user-manual/software-user-manual-v2p0.pdf
+  imu_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_imu",
+    arguments=["--x", "0.006253", "--y", "-0.011775", "--z", "0.007645",
+               "--roll", "0", "--pitch", "0", "--yaw", "0",
+               "--frame-id", "base_link", "--child-frame-id", "os_imu"],
+  )
+
   # Init odom to base_link frame
   odom_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_odom_to_base",
     arguments=["--x", "0", "--y", "0", "--z", "0",
@@ -184,6 +192,7 @@ def generate_launch_description():
   ld.add_action(tf_base_to_os_node)
   ld.add_action(gps_tf_node)
   ld.add_action(wheel_tf_node)
+  ld.add_action(imu_tf_node)
   ld.add_action(odom_tf_node)
   ld.add_action(tf_base_to_laser_node)
   return (ld)
