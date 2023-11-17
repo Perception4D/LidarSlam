@@ -554,7 +554,7 @@ rosservice call lidar_slam/reset
 One can extract a slice of points perpendicular to the trajectory locally and to create a boundary from it. An area estimation is then provided. This can be useful when exploring closed areas such than undergrounds.
 
 The area is published on the topic **/slice_area** as a [float64 std message](https://docs.ros.org/en/noetic/api/std_msgs/html/msg/Float64.html) and
-the boundary pointcloud is published on the topic **/slice_points**.
+the boundary pointcloud is published on the topic **/slice_cloud**.
 
 To create a boundary from the slice, the slice points are first projected onto the slice plane and a circular histogram is created centered onto the current pose of the trajectory. Then, an average allows to keep one point per bin. The area is estimated as the sum of the areas of the triangles formed by the boundary points and the current position. The current position  is supposed to be inside of the boundary.
 
