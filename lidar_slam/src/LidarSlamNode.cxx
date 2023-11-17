@@ -234,6 +234,8 @@ LidarSlamNode::~LidarSlamNode()
 //------------------------------------------------------------------------------
 void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
 {
+  this->StartTime = this->now().seconds();
+
   if (!this->SlamEnabled)
     return;
 
@@ -283,22 +285,20 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
 
     this->MainLidarId = cloudS_ptr->header.frame_id;
 
-    this->StartTime = this->now().seconds();
-
-    if (!this->LidarTimePosix)
+    if (!this->UseHeaderTime)
     {
       // Compute time offset
       // Get ROS frame reception time
-      double timeFrameReceptionPOSIX = this->now().seconds();
+      double timeFrameReception = this->StartTime;
       // Get last acquired point timestamp
-      double timeLastPoint = LidarSlam::Utils::PclStampToSec(cloudS_ptr->header.stamp) + cloudS_ptr->back().time;
+      double timeFrameHeader = LidarSlam::Utils::PclStampToSec(cloudS_ptr->header.stamp);
       // Compute offset
-      double potentialOffset = timeLastPoint - timeFrameReceptionPOSIX;
+      double potentialOffset = timeFrameHeader - timeFrameReception + this->SensorTimeOffset;
       // Get current offset
-      double absCurrentOffset = std::abs(this->LidarSlam.GetSensorTimeOffset());
+      double currentOffset = std::abs(this->LidarSlam.GetSensorTimeOffset());
       // If the current computed offset is more accurate, replace it
-      if (absCurrentOffset < 1e-6 || std::abs(potentialOffset) < absCurrentOffset)
-        this->LidarSlam.SetSensorTimeOffset(potentialOffset + this->SensorTimeOffset);
+      if (currentOffset < 1e-6 || std::abs(potentialOffset) < currentOffset)
+        this->LidarSlam.SetSensorTimeOffset(potentialOffset);
     }
     else
       this->LidarSlam.SetSensorTimeOffset(this->SensorTimeOffset);
@@ -359,6 +359,8 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
 //------------------------------------------------------------------------------
 void LidarSlamNode::ImageCallback(const sensor_msgs::msg::Image& imageMsg)
 {
+  double rcpTime = this->now().seconds();
+
   if (!this->SlamEnabled)
     return;
 
@@ -384,12 +386,17 @@ void LidarSlamNode::ImageCallback(const sensor_msgs::msg::Image& imageMsg)
       return;
     }
 
-    RCLCPP_INFO_STREAM(this->get_logger(), "Adding Camera info : "<< std::fixed << std::setprecision(9) << imageMsg.header.stamp.sec + imageMsg.header.stamp.nanosec * 1e-9);
     // Add camera measurement to measurements list
     LidarSlam::ExternalSensors::Image image;
-    image.Time = imageMsg.header.stamp.sec + imageMsg.header.stamp.nanosec * 1e-9;
+    image.Time = this->UseHeaderTime?
+                 imageMsg.header.stamp.sec + imageMsg.header.stamp.nanosec * 1e-9
+                 : rcpTime;
     image.Data = cvPtr->image;
     this->LidarSlam.AddCameraImage(image);
+
+    RCLCPP_INFO_STREAM(this->get_logger(), "Camera image added with time "
+                       << std::fixed << std::setprecision(9)
+                       << image.Time);
   }
   #else
   static_cast<void>(imageMsg);
@@ -463,6 +470,8 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::msg::PoseWithCovariance
 //------------------------------------------------------------------------------
 void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
 {
+  double rcpTime = this->now().seconds();
+
   if (!this->SlamEnabled)
     return;
 
@@ -473,11 +482,12 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
     Eigen::Isometry3d baseToGps;
     if (Utils::Tf2LookupTransform(baseToGps, *this->TfBuffer, this->TrackingFrameId, "gps", gpsMsg.header.stamp))
     {
-      RCLCPP_INFO(this->get_logger(), "Adding GPS info");
       // Get gps pose
       this->LastGpsMeas.Position = Utils::PoseMsgToIsometry(gpsMsg.pose.pose).translation();
       // Get gps timestamp
-      this->LastGpsMeas.Time = gpsMsg.header.stamp.sec + gpsMsg.header.stamp.nanosec * 1e-9;
+      this->LastGpsMeas.Time = this->UseHeaderTime?
+                               gpsMsg.header.stamp.sec + gpsMsg.header.stamp.nanosec * 1e-9
+                               : rcpTime;
 
       // Get GPS covariance
       // ROS covariance message is row major
@@ -498,6 +508,11 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
       this->LidarSlam.AddGpsMeasurement(this->LastGpsMeas);
       this->GpsLastTime = rclcpp::Time(this->LastGpsMeas.Time * 1e9);
       this->GpsFrameId = gpsMsg.header.frame_id;
+
+      RCLCPP_INFO_STREAM(this->get_logger(),
+                         "GPS position added with time "
+                         << std::fixed << std::setprecision(9)
+                         << this->LastGpsMeas.Time);
     }
     else
       RCLCPP_WARN(this->get_logger(), "The transform between the GPS and the tracking frame was not found -> GPS info ignored");
@@ -555,6 +570,8 @@ int LidarSlamNode::BuildId(const std::vector<int>& ids)
 //------------------------------------------------------------------------------
 void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray& tagsInfo)
 {
+  double rcpTime = this->now().seconds();
+
   if (!this->SlamEnabled)
     return;
 
@@ -567,12 +584,13 @@ void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray&
     Eigen::Isometry3d baseToLmDetector;
     if (Utils::Tf2LookupTransform(baseToLmDetector, *this->TfBuffer, this->TrackingFrameId, tagInfo.pose.header.frame_id, tagInfo.pose.header.stamp))
     {
-      RCLCPP_INFO(this->get_logger(), "Adding tag info");
       LidarSlam::ExternalSensors::LandmarkMeasurement lm;
       // Get tag pose
       lm.TransfoRelative = Utils::PoseMsgToIsometry(tagInfo.pose.pose.pose);
       // Get tag timestamp
-      lm.Time = tagInfo.pose.header.stamp.sec + tagInfo.pose.header.stamp.nanosec * 1e-9;
+      lm.Time = this->UseHeaderTime?
+                tagInfo.pose.header.stamp.sec + tagInfo.pose.header.stamp.nanosec * 1e-9
+                : rcpTime;
 
       // Get tag covariance
       // ROS covariance message is row major
@@ -599,9 +617,14 @@ void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray&
       if (this->PublishTags)
       {
         // Publish tf
-        double TagTimeSec = tagInfo.pose.header.stamp.sec + tagInfo.pose.header.stamp.nanosec * 1e-9;
+        double TagTimeSec = lm.Time;
         this->PublishTransformTF(TagTimeSec, this->TrackingFrameId, "tag_" + std::to_string(id), lm.TransfoRelative);
       }
+
+      RCLCPP_INFO_STREAM(this->get_logger(),
+                         "Tag pose added with time "
+                         << std::fixed << std::setprecision(9)
+                         << lm.Time);
     }
     else
       RCLCPP_WARN(this->get_logger(), "The transform between the landmark detector and the tracking frame was not found -> landmarks info ignored");
@@ -1468,7 +1491,7 @@ void LidarSlamNode::SetSlamParameters()
   // External sensors
   SetSlamParam(int,    "external_sensors.max_measures", SensorMaxMeasures)
   SetSlamParam(float,  "external_sensors.time_threshold", SensorTimeThreshold)
-  this->get_parameter_or<bool>("external_sensors.lidar_is_posix", this->LidarTimePosix, true);
+  this->get_parameter_or<bool>("external_sensors.use_header_time", this->UseHeaderTime, true);
   SetSlamParam(float,   "external_sensors.time_offset", SensorTimeOffset)
   this->SensorTimeOffset = this->LidarSlam.GetSensorTimeOffset();
   this->get_parameter<bool>("external_sensors.calibration.planar_trajectory", this->PlanarTrajectory);
