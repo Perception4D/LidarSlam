@@ -1527,7 +1527,7 @@ void Slam::ComputeEgoMotion()
     {
       Keypoint k = static_cast<Keypoint>(this->UsableKeypoints[i]);
       if (!previousKeypoints[k]->IsSubMapKdTreeValid())
-        previousKeypoints[k]->BuildSubMapKdTree();
+        previousKeypoints[k]->BuildKdTree(true); // true to build kdtree on all grid points
     }
 
     if (this->Verbosity >= 2)
@@ -1642,7 +1642,7 @@ void Slam::Localization()
       // If maps are fixed, we can build a single KD-tree
       // of the entire map to avoid rebuilding it again
       if (this->MapUpdate == MappingMode::NONE)
-        this->LocalMaps[k]->BuildSubMapKdTree();
+        this->LocalMaps[k]->BuildSubMap();
 
       // Otherwise, we only extract the local sub maps
       // to build a local and smaller KD-tree
@@ -1665,12 +1665,12 @@ void Slam::Localization()
           // Build submap of all points lying in this bounding box
           // Moving objects are rejected but the constraint is removed
           // if less than half the number of current keypoints are extracted from the map
-          this->LocalMaps[k]->BuildSubMapKdTree(minPoint.head<3>().array(), maxPoint.head<3>().array(), currWorldKeypoints.size() / 2);
+          this->LocalMaps[k]->BuildSubMap(minPoint.head<3>().array(), maxPoint.head<3>().array(), currWorldKeypoints.size() / 2);
         }
         else
-          this->LocalMaps[k]->BuildSubMapKdTree(currWorldKeypoints);
-
+          this->LocalMaps[k]->BuildSubMap(currWorldKeypoints);
       }
+      this->LocalMaps[k]->BuildKdTree(); // build KdTree on the submap
     }
   }
 
@@ -2058,7 +2058,7 @@ bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, s
 
     // Build kdtree for candidate sub maps
     for (auto k : this->UsableKeypoints)
-      candidateSubMaps[k]->BuildSubMapKdTree();
+      candidateSubMaps[k]->BuildKdTree(true); // true to build kdtree on all grid points
 
     // Compute LCP like estimator
     // (see http://geometry.cs.ucl.ac.uk/projects/2014/super4PCS/ for more info)
@@ -2265,7 +2265,7 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
   {
     Keypoint k = static_cast<Keypoint>(this->UsableKeypoints[i]);
     if (!loopClosureRevisitedSubMaps[k]->IsSubMapKdTreeValid())
-      loopClosureRevisitedSubMaps[k]->BuildSubMapKdTree();
+      loopClosureRevisitedSubMaps[k]->BuildKdTree(true); // true to build kdtree on all grid points
   }
 
   if (this->Verbosity >= 2)
