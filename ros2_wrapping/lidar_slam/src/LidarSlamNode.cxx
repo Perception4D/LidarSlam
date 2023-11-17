@@ -99,7 +99,7 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
     if (this->Publish[publisher])                                                         \
       this->Publishers[publisher] = this->create_publisher<type>(topic, queue);
 
-  this->get_parameter_or<bool>("output.pose.tf",          this->Publish[POSE_TF],             true);
+  this->get_parameter_or<bool>("output.pose.tf",           this->Publish[POSE_TF],            true);
   this->get_parameter_or<bool>("output.pose.predicted_tf", this->Publish[POSE_PREDICTION_TF], false);
 
   initPublisher(POSE_ODOM,            "slam_odom",           nav_msgs::msg::Odometry, "output.pose.odom",           true,  1, false);
@@ -171,24 +171,25 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
   for (unsigned int lidarTopicId = 0; lidarTopicId < lidarTopics.size(); lidarTopicId++)
   {
     this->CloudSubs.push_back(this->create_subscription<Pcl2_msg>(lidarTopics[lidarTopicId], 1,
-                                                                                std::bind(&LidarSlamNode::ScanCallback, this, std::placeholders::_1)));
+                                                                  std::bind(&LidarSlamNode::ScanCallback, this, std::placeholders::_1)));
     RCLCPP_INFO_STREAM(this->get_logger(), "Using LiDAR frames on topic '" << lidarTopics[lidarTopicId] << "'");
   }
 
   // SLAM commands
   this->SlamCommandSub = this->create_subscription<lidar_slam::msg::SlamCommand>("slam_command", 1,
-                                                                                            std::bind(&LidarSlamNode::SlamCommandCallback, this, std::placeholders::_1));
+                                                                                 std::bind(&LidarSlamNode::SlamCommandCallback, this, std::placeholders::_1));
 
   // Init logging of GPS data for GPS/SLAM calibration or Pose Graph Optimization.
   // Perfect synchronization is not required as GPS data are not used in SLAM local process
   if (this->UseExtSensor[LidarSlam::ExternalSensor::GPS])
     this->GpsOdomSub = this->create_subscription<nav_msgs::msg::Odometry>("gps_odom", 1,
-                                                std::bind(&LidarSlamNode::GpsCallback, this, std::placeholders::_1));
+                                                                          std::bind(&LidarSlamNode::GpsCallback, this, std::placeholders::_1));
 
   // Init logging of landmark data and/or Camera data
   if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ||
       this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] ||
-      this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
+      this->UseExtSensor[LidarSlam::ExternalSensor::POSE] ||
+      this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM])
   {
     // Create an external independent spinner to get the landmarks and/or camera info in a parallel way
     this->ExternalSensorGroup = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -197,22 +198,28 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
 
     if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR])
     {
-        this->LandmarkSub = this->create_subscription<apriltag_ros::msg::AprilTagDetectionArray>("tag_detections",
-                                          200, std::bind(&LidarSlamNode::TagCallback, this, std::placeholders::_1), ops);
+      this->LandmarkSub = this->create_subscription<apriltag_ros::msg::AprilTagDetectionArray>("tag_detections", 200,
+                                                                                               std::bind(&LidarSlamNode::TagCallback, this, std::placeholders::_1), ops);
     }
 
     if (this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA])
     {
-      this->CameraSub = this->create_subscription<sensor_msgs::msg::Image>("camera",
-                                        10, std::bind(&LidarSlamNode::ImageCallback, this, std::placeholders::_1), ops);
-      this->CameraInfoSub = this->create_subscription<sensor_msgs::msg::CameraInfo>("camera_info",
-                                        10, std::bind(&LidarSlamNode::CameraInfoCallback, this, std::placeholders::_1), ops);
+      this->CameraSub = this->create_subscription<sensor_msgs::msg::Image>("camera", 10,
+                                                                           std::bind(&LidarSlamNode::ImageCallback, this, std::placeholders::_1), ops);
+      this->CameraInfoSub = this->create_subscription<sensor_msgs::msg::CameraInfo>("camera_info", 10,
+                                                                                    std::bind(&LidarSlamNode::CameraInfoCallback, this, std::placeholders::_1), ops);
     }
 
     if (this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
     {
       this->ExtPoseSub = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>("ext_poses",
                                         10, std::bind(&LidarSlamNode::ExtPoseCallback, this, std::placeholders::_1), ops);
+    }
+
+    if (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM])
+    {
+      this->WheelOdomSub = this->create_subscription<std_msgs::msg::Float64>("wheel_odom", 10,
+                                                                             std::bind(&LidarSlamNode::WheelOdomCallback, this, std::placeholders::_1), ops);
     }
   }
 
@@ -227,6 +234,8 @@ LidarSlamNode::~LidarSlamNode()
 //------------------------------------------------------------------------------
 void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
 {
+  this->StartTime = this->now().seconds();
+
   if (!this->SlamEnabled)
     return;
 
@@ -276,22 +285,20 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
 
     this->MainLidarId = cloudS_ptr->header.frame_id;
 
-    this->StartTime = this->now().seconds();
-
-    if (!this->LidarTimePosix)
+    if (!this->UseHeaderTime)
     {
       // Compute time offset
       // Get ROS frame reception time
-      double timeFrameReceptionPOSIX = this->now().seconds();
+      double timeFrameReception = this->StartTime;
       // Get last acquired point timestamp
-      double timeLastPoint = LidarSlam::Utils::PclStampToSec(cloudS_ptr->header.stamp) + cloudS_ptr->back().time;
+      double timeFrameHeader = LidarSlam::Utils::PclStampToSec(cloudS_ptr->header.stamp);
       // Compute offset
-      double potentialOffset = timeLastPoint - timeFrameReceptionPOSIX;
+      double potentialOffset = timeFrameHeader - timeFrameReception + this->SensorTimeOffset;
       // Get current offset
-      double absCurrentOffset = std::abs(this->LidarSlam.GetSensorTimeOffset());
+      double currentOffset = std::abs(this->LidarSlam.GetSensorTimeOffset());
       // If the current computed offset is more accurate, replace it
-      if (absCurrentOffset < 1e-6 || std::abs(potentialOffset) < absCurrentOffset)
-        this->LidarSlam.SetSensorTimeOffset(potentialOffset + this->SensorTimeOffset);
+      if (currentOffset < 1e-6 || std::abs(potentialOffset) < currentOffset)
+        this->LidarSlam.SetSensorTimeOffset(potentialOffset);
     }
     else
       this->LidarSlam.SetSensorTimeOffset(this->SensorTimeOffset);
@@ -352,6 +359,8 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
 //------------------------------------------------------------------------------
 void LidarSlamNode::ImageCallback(const sensor_msgs::msg::Image& imageMsg)
 {
+  double rcpTime = this->now().seconds();
+
   if (!this->SlamEnabled)
     return;
 
@@ -377,12 +386,17 @@ void LidarSlamNode::ImageCallback(const sensor_msgs::msg::Image& imageMsg)
       return;
     }
 
-    RCLCPP_INFO_STREAM(this->get_logger(), "Adding Camera info : "<< std::fixed << std::setprecision(9) << imageMsg.header.stamp.sec + imageMsg.header.stamp.nanosec * 1e-9);
     // Add camera measurement to measurements list
     LidarSlam::ExternalSensors::Image image;
-    image.Time = imageMsg.header.stamp.sec + imageMsg.header.stamp.nanosec * 1e-9;
+    image.Time = this->UseHeaderTime?
+                 imageMsg.header.stamp.sec + imageMsg.header.stamp.nanosec * 1e-9
+                 : rcpTime;
     image.Data = cvPtr->image;
     this->LidarSlam.AddCameraImage(image);
+
+    RCLCPP_INFO_STREAM(this->get_logger(), "Camera image added with time "
+                       << std::fixed << std::setprecision(9)
+                       << image.Time);
   }
   #else
   static_cast<void>(imageMsg);
@@ -456,6 +470,8 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::msg::PoseWithCovariance
 //------------------------------------------------------------------------------
 void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
 {
+  double rcpTime = this->now().seconds();
+
   if (!this->SlamEnabled)
     return;
 
@@ -466,11 +482,12 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
     Eigen::Isometry3d baseToGps;
     if (Utils::Tf2LookupTransform(baseToGps, *this->TfBuffer, this->TrackingFrameId, "gps", gpsMsg.header.stamp))
     {
-      RCLCPP_INFO(this->get_logger(), "Adding GPS info");
       // Get gps pose
       this->LastGpsMeas.Position = Utils::PoseMsgToIsometry(gpsMsg.pose.pose).translation();
       // Get gps timestamp
-      this->LastGpsMeas.Time = gpsMsg.header.stamp.sec + gpsMsg.header.stamp.nanosec * 1e-9;
+      this->LastGpsMeas.Time = this->UseHeaderTime?
+                               gpsMsg.header.stamp.sec + gpsMsg.header.stamp.nanosec * 1e-9
+                               : rcpTime;
 
       // Get GPS covariance
       // ROS covariance message is row major
@@ -491,12 +508,49 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
       this->LidarSlam.AddGpsMeasurement(this->LastGpsMeas);
       this->GpsLastTime = rclcpp::Time(this->LastGpsMeas.Time * 1e9);
       this->GpsFrameId = gpsMsg.header.frame_id;
+
+      RCLCPP_INFO_STREAM(this->get_logger(),
+                         "GPS position added with time "
+                         << std::fixed << std::setprecision(9)
+                         << this->LastGpsMeas.Time);
     }
     else
       RCLCPP_WARN(this->get_logger(), "The transform between the GPS and the tracking frame was not found -> GPS info ignored");
 }
 
-// //------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+void LidarSlamNode::WheelOdomCallback(const std_msgs::msg::Float64& odomMsg)
+{
+  double rcpTime = this->now().seconds();
+
+  /// TODO refact with a type "sensor message" with header frame and time
+  if (!this->SlamEnabled)
+    return;
+
+  if (!this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM])
+    return;
+
+  // Transform between base link and the wheel encoder
+  Eigen::Isometry3d baseToWheel;
+  if (Utils::Tf2LookupTransform(baseToWheel, *this->TfBuffer, this->TrackingFrameId, this->WheelFrameId))
+  {
+    if (!this->LidarSlam.WheelOdomCanBeUsedLocally())
+      this->LidarSlam.SetWheelOdomCalibration(baseToWheel);
+
+    // Add wheel odometer measurement to measurements list
+    LidarSlam::ExternalSensors::WheelOdomMeasurement measure;
+    measure.Time = rcpTime;
+    measure.Distance = odomMsg.data;
+    this->LidarSlam.AddWheelOdomMeasurement(measure);
+
+    RCLCPP_INFO_STREAM(this->get_logger(),
+                       "Wheel encoder measure added with time "
+                        << std::fixed << std::setprecision(9)
+                        << measure.Time);
+  }
+}
+
+// ------------------------------------------------------------------------------
 int LidarSlamNode::BuildId(const std::vector<int>& ids)
 {
   int id = ids[0];
@@ -516,6 +570,8 @@ int LidarSlamNode::BuildId(const std::vector<int>& ids)
 //------------------------------------------------------------------------------
 void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray& tagsInfo)
 {
+  double rcpTime = this->now().seconds();
+
   if (!this->SlamEnabled)
     return;
 
@@ -528,12 +584,13 @@ void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray&
     Eigen::Isometry3d baseToLmDetector;
     if (Utils::Tf2LookupTransform(baseToLmDetector, *this->TfBuffer, this->TrackingFrameId, tagInfo.pose.header.frame_id, tagInfo.pose.header.stamp))
     {
-      RCLCPP_INFO(this->get_logger(), "Adding tag info");
       LidarSlam::ExternalSensors::LandmarkMeasurement lm;
       // Get tag pose
       lm.TransfoRelative = Utils::PoseMsgToIsometry(tagInfo.pose.pose.pose);
       // Get tag timestamp
-      lm.Time = tagInfo.pose.header.stamp.sec + tagInfo.pose.header.stamp.nanosec * 1e-9;
+      lm.Time = this->UseHeaderTime?
+                tagInfo.pose.header.stamp.sec + tagInfo.pose.header.stamp.nanosec * 1e-9
+                : rcpTime;
 
       // Get tag covariance
       // ROS covariance message is row major
@@ -560,9 +617,14 @@ void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray&
       if (this->PublishTags)
       {
         // Publish tf
-        double TagTimeSec = tagInfo.pose.header.stamp.sec + tagInfo.pose.header.stamp.nanosec * 1e-9;
+        double TagTimeSec = lm.Time;
         this->PublishTransformTF(TagTimeSec, this->TrackingFrameId, "tag_" + std::to_string(id), lm.TransfoRelative);
       }
+
+      RCLCPP_INFO_STREAM(this->get_logger(),
+                         "Tag pose added with time "
+                         << std::fixed << std::setprecision(9)
+                         << lm.Time);
     }
     else
       RCLCPP_WARN(this->get_logger(), "The transform between the landmark detector and the tracking frame was not found -> landmarks info ignored");
@@ -1325,10 +1387,11 @@ void LidarSlamNode::SetSlamParameters()
   }
 
   // Frame Ids
-  this->get_parameter<std::string>("odometry_frame", this->OdometryFrameId);
+  this->get_parameter_or<std::string>("odometry_frame", this->OdometryFrameId, "odom");
   this->LidarSlam.SetWorldFrameId(this->OdometryFrameId);
-  this->get_parameter<std::string>("tracking_frame", this->TrackingFrameId);
+  this->get_parameter_or<std::string>("tracking_frame", this->TrackingFrameId, "base_link");
   this->LidarSlam.SetBaseFrameId(this->TrackingFrameId);
+  this->get_parameter_or<std::string>("wheel_frame", this->WheelFrameId, "wheel");
 
   // Keypoint extractors
   auto initKeypointsExtractor = [this](auto& ke, const std::string& prefix)
@@ -1428,7 +1491,7 @@ void LidarSlamNode::SetSlamParameters()
   // External sensors
   SetSlamParam(int,    "external_sensors.max_measures", SensorMaxMeasures)
   SetSlamParam(float,  "external_sensors.time_threshold", SensorTimeThreshold)
-  this->get_parameter_or<bool>("external_sensors.lidar_is_posix", this->LidarTimePosix, true);
+  this->get_parameter_or<bool>("external_sensors.use_header_time", this->UseHeaderTime, true);
   SetSlamParam(float,   "external_sensors.time_offset", SensorTimeOffset)
   this->SensorTimeOffset = this->LidarSlam.GetSensorTimeOffset();
   this->get_parameter<bool>("external_sensors.calibration.planar_trajectory", this->PlanarTrajectory);
@@ -1450,7 +1513,33 @@ void LidarSlamNode::SetSlamParameters()
 
   // Use external poses in local optimization or in graph optimization
   this->get_parameter_or<bool>("external_sensors.external_poses.enable", this->UseExtSensor[LidarSlam::ExternalSensor::POSE], false);
-  SetSlamParam(float,  "external_sensors.external_poses.weight", PoseWeight)
+  SetSlamParam(double, "external_sensors.external_poses.weight", PoseWeight)
+
+  // Use wheel encoder in local optimization
+  this->get_parameter_or<bool>("external_sensors.wheel_encoder.enable", this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM], false);
+  SetSlamParam(double, "external_sensors.wheel_encoder.weight", WheelOdomWeight)
+  SetSlamParam(bool,   "external_sensors.wheel_encoder.relative", WheelOdomRelative)
+  SetSlamParam(double, "external_sensors.wheel_encoder.saturation_distance", WheelOdomSaturationDistance)
+
+  std::vector<double> wheelOdomRef;
+  if (this->get_parameter("external_sensors.wheel_encoder.reference", wheelOdomRef) &&
+      wheelOdomRef.size() == 3  &&
+      !this->LidarSlam.GetWheelOdomRelative())
+  {
+    Eigen::Vector3d ref = Eigen::Vector3d(wheelOdomRef[0], wheelOdomRef[1], wheelOdomRef[2]);
+    if (ref.norm() > 1e-6)
+      this->LidarSlam.SetWheelOdomReference(ref);
+  }
+
+  std::vector<double> wheelOdomDir;
+  if (this->get_parameter("external_sensors.wheel_encoder.direction", wheelOdomDir) &&
+      wheelOdomDir.size() == 3  &&
+      !this->LidarSlam.GetWheelOdomRelative())
+  {
+    Eigen::Vector3d dir = Eigen::Vector3d(wheelOdomDir[0], wheelOdomDir[1], wheelOdomDir[2]);
+    if (dir.norm() > 1e-6)
+      this->LidarSlam.SetWheelOdomDirection(dir);
+  }
 
   // Graph parameters
   SetSlamParam(std::string, "graph.g2o_file_name", G2oFileName)
@@ -1516,7 +1605,7 @@ void LidarSlamNode::SetSlamParameters()
   SetSlamParam(int,   "slam.confidence.window", ConfidenceWindow)
   SetSlamParam(float, "slam.confidence.overlap.gap_threshold", OverlapDerivativeThreshold)
   SetSlamParam(float, "slam.confidence.position_error.threshold", PositionErrorThreshold)
-  this->get_parameter("slam.confidence.failure_detector.recovery_time", this->RecoveryTime);
+  this->get_parameter_or<float>("slam.confidence.failure_detector.recovery_time", this->RecoveryTime, 1.);
   SetSlamParam(bool,  "slam.confidence.failure_detector.enable", FailureDetectionEnabled)
 
   // Keyframes
@@ -1550,17 +1639,21 @@ void LidarSlamNode::SetSlamParameters()
     this->LidarSlam.SetSubmapMode(submap);
   }
   double size;
-  if (this->get_parameter("slam.voxel_grid.leaf_size.edges", size) && this->LidarSlam.KeypointTypeEnabled(LidarSlam::EDGE))
+  if (this->get_parameter_or<double>("slam.voxel_grid.leaf_size.edges", size, 0.2) &&
+      this->LidarSlam.KeypointTypeEnabled(LidarSlam::EDGE))
     this->LidarSlam.SetVoxelGridLeafSize(LidarSlam::EDGE, size);
-  if (this->get_parameter("slam.voxel_grid.leaf_size.intensity_edges", size) && this->LidarSlam.KeypointTypeEnabled(LidarSlam::INTENSITY_EDGE))
+  if (this->get_parameter_or<double>("slam.voxel_grid.leaf_size.intensity_edges", size, 0.2) &&
+      this->LidarSlam.KeypointTypeEnabled(LidarSlam::INTENSITY_EDGE))
     this->LidarSlam.SetVoxelGridLeafSize(LidarSlam::INTENSITY_EDGE, size);
-  if (this->get_parameter("slam.voxel_grid.leaf_size.planes", size) && this->LidarSlam.KeypointTypeEnabled(LidarSlam::PLANE))
+  if (this->get_parameter_or<double>("slam.voxel_grid.leaf_size.planes", size, 0.3) &&
+      this->LidarSlam.KeypointTypeEnabled(LidarSlam::PLANE))
     this->LidarSlam.SetVoxelGridLeafSize(LidarSlam::PLANE, size);
-  if (this->get_parameter("slam.voxel_grid.leaf_size.blobs", size) && this->LidarSlam.KeypointTypeEnabled(LidarSlam::BLOB))
+  if (this->get_parameter_or<double>("slam.voxel_grid.leaf_size.blobs", size, 0.3) &&
+      this->LidarSlam.KeypointTypeEnabled(LidarSlam::BLOB))
     this->LidarSlam.SetVoxelGridLeafSize(LidarSlam::BLOB, size);
   SetSlamParam(double, "slam.voxel_grid.resolution", VoxelGridResolution)
   SetSlamParam(int,    "slam.voxel_grid.size", VoxelGridSize)
-  SetSlamParam(int, "slam.voxel_grid.decaying_threshold", VoxelGridDecayingThreshold)
+  SetSlamParam(int,    "slam.voxel_grid.decaying_threshold", VoxelGridDecayingThreshold)
   SetSlamParam(int,    "slam.voxel_grid.min_frames_per_voxel", VoxelGridMinFramesPerVoxel)
   for (auto k : LidarSlam::KeypointTypes)
   {
@@ -1614,7 +1707,11 @@ void LidarSlamNode::SetSlamParameters()
                      << std::setw(22) << " NO |"
                      << std::setw(22) << ((this->UseExtSensor[LidarSlam::ExternalSensor::GPS] &&
                      this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS)) ? " YES |" : " NO |"));
-  // to do add wheel encoder info if wheel encoder is merged before loop closure
+  RCLCPP_INFO_STREAM(this->get_logger(), std::setw(19) << "Wheel encoder     |"
+                      << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] ? " ON |" : " OFF |")
+                      << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] &&
+                      this->LidarSlam.GetWheelOdomWeight() > 1e-6 ? " YES |" : " NO |")
+                      << std::setw(22) << " NO |");
 
   // Check if or not one pgo constraint is enabled at least
   if (!this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE) &&
@@ -1640,7 +1737,7 @@ void LidarSlamNode::SetSlamParameters()
 void LidarSlamNode::SetSlamInitialState()
 {
   // Load initial Landmarks poses if requested
-  std::string lmpath = "";
+  std::string lmpath;
   this->get_parameter("external_sensors.landmark_detector.landmarks_file_path", lmpath);
   if (!lmpath.empty())
   {
@@ -1666,7 +1763,7 @@ void LidarSlamNode::SetSlamInitialState()
   }
 
   // Load initial SLAM maps if requested
-  std::string mapsPathPrefix = "";
+  std::string mapsPathPrefix;
   this->get_parameter<std::string>("maps.initial_maps", mapsPathPrefix);
   if (!mapsPathPrefix.empty())
   {

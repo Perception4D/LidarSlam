@@ -81,7 +81,7 @@ void WheelOdometryManager::SetReference(const Eigen::Isometry3d& basePose, doubl
     // Case 3 : reference measure has never been estimated
     // Compute synchronized measure for reference
     WheelOdomMeasurement synchMeas; // Virtual measure with synchronized timestamp
-    if (!ComputeSynchronizedMeasure(lidarTime, synchMeas))
+    if (!this->ComputeSynchronizedMeasure(lidarTime, synchMeas))
     {
       this->RefInitialized = false;
       return;
@@ -114,6 +114,13 @@ void WheelOdometryManager::SetCalibration(const Eigen::Isometry3d& calib)
 }
 
 // ---------------------------------------------------------------------------
+void WheelOdometryManager::SetDirection(const Eigen::Vector3d& direction)
+{
+  this->Direction = direction;
+  this->Direction.normalize();
+}
+
+// ---------------------------------------------------------------------------
 bool WheelOdometryManager::ComputeConstraint(double lidarTime)
 {
   this->ResetResidual();
@@ -129,14 +136,19 @@ bool WheelOdometryManager::ComputeConstraint(double lidarTime)
     return false;
 
   // Compute distance measured from reference pose
-  double distDiff = std::abs(this->LastSynchMeas.Distance - this->RefMeas.Distance);
-  this->Residual.Cost = CeresCostFunctions::OdometerDistanceResidual::Create(this->RefPose.translation(),
+  double distDiff = this->LastSynchMeas.Distance - this->RefMeas.Distance;
+  this->Residual.Cost = std::abs(this->Direction.norm() - 1.) < 1e-6 ?
+                        CeresCostFunctions::OdometerTranslationResidual::Create(this->RefPose.translation(),
+                                                                                this->Calibration,
+                                                                                distDiff * this->Direction) :
+                        CeresCostFunctions::OdometerDistanceResidual::Create(this->RefPose.translation(),
                                                                              this->Calibration,
                                                                              distDiff);
+
   this->Residual.Robustifier.reset(new ceres::ScaledLoss(NULL, this->Weight, ceres::TAKE_OWNERSHIP));
 
   if (this->Verbose)
-    PRINT_INFO(std::setprecision(2)
+    PRINT_INFO(std::setprecision(4)
                << "Adding wheel encoder residual : "
                << distDiff << " m travelled since position : "
                << this->RefPose.translation().transpose());
