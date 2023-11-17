@@ -38,6 +38,8 @@
     - [Wheel encoder use](#optional-wheel-encoder-use)
   - [About the published TF tree](#about-the-published-tf-tree)
 - [Points aggregation](#points-aggregation)
+  - [Classic aggregation](#classic-aggregation)
+  - [Advanced](#advanced)
 
 Wrapping for Kitware LiDAR-only SLAM. It can also use GPS data to publish SLAM output pose as GPS coordinates, or to correct SLAM trajectory and map.
 
@@ -584,6 +586,8 @@ utm
 
 Another node called **aggregation_node** is included in the **lidar_slam** package and allows to aggregate all points from all frames into a unique pointcloud with a defined resolution : the points are stored in a voxel grid to supply a downsampled output cloud. It also allows to reject moving objects. The output pointcloud is published on the topic *aggregated_cloud*. It requires the output *registered_points* of the node **lidar_slam_node** to be enabled.
 
+## Classic aggregation
+
 **aggregation_node** has 3 parameters :
 
 - *leaf_size* : corresponds to the size of a voxel in meters in which to store one unique point. It is equivalent to the required mean distance between nearest neighbors. The maximum distance between nearest distance to downsample the cloud would be 2 * leaf_size
@@ -610,3 +614,19 @@ ros2 service call /lidar_slam/reset lidar_slam/srv/Reset
 **NOTE** : **aggregation_node** can be directly run from the launch files, adding the argument *aggregate:=true* to the launch command.
 
 **NOTE** : The services are available through the visualization plugin.
+
+## Advanced
+
+One can extract a slice of points perpendicular to the trajectory locally and to create a boundary from it. An area estimation is then provided. This can be useful when exploring closed areas such than undergrounds.
+
+The area is published on the topic **/slice_area** as a [float64 std message](https://docs.ros.org/en/api/std_msgs/html/msg/Float64.html) and
+the boundary pointcloud is published on the topic **/slice_points**.
+
+To create a boundary from the slice, the slice points are first projected onto the slice plane and a circular histogram is created centered onto the current pose of the trajectory. Then, an average allows to keep one point per bin. The area is estimated as the sum of the areas of the triangles formed by the boundary points and the current position. The current position  is supposed to be inside of the boundary.
+
+The parameters relative to this feature are the following:
+*slice/enable*: Boolean to enable/disable the slice extraction and the area computation.
+*slice/traj_length*: Length (in meters) of the local trajectory considered to define the slice plane (perpendicular to it).
+*slice/width*: Width (in meters) of the slice of points
+*slice/max_dist*: Maximal distance (in meters) of the points from the trajectory position onto the slice plane.
+*slice/angle_resolution*: Resolution (in degrees) of the slice pointcloud w.r.t the trajectory position.
