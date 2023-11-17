@@ -201,7 +201,7 @@ double AggregationNode::ExtractSlice(double sliceWidth, double sliceMaxDist, dou
   CloudS tmpCloud;
   tmpCloud.resize(1);
   tmpCloud[0].getVector3fMap() = currPosition.cast<float>();
-  this->DenseMap->BuildSubMapKdTree(tmpCloud, this->MinSlicePtsWithoutMovObjects);
+  this->DenseMap->BuildSubMap(tmpCloud, this->MinSlicePtsWithoutMovObjects);
   CloudS::Ptr submap = this->DenseMap->GetSubMap();
 
   // Initialize the slice pointcloud
