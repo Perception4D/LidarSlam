@@ -171,6 +171,14 @@ def generate_launch_description():
                "--frame-id", "base_link", "--child-frame-id", "gps"],
   )
 
+  # Base link to wheel encoder
+  wheel_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_wheel",
+    parameters=[{'use_sim_time': LaunchConfiguration('replay')},],
+    arguments=["--x", "0", "--y", "0", "--z", "0",
+               "--roll", "0", "--pitch", "0", "--yaw", "0",
+               "--frame-id", "base_link", "--child-frame-id", "wheel"],
+  )
+
   # Default transformation for Odom frame
   odom_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_odom_to_base",
     arguments=["--x", "0", "--y", "0", "--z", "0",
@@ -187,6 +195,7 @@ def generate_launch_description():
   ld.add_action(tf_base_to_velo_node)
   ld.add_action(gps_conversions_include)
   ld.add_action(gps_tf_node)
+  ld.add_action(wheel_tf_node)
   ld.add_action(odom_tf_node)
   ld.add_action(rviz_node)
   return (ld)

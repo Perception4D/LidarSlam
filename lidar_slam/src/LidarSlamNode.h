@@ -34,6 +34,7 @@
 #include <apriltag_ros/msg/april_tag_detection_array.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
+#include <std_msgs/msg/float64.hpp>
 
 // SLAM
 #include <LidarSlam/Slam.h>
@@ -86,6 +87,13 @@ public:
    * @param[in] msg Converted GPS pose with its associated covariance.
    */
   void GpsCallback(const nav_msgs::msg::Odometry& msg);
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief     Optional wheel odometer callback, accumulating poses.
+   * @param[in] msg Wheel odometer distance measurement.
+   */
+  void WheelOdomCallback(const std_msgs::msg::Float64& msg);
 
   //----------------------------------------------------------------------------
   /*!
@@ -272,7 +280,9 @@ protected:
   std::string OdometryFrameId = "odom";       ///< Frame in which SLAM odometry and maps are expressed.
   std::string TrackingFrameId = "base_link";  ///< Frame to track (ensure a valid TF tree is published).
   std::string MainLidarId;
-  std::string GpsFrameId = "GPS"; ///< Frame to represent GPS positions.
+  std::string GpsFrameId = "GPS";             ///< Frame to represent GPS positions.
+  std::string WheelFrameId = "wheel";         ///< Frame of the wheel
+
   rclcpp::Time GpsLastTime;
   std::unique_ptr<tf2_ros::Buffer> TfBuffer;
   std::shared_ptr<tf2_ros::TransformListener> TfListener;
@@ -289,7 +299,8 @@ protected:
   std::unordered_map<LidarSlam::ExternalSensor, bool> UseExtSensor = {{LidarSlam::ExternalSensor::GPS,               false},
                                                                       {LidarSlam::ExternalSensor::LANDMARK_DETECTOR, false},
                                                                       {LidarSlam::ExternalSensor::POSE,              false},
-                                                                      {LidarSlam::ExternalSensor::CAMERA,            false}};
+                                                                      {LidarSlam::ExternalSensor::CAMERA,            false},
+                                                                      {LidarSlam::ExternalSensor::WHEEL_ODOM,        false}};
 
   // If lidar time contained in the header is not POSIX
   // The offset between network reception time
@@ -322,6 +333,9 @@ protected:
   // External poses
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr ExtPoseSub;
   std::string ExtPoseFrameId;
+
+  // Wheel encoder
+  rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr WheelOdomSub;
 };
 
 #endif // LIDAR_SLAM_NODE_H

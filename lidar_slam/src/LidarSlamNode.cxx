@@ -188,7 +188,8 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
   // Init logging of landmark data and/or Camera data
   if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ||
       this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] ||
-      this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
+      this->UseExtSensor[LidarSlam::ExternalSensor::POSE] ||
+      this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM])
   {
     // Create an external independent spinner to get the landmarks and/or camera info in a parallel way
     this->ExternalSensorGroup = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -213,6 +214,12 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
     {
       this->ExtPoseSub = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>("ext_poses",
                                         10, std::bind(&LidarSlamNode::ExtPoseCallback, this, std::placeholders::_1), ops);
+    }
+
+    if (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM])
+    {
+      this->WheelOdomSub = this->create_subscription<std_msgs::msg::Float64>("wheel_odom", 10,
+                                                                             std::bind(&LidarSlamNode::WheelOdomCallback, this, std::placeholders::_1), ops);
     }
   }
 
@@ -494,6 +501,38 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
     }
     else
       RCLCPP_WARN(this->get_logger(), "The transform between the GPS and the tracking frame was not found -> GPS info ignored");
+}
+
+//------------------------------------------------------------------------------
+void LidarSlamNode::WheelOdomCallback(const std_msgs::msg::Float64& odomMsg)
+{
+  double rcpTime = this->now().seconds();
+
+  /// TODO refact with a type "sensor message" with header frame and time
+  if (!this->SlamEnabled)
+    return;
+
+  if (!this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM])
+    return;
+
+  // Transform between base link and the wheel encoder
+  Eigen::Isometry3d baseToWheel;
+  if (Utils::Tf2LookupTransform(baseToWheel, *this->TfBuffer, this->TrackingFrameId, this->WheelFrameId))
+  {
+    if (!this->LidarSlam.WheelOdomCanBeUsedLocally())
+      this->LidarSlam.SetWheelOdomCalibration(baseToWheel);
+
+    // Add wheel odometer measurement to measurements list
+    LidarSlam::ExternalSensors::WheelOdomMeasurement measure;
+    measure.Time = rcpTime;
+    measure.Distance = odomMsg.data;
+    this->LidarSlam.AddWheelOdomMeasurement(measure);
+
+    RCLCPP_INFO_STREAM(this->get_logger(),
+                       "Wheel encoder measure added with time "
+                        << std::fixed << std::setprecision(9)
+                        << measure.Time);
+  }
 }
 
 // //------------------------------------------------------------------------------
@@ -1329,6 +1368,7 @@ void LidarSlamNode::SetSlamParameters()
   this->LidarSlam.SetWorldFrameId(this->OdometryFrameId);
   this->get_parameter<std::string>("tracking_frame", this->TrackingFrameId);
   this->LidarSlam.SetBaseFrameId(this->TrackingFrameId);
+  this->get_parameter_or<std::string>("wheel_frame", this->WheelFrameId, "wheel");
 
   // Keypoint extractors
   auto initKeypointsExtractor = [this](auto& ke, const std::string& prefix)
@@ -1450,7 +1490,33 @@ void LidarSlamNode::SetSlamParameters()
 
   // Use external poses in local optimization or in graph optimization
   this->get_parameter_or<bool>("external_sensors.external_poses.enable", this->UseExtSensor[LidarSlam::ExternalSensor::POSE], false);
-  SetSlamParam(float,  "external_sensors.external_poses.weight", PoseWeight)
+  SetSlamParam(double, "external_sensors.external_poses.weight", PoseWeight)
+
+  // Use wheel encoder in local optimization
+  this->get_parameter_or<bool>("external_sensors.wheel_encoder.enable", this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM], false);
+  SetSlamParam(double, "external_sensors.wheel_encoder.weight", WheelOdomWeight)
+  SetSlamParam(bool,   "external_sensors.wheel_encoder.relative", WheelOdomRelative)
+  SetSlamParam(double, "external_sensors.wheel_encoder.saturation_distance", WheelOdomSaturationDistance)
+
+  std::vector<double> wheelOdomRef;
+  if (this->get_parameter("external_sensors.wheel_encoder.reference", wheelOdomRef) &&
+      wheelOdomRef.size() == 3  &&
+      !this->LidarSlam.GetWheelOdomRelative())
+  {
+    Eigen::Vector3d ref = Eigen::Vector3d(wheelOdomRef[0], wheelOdomRef[1], wheelOdomRef[2]);
+    if (ref.norm() > 1e-6)
+      this->LidarSlam.SetWheelOdomReference(ref);
+  }
+
+  std::vector<double> wheelOdomDir;
+  if (this->get_parameter("external_sensors.wheel_encoder.direction", wheelOdomDir) &&
+      wheelOdomDir.size() == 3  &&
+      !this->LidarSlam.GetWheelOdomRelative())
+  {
+    Eigen::Vector3d dir = Eigen::Vector3d(wheelOdomDir[0], wheelOdomDir[1], wheelOdomDir[2]);
+    if (dir.norm() > 1e-6)
+      this->LidarSlam.SetWheelOdomDirection(dir);
+  }
 
   // Graph parameters
   SetSlamParam(std::string, "graph.g2o_file_name", G2oFileName)
@@ -1614,7 +1680,11 @@ void LidarSlamNode::SetSlamParameters()
                      << std::setw(22) << " NO |"
                      << std::setw(22) << ((this->UseExtSensor[LidarSlam::ExternalSensor::GPS] &&
                      this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS)) ? " YES |" : " NO |"));
-  // to do add wheel encoder info if wheel encoder is merged before loop closure
+  RCLCPP_INFO_STREAM(this->get_logger(), std::setw(19) << "Wheel encoder     |"
+                      << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] ? " ON |" : " OFF |")
+                      << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] &&
+                      this->LidarSlam.GetWheelOdomWeight() > 1e-6 ? " YES |" : " NO |")
+                      << std::setw(22) << " NO |");
 
   // Check if or not one pgo constraint is enabled at least
   if (!this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE) &&
