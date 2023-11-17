@@ -8,6 +8,7 @@
     # SLAM will compute the pose of tracking_frame in odometry_frame coordinates system, using measurements in input pointcloud frames.
     odometry_frame: "odom"       # Frame in which SLAM odometry and maps are expressed (default: odom)
     tracking_frame: "base_link"  # Frame to track (ensure a valid TF tree is published to link input pointcloud frame_id) (default: base_link)
+    wheel_frame: "wheel"         # Frame for the wheel encoder
 
     lidars_nb: 1             # Number of lidars used. When various lidars used, keypoints extraction parameters need to be specify for each sensor.
     frames_mode: 1           # The frames collection mode. 0: wait a specific time to collect frames; 1: wait for all lidar devices
@@ -127,6 +128,18 @@
       external_poses:
         enable: false            # [bool] To receive and use the external poses in SLAM (local opt or pose graph opt)
         weight: 0.               # Weight to apply to the constraint built on external poses
+
+      # Wheel encoder appliable for ground wheels for translation
+      # only motion or if relative mode is ON or with cable for any transformation
+      wheel_encoder:
+        enable: false            # [bool] To receive and use a wheel encoder (distance measurement)
+        relative: false          # [bool] To set the constraint from reference or from previous frame
+        weight: 0.               # [float] Weight to apply onto the wheel encoder constraint in the front end optimization
+        saturation_distance: 0.5 # [m] Spatial distance threshold to discard the measurement in SLAM optimization
+        reference: [0., 0., 0.]  # [m, m, m] Reference point for the odometry measure
+                                 # Do not set if relative mode is true, [0.,0.,0.] deactivates the feature
+        direction: [0., 0., 0.]  # [m, m, m] Direction on which the odometry is measured
+                                 # [0.,0.,0.] deactivates the feature: the residual will be 1D
 
     graph:
       g2o_file_name: ""    # File where to store the g2o log info (viewable with g2o_viewer tool)
