@@ -99,7 +99,7 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
     if (this->Publish[publisher])                                                         \
       this->Publishers[publisher] = this->create_publisher<type>(topic, queue);
 
-  this->get_parameter_or<bool>("output.pose.tf",          this->Publish[POSE_TF],             true);
+  this->get_parameter_or<bool>("output.pose.tf",           this->Publish[POSE_TF],            true);
   this->get_parameter_or<bool>("output.pose.predicted_tf", this->Publish[POSE_PREDICTION_TF], false);
 
   initPublisher(POSE_ODOM,            "slam_odom",           nav_msgs::msg::Odometry, "output.pose.odom",           true,  1, false);
@@ -171,19 +171,19 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
   for (unsigned int lidarTopicId = 0; lidarTopicId < lidarTopics.size(); lidarTopicId++)
   {
     this->CloudSubs.push_back(this->create_subscription<Pcl2_msg>(lidarTopics[lidarTopicId], 1,
-                                                                                std::bind(&LidarSlamNode::ScanCallback, this, std::placeholders::_1)));
+                                                                  std::bind(&LidarSlamNode::ScanCallback, this, std::placeholders::_1)));
     RCLCPP_INFO_STREAM(this->get_logger(), "Using LiDAR frames on topic '" << lidarTopics[lidarTopicId] << "'");
   }
 
   // SLAM commands
   this->SlamCommandSub = this->create_subscription<lidar_slam::msg::SlamCommand>("slam_command", 1,
-                                                                                            std::bind(&LidarSlamNode::SlamCommandCallback, this, std::placeholders::_1));
+                                                                                 std::bind(&LidarSlamNode::SlamCommandCallback, this, std::placeholders::_1));
 
   // Init logging of GPS data for GPS/SLAM calibration or Pose Graph Optimization.
   // Perfect synchronization is not required as GPS data are not used in SLAM local process
   if (this->UseExtSensor[LidarSlam::ExternalSensor::GPS])
     this->GpsOdomSub = this->create_subscription<nav_msgs::msg::Odometry>("gps_odom", 1,
-                                                std::bind(&LidarSlamNode::GpsCallback, this, std::placeholders::_1));
+                                                                          std::bind(&LidarSlamNode::GpsCallback, this, std::placeholders::_1));
 
   // Init logging of landmark data and/or Camera data
   if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ||
@@ -198,16 +198,16 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
 
     if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR])
     {
-        this->LandmarkSub = this->create_subscription<apriltag_ros::msg::AprilTagDetectionArray>("tag_detections",
-                                          200, std::bind(&LidarSlamNode::TagCallback, this, std::placeholders::_1), ops);
+      this->LandmarkSub = this->create_subscription<apriltag_ros::msg::AprilTagDetectionArray>("tag_detections", 200,
+                                                                                               std::bind(&LidarSlamNode::TagCallback, this, std::placeholders::_1), ops);
     }
 
     if (this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA])
     {
-      this->CameraSub = this->create_subscription<sensor_msgs::msg::Image>("camera",
-                                        10, std::bind(&LidarSlamNode::ImageCallback, this, std::placeholders::_1), ops);
-      this->CameraInfoSub = this->create_subscription<sensor_msgs::msg::CameraInfo>("camera_info",
-                                        10, std::bind(&LidarSlamNode::CameraInfoCallback, this, std::placeholders::_1), ops);
+      this->CameraSub = this->create_subscription<sensor_msgs::msg::Image>("camera", 10,
+                                                                           std::bind(&LidarSlamNode::ImageCallback, this, std::placeholders::_1), ops);
+      this->CameraInfoSub = this->create_subscription<sensor_msgs::msg::CameraInfo>("camera_info", 10,
+                                                                                    std::bind(&LidarSlamNode::CameraInfoCallback, this, std::placeholders::_1), ops);
     }
 
     if (this->UseExtSensor[LidarSlam::ExternalSensor::POSE])
@@ -535,7 +535,7 @@ void LidarSlamNode::WheelOdomCallback(const std_msgs::msg::Float64& odomMsg)
   }
 }
 
-// //------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 int LidarSlamNode::BuildId(const std::vector<int>& ids)
 {
   int id = ids[0];
@@ -1364,9 +1364,9 @@ void LidarSlamNode::SetSlamParameters()
   }
 
   // Frame Ids
-  this->get_parameter<std::string>("odometry_frame", this->OdometryFrameId);
+  this->get_parameter_or<std::string>("odometry_frame", this->OdometryFrameId, "odom");
   this->LidarSlam.SetWorldFrameId(this->OdometryFrameId);
-  this->get_parameter<std::string>("tracking_frame", this->TrackingFrameId);
+  this->get_parameter_or<std::string>("tracking_frame", this->TrackingFrameId, "base_link");
   this->LidarSlam.SetBaseFrameId(this->TrackingFrameId);
   this->get_parameter_or<std::string>("wheel_frame", this->WheelFrameId, "wheel");
 
@@ -1582,7 +1582,7 @@ void LidarSlamNode::SetSlamParameters()
   SetSlamParam(int,   "slam.confidence.window", ConfidenceWindow)
   SetSlamParam(float, "slam.confidence.overlap.gap_threshold", OverlapDerivativeThreshold)
   SetSlamParam(float, "slam.confidence.position_error.threshold", PositionErrorThreshold)
-  this->get_parameter("slam.confidence.failure_detector.recovery_time", this->RecoveryTime);
+  this->get_parameter_or<float>("slam.confidence.failure_detector.recovery_time", this->RecoveryTime, 1.);
   SetSlamParam(bool,  "slam.confidence.failure_detector.enable", FailureDetectionEnabled)
 
   // Keyframes
@@ -1616,17 +1616,21 @@ void LidarSlamNode::SetSlamParameters()
     this->LidarSlam.SetSubmapMode(submap);
   }
   double size;
-  if (this->get_parameter("slam.voxel_grid.leaf_size.edges", size) && this->LidarSlam.KeypointTypeEnabled(LidarSlam::EDGE))
+  if (this->get_parameter_or<double>("slam.voxel_grid.leaf_size.edges", size, 0.2) &&
+      this->LidarSlam.KeypointTypeEnabled(LidarSlam::EDGE))
     this->LidarSlam.SetVoxelGridLeafSize(LidarSlam::EDGE, size);
-  if (this->get_parameter("slam.voxel_grid.leaf_size.intensity_edges", size) && this->LidarSlam.KeypointTypeEnabled(LidarSlam::INTENSITY_EDGE))
+  if (this->get_parameter_or<double>("slam.voxel_grid.leaf_size.intensity_edges", size, 0.2) &&
+      this->LidarSlam.KeypointTypeEnabled(LidarSlam::INTENSITY_EDGE))
     this->LidarSlam.SetVoxelGridLeafSize(LidarSlam::INTENSITY_EDGE, size);
-  if (this->get_parameter("slam.voxel_grid.leaf_size.planes", size) && this->LidarSlam.KeypointTypeEnabled(LidarSlam::PLANE))
+  if (this->get_parameter_or<double>("slam.voxel_grid.leaf_size.planes", size, 0.3) &&
+      this->LidarSlam.KeypointTypeEnabled(LidarSlam::PLANE))
     this->LidarSlam.SetVoxelGridLeafSize(LidarSlam::PLANE, size);
-  if (this->get_parameter("slam.voxel_grid.leaf_size.blobs", size) && this->LidarSlam.KeypointTypeEnabled(LidarSlam::BLOB))
+  if (this->get_parameter_or<double>("slam.voxel_grid.leaf_size.blobs", size, 0.3) &&
+      this->LidarSlam.KeypointTypeEnabled(LidarSlam::BLOB))
     this->LidarSlam.SetVoxelGridLeafSize(LidarSlam::BLOB, size);
   SetSlamParam(double, "slam.voxel_grid.resolution", VoxelGridResolution)
   SetSlamParam(int,    "slam.voxel_grid.size", VoxelGridSize)
-  SetSlamParam(int, "slam.voxel_grid.decaying_threshold", VoxelGridDecayingThreshold)
+  SetSlamParam(int,    "slam.voxel_grid.decaying_threshold", VoxelGridDecayingThreshold)
   SetSlamParam(int,    "slam.voxel_grid.min_frames_per_voxel", VoxelGridMinFramesPerVoxel)
   for (auto k : LidarSlam::KeypointTypes)
   {
@@ -1710,7 +1714,7 @@ void LidarSlamNode::SetSlamParameters()
 void LidarSlamNode::SetSlamInitialState()
 {
   // Load initial Landmarks poses if requested
-  std::string lmpath = "";
+  std::string lmpath;
   this->get_parameter("external_sensors.landmark_detector.landmarks_file_path", lmpath);
   if (!lmpath.empty())
   {
@@ -1736,7 +1740,7 @@ void LidarSlamNode::SetSlamInitialState()
   }
 
   // Load initial SLAM maps if requested
-  std::string mapsPathPrefix = "";
+  std::string mapsPathPrefix;
   this->get_parameter<std::string>("maps.initial_maps", mapsPathPrefix);
   if (!mapsPathPrefix.empty())
   {
