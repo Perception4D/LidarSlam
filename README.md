@@ -207,9 +207,9 @@ Example in parent directory of your catkin workspace (e.g. catkin_ws/..) :
  cmake --build . -j
  # Build Slam ROS package using superbuild installed dependencies
  cd ../catkin_ws
- catkin_make -j --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install
+ catkin_make -j --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/SB-build/install
   OR
- catkin build -j --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install
+ catkin build -j --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/SB-build/install
 ```
 
 **Advanced** : The default behavior is that the ROS wrapping builds the SLAM library, but the superbuild can also install the SLAM library. It is possible to use the superbuild one by setting the BUILD_SLAM_SHARED_LIB variable to ON in superbuild build and BUILD_SLAM_LIB to OFF in ROS wrapping build.
@@ -220,7 +220,7 @@ _Example_ :
  cmake ../catkin_ws/src/slam/slam-superbuild -GNinja -DCMAKE_BUILD_TYPE=Release -DINSTALL_PCL=OFF -DBUILD_SLAM_SHARED_LIB=ON
  cmake --build . -j
  cd ../catkin_ws
- catkin build -j --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/superbuild/install -DBUILD_SLAM_LIB=OFF
+ catkin build -j --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/SB-build/install -DBUILD_SLAM_LIB=OFF
 ```
 
 ### Live usage
