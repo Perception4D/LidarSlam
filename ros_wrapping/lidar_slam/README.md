@@ -3,6 +3,11 @@
 - [lidar\_slam](#lidar_slam)
   - [LiDAR SLAM node](#lidar-slam-node)
     - [Description and basic usage](#description-and-basic-usage)
+      - [Slam node](#slam-node)
+      - [Pipeline use](#pipeline-use)
+        - [With a Velodyne Lidar](#with-a-velodyne-lidar)
+        - [With an Ouster Lidar](#with-an-ouster-lidar)
+        - [With other LiDAR](#with-other-lidar)
     - [More advanced usage](#more-advanced-usage)
       - [Detailed pipeline](#detailed-pipeline)
       - [Multiple lidar sensors](#multiple-lidar-sensors)
@@ -42,6 +47,7 @@ Wrapping for Kitware LiDAR-only SLAM. It can also use GPS data to publish SLAM o
 
 ### Description and basic usage
 
+#### Slam node
 The SLAM node subscribes to one or several topics of LiDAR pointclouds, and computes current pose of the tracked frame relative to the fixed odometry frame. It can output various data, such as SLAM pose (as Odometry msg or TF), keypoint maps, etc.
 
 SLAM node supports massive configuration from ROS parameter server (even if default values are already provided). Examples of yaml configuration files can be found in [`params/`](params/). All parameters have to be set as private parameters.
@@ -52,7 +58,16 @@ rosrun lidar_slam lidar_slam_node
 ```
 If you want to specify parameters, you should consider using a launchfile. Two launch files are provided in the folder [`launch/`](launch/).
 
-With velodyne launch file:
+#### Pipeline use
+
+##### With a Velodyne Lidar
+To use a Velodyne lidar with the SLAM, install the Velodyne driver and use the velodyne launch file.
+
+- To install the Velodyne driver, run :
+```bash
+sudo apt install ros-$ROS_DISTRO-velodyne
+```
+
 - To start SLAM when replaying a velodyne rosbag file, run :
 ```bash
 roslaunch lidar_slam slam_velodyne.launch   # in 1st shell
@@ -63,8 +78,12 @@ rosbag play --clock <my_bag_file>  # in 2nd shell
 roslaunch lidar_slam slam_velodyne.launch use_sim_time:=false vlp16_driver:=true device_ip:=<my_device_ip>
 ```
 
+##### With an Ouster Lidar
+To use an Ouster lidar with the SLAM, install the Ouster driver and use the ouster launch file.
+
 **NOTE** : Ouster_driver has been tested on [this version](https://github.com/ouster-lidar/ouster-ros/commit/3f01e1d7001d8d21ac984566d17505b98905fa86) of Ouster Driver.
 It is not guaranteed to work with a future version.
+
 With ouster launch file:
 - To start SLAM when replaying a ouster rosbag file, run :
 ```bash
@@ -84,6 +103,24 @@ These launch files will start :
 * (optional) The Lidar drivers if required (see vlp16_driver and os_driver parameters),
 * (optional) GPS/UTM conversions nodes to publish SLAM pose as a GPS coordinate in WGS84 format (if `gps` arg is enabled). This uses the prior that full GPS pose and GPS/LiDAR calibration are correctly known and set (see [GPS/SLAM calibration](#gpsslam-calibration) section below for more info).
 
+##### With other LiDAR
+**WARNING** : We recommend to use the specific launch files explained above if you have the mentionned Lidar.
+
+We've implemented a generic conversion node with a (future) generic launch file to allow the use of many more
+types of Lidar. Thanks to it, you can use any Lidar that publishes a PointCloud2 message with the following fields :
+- **x**, **y**, **z** (`float`) : point coordinates
+- optionnally **intensity** (or **reflectivity**), **laser_id** (or **ring**), **time** (or **t**) of any type (see 8 types [`here`](http://docs.ros.org/en/melodic/api/sensor_msgs/html/msg/PointField.html)).
+
+**NOTE** : The generic conversion node will be slower than the specific conversion nodes (as it tests the presence of the fields and estimates missing fields (for time and laser_id))
+
+To use the generic conversion node and launch lidar_slam, you can use the following commands :
+```bash
+rosrun lidar_conversions generic_conversion_node # Run generic conversion node
+roslaunch lidar_slam slam_velodyne.launch # Launch any slam launch file
+rosbag play --clock <my_bag_file> /points_topic_name:=/generic_points # Play ros bag
+```
+
+We advise to update the ROS parameters (**nb_lasers**, **possible_frequencies**) to ease the computations during the conversion (see [`conversion_config.yaml`](src/ros2_wrapping/lidar_conversions/params/conversion_config.yaml)).
 
 ### More advanced usage
 
