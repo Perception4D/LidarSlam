@@ -1756,10 +1756,15 @@ void LidarSlamNode::SetSlamParameters()
                      << std::setw(22) << ((this->UseExtSensor[LidarSlam::ExternalSensor::GPS] &&
                      this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS)) ? " YES |" : " NO |"));
   RCLCPP_INFO_STREAM(this->get_logger(), std::setw(19) << "Wheel encoder     |"
-                      << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] ? " ON |" : " OFF |")
-                      << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] &&
-                      this->LidarSlam.GetWheelOdomWeight() > 1e-6 ? " YES |" : " NO |")
-                      << std::setw(22) << " NO |");
+                     << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] ? " ON |" : " OFF |")
+                     << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM] &&
+                     this->LidarSlam.GetWheelOdomWeight() > 1e-6 ? " YES |" : " NO |")
+                     << std::setw(22) << " NO |");
+  RCLCPP_INFO_STREAM(this->get_logger(), std::setw(19) << "IMU               |"
+                     << std::setw(13) << (this->UseExtSensor[LidarSlam::ExternalSensor::IMU] ? " ON |" : " OFF |")
+                     << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::IMU] &&
+                     this->LidarSlam.GetGravityWeight() > 1e-6 ? " YES |" : " NO |")
+                     << std::setw(22) << " NO |");
 
   // Check if or not one pgo constraint is enabled at least
   if (!this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE) &&
