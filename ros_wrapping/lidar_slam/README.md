@@ -268,6 +268,15 @@ Then, trigger pose graph optimization when needed by clicking on `Optimize graph
 ```bash
 rostopic pub -1 /slam_command lidar_slam/SlamCommand "command: 20"  # Trigger PGO
 ```
+**NOTE** : You can save your slam trajectory before launch a pose graph optimization so that you can go back to states before PGO by re-setting slam trajectory.
+To save slam trajectory, you can click on `Save trajectory` button in rviz or you can use:
+```bash
+rostopic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 14, string_arg: path/to/slamTrajectoryBeforePGO.csv}"
+```
+Then if you want to reload a slam trajectory, you can click on `Reset trajectory` button in rviz or you can use:
+```bash
+rostopic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 11, string_arg: path/to/slamTrajectoryBeforePGO.csv}"
+```
 
 ## Optional external sensors use
 
