@@ -19,9 +19,21 @@
       - [With local dependencies](#with-local-dependencies-1)
       - [With Superbuild](#with-superbuild-1)
     - [Live usage](#live-usage)
-  - [ParaView wrapping](#paraview-wrapping)
+  - [ROS2 wrapping on Linux](#ros2-wrapping-on-linux)
     - [Dependencies](#dependencies-2)
     - [Installation](#installation-2)
+      - [With system dependencies](#with-system-dependencies-2)
+      - [With local dependencies](#with-local-dependencies-2)
+      - [With Superbuild](#with-superbuild-2)
+    - [Live usage](#live-usage-1)
+  - [ROS2 wrapping on Windows 10](#ros2-wrapping-on-windows-10)
+    - [Install dependencies](#install-dependencies)
+      - [Install ROS2 and slam dependencies](#install-ros2-and-slam-dependencies)
+      - [Install pcl-conversions](#install-pcl-conversions)
+    - [Install SLAM package](#install-slam-package)
+  - [ParaView wrapping](#paraview-wrapping)
+    - [Dependencies](#dependencies-3)
+    - [Installation](#installation-3)
     - [Usage](#usage)
     - [Use SLAM in LidarView](#use-slam-in-lidarview)
 
@@ -43,6 +55,7 @@ Repo contents :
 - `slam_lib/` : core *LidarSlam* library containing SLAM algorithm and other utilities.
 - `superbuild/` : Cross-platform installer.
 - `ros_wrapping/` : ROS packages to enable SLAM use on a ROS system.
+- `ros2_wrapping/`: ROS2 packages to enable SLAM use on a ROS2 system.
 - `paraview_wrapping/` : ParaView plugin to enable SLAM use with ParaView/LidarView.
 - `ci/` : continuous integration files to automatically build and check *LidarSlam* lib.
 - `CMakeLists.txt` : *CMakeLists* used to call to build core *LidarSlam* lib and *paraview_wrapping*.
@@ -239,6 +252,179 @@ roslaunch lidar_slam slam_ouster.launch replay:=false gps:=true   # if GPS/SLAM 
 
 See [ros_wrapping/lidar_slam/README.md](ros_wrapping/lidar_slam/README.md) for more details.
 
+## ROS2 wrapping on Linux
+
+### Dependencies
+
+Ensure all *LidarSlam* dependencies are respected (see next sections to do so). Specific ROS packages dependencies are listed in the table below along with the version used during development and testing.
+
+| Dependency      | Tested Versions | Install (`sudo apt-get install <pkg>`)                                             | status    |
+|:---------------:|:---------------:|:----------------------------------------------------------------------------------:|:---------:|
+| ROS             | humble/iron     | `ros-$ROS_DISTRO-desktop-full`                                                     | mandatory |
+| pcl-ros         | 1.7.4           | `ros-$ROS_DISTRO-pcl-ros`                                                          | mandatory |
+| gps_common      | 0.3.0           | `ros-$ROS_DISTRO-gps-common`                                                       | optional  |
+| apriltag        | 3.2.0           | `ros-$ROS_DISTRO-apriltag`                                                         | optional  |
+| g2o             | 5.3             | `ros-$ROS_DISTRO-libg2o`                                                           | optional  |
+
+
+For Velodyne usage, please note that the ROS Velodyne driver with minimum version 1.6 is needed.
+Be careful, this ROS Velodyne driver 1.6 is not backward-compatible with previous versions.
+You can install the new Velodyne driver using the command `sudo apt install ros-$ROS_DISTRO-velodyne`.
+
+For Ouster usage, the driver can be found in this [git repo](https://github.com/ouster-lidar/ouster-ros/tree/ros2). We recommand to build it on another workspace but you can also clone it under the ros2_wrapping folder and build it at the same time as the SLAM.
+
+### Installation
+
+Clone this git repo directly into your colcon workspace (called **colcon_ws** in the following), under the src directory
+
+ ```bash
+ cmake -E make_directory colcon_ws && cd colcon_ws
+ git clone https://gitlab.kitware.com/keu-computervision/slam.git src/slam --recursive -b feat/ROS2
+```
+
+The next sections describe how to install the dependencies (mandatory and/or optional) and to build the SLAM packages with the needed features.
+The first step is to install pcl-ros before performing any of the next sections. Example with apt : `sudo apt-get install -y ros-$ROS_VERSION-pcl-ros`
+
+**NOTE** : Boost, g2o, Eigen, Ceres and PCL should be already resolved at this point with previous installations.
+
+#### With system dependencies
+
+This applies if you have installed all the dependencies on your system, e.g. when you download binaries (with apt or other).
+
+**NOTE** : The only mandatory missing dependency should be nanoflann at this point. Example to install it with apt : `sudo apt-get install -y libnanoflann-dev`.
+
+Run `colcon build --base-paths src/slam/ros2_wrapping` or `colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release` (to turn on optimizations, highly recommended when using Eigen). the variable base_paths must point to the path of the ros2_wrapping folder.
+By default, this will build *LidarSlam* lib before ROS2 packages. If you want to use your system LidarSlam, you need to set the cmake variable BUILD_SLAM_LIB to OFF :
+`colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_SLAM_LIB=OFF`
+
+#### With local dependencies
+
+This applies if you have built and installed some of the dependencies locally on your disk.
+You can use local dependencies for Slam lib by passing their path to cmake.
+
+_Example_ for Ceres and g2o :
+
+ ```bash
+ colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DCeres_DIR=path/to/CeresConfig.cmake -Dg2o_DIR=path/to/g2oConfig.cmake
+ ```
+
+If you want to use a local version of LidarSlam library you can specify to the package not to build it and supply the path to the LidarSlam cmake file :
+
+ ```bash
+ colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_SLAM_LIB=OFF -DLidarSlam_DIR=path/to/LidarSlam.cmake
+```
+
+#### With Superbuild
+
+This applies if you have some missing dependencies and you don't want any of the previous solutions. The [superbuild](https://gitlab.kitware.com/keu-computervision/slam-superbuild/) that is provided allows to download, build and install them locally so it can be used to build the SLAM packages afterwards. All the mandatory AND optional dependencies can be installed by the superbuild. One can choose the one he wants to install with the variables **INSTALL_XX** (example with PCL below).
+
+**WARNING** It is not possible to use PCL from the superbuild (this would create runtime issues with system version).
+
+**WARNING** The superbuild must be installed outside of catkin workspace.
+
+_Full installation with superbuild example_ :
+ ```bash
+ # Clone project
+ git clone https://gitlab.kitware.com/keu-computervision/slam.git ros2_ws/src/slam --recursive
+ # Build Superbuild to install dependencies locally
+ cmake -E make_directory SB-build && cd SB-build
+ cmake ../ros2_ws/src/slam/slam-superbuild -GNinja -DCMAKE_BUILD_TYPE=Release -DINSTALL_PCL=OFF
+ cmake --build . -j
+ # Build Slam ROS package pointing to the superbuild install directory
+ cd ../ros2_ws
+ call path\to\ros2_humble\local_setup.bat
+ colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/SB-build/install
+```
+
+The default behavior is that the ROS2 wrapping builds the SLAM library, but the superbuild can also install the SLAM library.
+It is possible to use the superbuild one by setting the BUILD_SLAM_SHARED_LIB variable to ON in superbuild build and BUILD_SLAM_LIB to OFF in ROS wrapping build.
+
+Example :
+ ```bash
+ mkdir SB-build && cd SB-build
+ cmake ../ws_ros2/src/slam/slam-superbuild -GNinja -DCMAKE_BUILD_TYPE=Release -DINSTALL_PCL=OFF -DBUILD_SLAM_SHARED_LIB=ON
+ cmake --build . -j
+ cd ../ws_ros2
+ colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release -DSUPERBUILD_INSTALL_DIR=absolute/path/to/SB-build/install -DBUILD_SLAM_LIB=OFF
+```
+
+### Live usage
+
+For Velodyne :
+```bash
+ros2 launch lidar_slam slam_velodyne.py use_sim_time:=false
+ros2 lidar_slam slam_velodyne.py use_sim_time:=false gps:=true   # if GPS/SLAM calibration has to be run
+```
+
+For Ouster :
+```bash
+ros2 launch lidar_slam slam_ouster.py replay:=false
+ros2 launch lidar_slam slam_ouster.py replay:=false gps:=true   # if GPS/SLAM calibration has to be run
+```
+
+See [ros2_wrapping/lidar_slam/README.md](ros2_wrapping/lidar_slam/README.md) for more details.
+
+## ROS2 wrapping on Windows 10
+
+This wrapping has been tested on Humble version of ROS2.
+
+**WARNINGS** :
+  - ROS2 is supported on Windows 10 but many packages are not ported and the installation can be tricky.
+  - The slam_visualization plugin is not available on Windows
+
+
+**NOTE** : Always use administrator rights x64_x86 Cross Tools Command Prompt for VS 2019
+
+### Install dependencies
+
+#### Install ROS2 and slam dependencies
+Install ROS2 humble version by following [official instructions](https://docs.ros.org/en/humble/Installation/Windows-Install-Binary.html)
+
+Install slam dependencies with the [SLAM superbuild](https://gitlab.kitware.com/keu-computervision/slam-superbuild) on Release mode. You can use MSVC or Ninja as generator.
+The instructions can be found in the section [above](#with-superbuild).
+
+To use dependencies installed on the superbuild, you need to set the PATH env
+```
+set PATH=path\to\Slam_SB\install\bin;%PATH%
+```
+
+#### Install pcl-conversions
+Create a workspace for pcl-conversions package
+Be sure to have PCL in the PATH env
+
+```bash
+cmake -E make_directory ws_pcl/src && cd ws_pcl\src
+git clone https://github.com/ros-perception/perception_pcl.git -b ros2
+git clone https://github.com/ros-perception/pcl_msgs.git -b ros2
+cd ..
+call path\to\ros2_humble\local_setup.bat
+colcon build --merge-install --packages-up-to pcl_conversions \
+             --cmake-args -DCMAKE_BUILD_TYPE=Release \
+                          -DBoost_DIR=path\to\SB-build\install\lib\cmake\Boost-1.76.0 \
+                          -DBOOST_ROOT=path\to\SB-build\install \
+                          -DPCL_DIR=path\to\SB-build\install\share\pcl-1.13 \
+                          -DBoost_USE_STATIC_LIBS=OFF
+```
+To use pcl-conversions package, you need to source your command prompt
+```bash
+call path\to\ws_pcl\install\setup.bat
+```
+
+### Install SLAM package
+Be sure to have the superbuild in the PATH and pcl_conversions sourced
+```bash
+cmake -E make_directory ws_ros2
+dir ws_ros2
+git clone https://gitlab.kitware.com/keu-computervision/slam -b feat/ROS2
+call path\to\ros2_humble\local_setup.bat
+colcon build --base-paths=src\slam\ros2_wrapping  --merge-install --cmake-args  -DCMAKE_BUILD_TYPE=Release -DENABLE_OpenCV=OFF -DSUPERBUILD_INSTALL_DIR=absolute/path/to/Slam_SB/install
+```
+source the SLAM
+```
+call install/setup.bat
+```
+The SLAM is ready to use. Please make sure that the superbuild bin path is in the PATH var and pcl_conversions is sourced.
+
 ## ParaView wrapping
 
 The *LidarSlamPlugin* Paraview wrapping has been tested on Linux, Windows and OS X.
@@ -260,7 +446,7 @@ For example, if PCL is built with `pcl_visualization` module, it must link to th
 To build *LidarSlam* lib and this ParaView plugin *LidarSlamPlugin*, just `cd` to this repo root dir and run :
 
 ```bash
-mkdir build
+cmake -E make_directory build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSLAM_PARAVIEW_PLUGIN:BOOL=ON
 cmake --build . -j
