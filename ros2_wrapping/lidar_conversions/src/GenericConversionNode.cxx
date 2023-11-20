@@ -89,11 +89,11 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
 
   CloudS cloudS = Utils::InitCloudS<CloudXYZ>(cloudRaw);
 
-  const int nbLasers = ((cloudRaw.height >= 8 && cloudRaw.height <= 128)
-                   ? static_cast<double>(cloudRaw.height)
-                   : (cloudRaw.width >= 8 && cloudRaw.width <= 128)
-                     ? static_cast<double>(cloudRaw.width)
-                     : this->NbLasers);
+  const unsigned int nbLasers = (cloudRaw.height >= 8 && cloudRaw.height <= 128) ?
+                                 cloudRaw.height :
+                                   (cloudRaw.width >= 8 && cloudRaw.width <= 128) ?
+                                    cloudRaw.width :
+                                    this->NbLasers;
 
   // Init of parameters useful for laser_id and time estimations
   if (!this->RotSenseAndClustersEstimated)

@@ -98,7 +98,7 @@ private:
   rclcpp::Service<lidar_conversions::srv::EstimParams>::SharedPtr EstimService;
 
   // Number of lasers of the LiDAR.
-  double NbLasers = 16.;
+  unsigned int NbLasers = 16;
 
   // Useful variable to estimate RPM
   // NOTE: to be precise, this RPM estimation requires that each input

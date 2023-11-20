@@ -6,10 +6,10 @@
   ros__parameters:
     use_sim_time: False
     nb_threads: 1 # Number of threads used in the conversion process
-    nb_lasers: 16. # Number of lasers in the lidar
-    # nb_lasers : 32.
-    # nb_lasers : 64.
-    # nb_lasers : 128.
+    nb_lasers: 16 # Number of lasers in the lidar
+    # nb_lasers : 32
+    # nb_lasers : 64
+    # nb_lasers : 128
 
     # Possible frequencies for the lidar, used in rotation duration computation, for velodyne
     possible_frequencies: [5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20.]

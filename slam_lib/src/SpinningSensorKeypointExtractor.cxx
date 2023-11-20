@@ -472,7 +472,7 @@ void SpinningSensorKeypointExtractor::AddKptsUsingCriterion (Keypoint k,
                                                              double weightBasis)
 {
   // Loop over the scan lines
-  for (int scanlineIdx = 0; scanlineIdx < static_cast<int>(this->NbLaserRings); ++scanlineIdx)
+  for (unsigned int scanlineIdx = 0; scanlineIdx < this->NbLaserRings; ++scanlineIdx)
   {
     const PointCloud& scanlineCloud = *this->GetScanlineCloud(scanlineIdx);
     const int nPts = scanlineCloud.size();
@@ -572,7 +572,7 @@ void SpinningSensorKeypointExtractor::EstimateAzimuthalResolution()
   // Compute horizontal angle values between successive points
   std::vector<float> angles;
   angles.reserve(this->Scan->size());
-  for (int scanLineIdx = 0; scanLineIdx < this->NbLaserRings; ++scanLineIdx)
+  for (unsigned int scanLineIdx = 0; scanLineIdx < this->NbLaserRings; ++scanLineIdx)
   {
     const auto& scanLineCloud = *this->GetScanlineCloud(scanLineIdx);
     for (unsigned int index = 1; index < scanLineCloud.size(); ++index)
