@@ -35,7 +35,7 @@
       - [Pose graph optimization](#pose-graph-optimization)
     - [Optional Camera use](#optional-camera-use)
     - [Optional external pose use](#optional-external-pose-use)
-    - [Wheel encoder use](#optional-wheel-encoder-use)
+    - [Optional wheel encoder use](#optional-wheel-encoder-use)
     - [Optional Imu gravity use](#optional-Imu-gravity-use)
   - [About the published TF tree](#about-the-published-tf-tree)
 - [Points aggregation](#points-aggregation)
@@ -144,9 +144,11 @@ types of Lidar. Thanks to it, you can use any Lidar that publishes a PointCloud2
 
 **NOTE** : The generic conversion node will be slower than the specific conversion nodes (as it tests the presence of the fields and estimates missing fields (for time and laser_id))
 
-To use the generic conversion node and launch lidar_slam, you can use the following launch file :
+To use the generic conversion node and launch lidar_slam, you can use the following commands :
 ```bash
-//TODO:
+ros2 run lidar_conversions generic_conversion_node  # Run generic conversion node
+ros2 launch ros2 launch lidar_slam slam_velodyne.py # Launch any slam launch file
+ros2 bag play --clock path/to/bag --remap /points_topic_name:=/generic_points # Play ros bag
 ```
 
 We advise to update the ROS parameters (**nb_lasers**, **possible_frequencies**) to ease the computations during the conversion (see [`conversion_config.yaml`](src/ros2_wrapping/lidar_conversions/params/conversion_config.yaml)).
