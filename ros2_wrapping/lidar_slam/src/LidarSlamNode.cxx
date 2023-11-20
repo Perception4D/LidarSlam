@@ -395,9 +395,9 @@ void LidarSlamNode::ImageCallback(const sensor_msgs::msg::Image& imageMsg)
 
     // Add camera measurement to measurements list
     LidarSlam::ExternalSensors::Image image;
-    image.Time = this->UseHeaderTime?
-                 imageMsg.header.stamp.sec + imageMsg.header.stamp.nanosec * 1e-9
-                 : rcpTime;
+    image.Time = this->UseHeaderTime ?
+                 imageMsg.header.stamp.sec + imageMsg.header.stamp.nanosec * 1e-9 :
+                 rcpTime;
     image.Data = cvPtr->image;
     this->LidarSlam.AddCameraImage(image);
 
@@ -492,9 +492,9 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
       // Get gps pose
       this->LastGpsMeas.Position = Utils::PoseMsgToIsometry(gpsMsg.pose.pose).translation();
       // Get gps timestamp
-      this->LastGpsMeas.Time = this->UseHeaderTime?
-                               gpsMsg.header.stamp.sec + gpsMsg.header.stamp.nanosec * 1e-9
-                               : rcpTime;
+      this->LastGpsMeas.Time = this->UseHeaderTime ?
+                               gpsMsg.header.stamp.sec + gpsMsg.header.stamp.nanosec * 1e-9 :
+                               rcpTime;
 
       // Get GPS covariance
       // ROS covariance message is row major
@@ -595,9 +595,9 @@ void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray&
       // Get tag pose
       lm.TransfoRelative = Utils::PoseMsgToIsometry(tagInfo.pose.pose.pose);
       // Get tag timestamp
-      lm.Time = this->UseHeaderTime?
-                tagInfo.pose.header.stamp.sec + tagInfo.pose.header.stamp.nanosec * 1e-9
-                : rcpTime;
+      lm.Time = this->UseHeaderTime ?
+                tagInfo.pose.header.stamp.sec + tagInfo.pose.header.stamp.nanosec * 1e-9 :
+                rcpTime;
 
       // Get tag covariance
       // ROS covariance message is row major
@@ -659,9 +659,9 @@ void LidarSlamNode::ImuCallback(const sensor_msgs::msg::Imu& imuMsg)
     // Get IMU data for gravity integration
     // For now, only accelerations are used to add gravity constraint
     LidarSlam::ExternalSensors::GravityMeasurement gravityMeasurement;
-    gravityMeasurement.Time = this->UseHeaderTime?
-                              imuMsg.header.stamp.sec + imuMsg.header.stamp.nanosec * 1e-9;
-                              : rcpTime;
+    gravityMeasurement.Time = this->UseHeaderTime ?
+                              imuMsg.header.stamp.sec + imuMsg.header.stamp.nanosec * 1e-9 :
+                              rcpTime;
     gravityMeasurement.Acceleration.x() = imuMsg.linear_acceleration.x;
     gravityMeasurement.Acceleration.y() = imuMsg.linear_acceleration.y;
     gravityMeasurement.Acceleration.z() = imuMsg.linear_acceleration.z;
