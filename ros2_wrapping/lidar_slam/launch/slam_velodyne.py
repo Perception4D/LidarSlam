@@ -30,6 +30,7 @@ def generate_launch_description():
     DeclareLaunchArgument("calibration_file_path", default_value=os.path.join(get_package_share_directory('velodyne_pointcloud'), 'params', 'VLP16db.yaml'), description="calibration file path"),
     DeclareLaunchArgument("model", default_value="VLP16", description="Model of Velodyne Lidar, choices are : VLP16 / 32C / VLS128"),
     DeclareLaunchArgument("device_ip", default_value=""),
+    DeclareLaunchArgument("rpm", default_value="600.0"),
     DeclareLaunchArgument("port", default_value=TextSubstitution(text="2368")),
     DeclareLaunchArgument("pcap", default_value=""),
     DeclareLaunchArgument("aggregate", default_value="false", description="Run aggregation node"),
