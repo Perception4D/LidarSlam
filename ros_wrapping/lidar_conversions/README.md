@@ -19,16 +19,34 @@ Currently, this package implements the following nodes :
 - **velodyne_conversion_node** : converts pointclouds output by Velodyne spinning sensors using the [ROS Velodyne driver](https://github.com/ros-drivers/velodyne) to SLAM pointcloud format.
 - **robosense_conversion_node** : converts pointclouds output by RoboSense spinning sensors using the [ROS RoboSense-LiDAR driver](https://github.com/RoboSense-LiDAR/ros_rslidar) to SLAM pointcloud format. This has been tested only with RS16 sensor, and could need additional changes to support other RS sensors.
 - **ouster_conversion_node** : converts pointclouds output by Ouster spinning sensors using the [ROS Ouster driver at this version](https://github.com/ouster-lidar/ouster-ros/tree/3f01e1d7001d8d21ac984566d17505b98905fa86) to SLAM pointcloud format.
+- **livox_conversion_node** : converts custom pointclouds output by Livox spinning sensors using the [ROS Livox driver](https://github.com/Livox-SDK/livox_ros_driver) to SLAM pointcloud format.
+- **generic_conversion_node** : converts any PointCloud2 to SLAM pointcloud format. It can recognize multiple names and types for the fields of PointCloud2, and if some are missing (like laser_id or time), it recomputes them using space coordinates only.
+As it looks for multiple types/names, if the user gives a complete PointCloud2, the average conversion time will be doubled compared to using a specific conversion node. We advise to use one the nodes above if the user is certain of his PointCloud2 (types and names of each field included).
+If the user is unable to provide all the necessary fields required for SLAM, we advise to use this node. It will automatically compute the missing information.
 
 ## Usage
 
-Direct usage :
+### Direct usage :
 
 ```bash
 rosrun lidar_conversions velodyne_conversion_node
 ```
 
-Example of launchfile for a multi-lidar setup:
+### Direct usage with user invention to compute estimation parameters again (in case laser_id and/or time look unusual) :
+To be done in two seperate terminals:
+
+1:
+```bash
+rosrun lidar_conversions generic_conversion_node
+```
+
+2:
+- if you want to compute estimation parameters again for any other generic conversion node :
+```bash
+rosservice call lidar_conversions/estim_params lidar_conversions/srv/EstimParams
+```
+
+### Example of launchfile for a multi-lidar setup:
 
 ```xml
 <launch>
