@@ -158,8 +158,8 @@ graph:
     enable_offset: false              # [bool] To allow to add an offset to pose prior when two frames of loop closure are too far.
     use_submap: true                  # [bool] Enable the registration between two sub maps instead of registering a single frame to a sub map.
     # Optimization
-    ICP_max_iter: 100                 # [iterations]Number of ICP-optim iterations (building ICP matches then optimizing them) to perform.
-    LM_max_iter: 100                  # [iterations]Max number of iterations of the Levenberg-Marquardt optimizer to solve the ICP problem.
+    ICP_max_iter: 100                 # [iterations] Number of ICP-optim iterations (building ICP matches then optimizing them) to perform.
+    LM_max_iter: 100                  # [iterations] Max number of iterations of the Levenberg-Marquardt optimizer to solve the ICP problem.
 
 # Logging parameters
 logging:

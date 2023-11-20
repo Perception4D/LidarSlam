@@ -901,6 +901,7 @@ void LidarSlamNode::ReadLoopIndices(const std::string& path)
     this->LidarSlam.AddLoopClosureIndices(loop);
     ROS_INFO_STREAM("Loop closure indices file is empty :"
                     <<" the last and the first states are used");
+    return;
   }
 
   for (const auto& l : lines)
@@ -1156,7 +1157,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       }
       else
       {
-        std::list<LidarSlam::LidarState> lidarStates = this->LidarSlam.GetLogStates();
+        const std::list<LidarSlam::LidarState> lidarStates = this->LidarSlam.GetLogStates();
         if (lidarStates.size() < 2)
         {
           ROS_WARN_STREAM("Not enough states logged and no external file provided, no loop closure indices will be loaded");
@@ -1732,24 +1733,7 @@ void LidarSlamNode::SetSlamParameters()
 
   ROS_WARN_STREAM("Please review the following parameters setting:");
 
-  // Check if or not one pgo constraint is enabled at least
-  if (!this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE) &&
-      !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LANDMARK) &&
-      !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE) &&
-      !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS))
-  {
-    ROS_INFO_STREAM("Pose graph optimization is not enabled.");
-    return;
-  }
-  if (this->LidarSlam.GetLoggingTimeout() > 0.2)
-    ROS_INFO_STREAM("Logging timeout is set to " << this->LidarSlam.GetLoggingTimeout() << "s. "
-                    "Pose graph optimization can be applied on this time window.");
-  else
-    ROS_INFO_STREAM("Logging timeout is set to " << this->LidarSlam.GetLoggingTimeout() << "s. "
-                    "Please set a convenient value to use pose graph optimization!");
-  ROS_INFO_STREAM("Loop closure constraint is "
-                  << (this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE) ? "enabled " : "disabled ")
-                  <<"for pose graph");
+  // Display external sensor information
   ROS_INFO_STREAM(std::setw(19) << "Sensor            |"
                   << std::setw(13) << " is enabled |"
                   << std::setw(22) << " can be used locally |"
@@ -1786,6 +1770,25 @@ void LidarSlamNode::SetSlamParameters()
                   << std::setw(22) << (this->UseExtSensor[LidarSlam::ExternalSensor::IMU] &&
                   this->LidarSlam.GetGravityWeight() > 1e-6 ? " YES |" : " NO |")
                   << std::setw(22) << " NO |");
+
+  // Check if or not one pgo constraint is enabled at least
+  if (!this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE) &&
+      !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LANDMARK) &&
+      !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE) &&
+      !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS))
+  {
+    ROS_INFO_STREAM("Pose graph optimization is not enabled.");
+    return;
+  }
+  ROS_INFO_STREAM("Loop closure constraint is "
+                  << (this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE) ? "enabled " : "disabled ")
+                  <<"for pose graph");
+  if (this->LidarSlam.GetLoggingTimeout() > 0.2)
+    ROS_INFO_STREAM("Logging timeout is set to " << this->LidarSlam.GetLoggingTimeout() << "s. "
+                    "Pose graph optimization can be applied on this time window.");
+  else
+    ROS_INFO_STREAM("Logging timeout is set to " << this->LidarSlam.GetLoggingTimeout() << "s. "
+                    "Please set a convenient value to use pose graph optimization!");
 }
 
 //------------------------------------------------------------------------------
