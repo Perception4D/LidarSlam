@@ -38,9 +38,11 @@ def generate_launch_description():
   ##########
   ## Rviz ##
   ##########
-  rviz_node = Node(package="rviz2", executable="rviz2",
+  rviz_node = Node(
+    package="rviz2",
+    executable="rviz2",
     arguments=["-d", os.path.join(lidar_slam_share_path, 'params', 'slam.rviz')],
-    parameters=[{'use_sim_time': LaunchConfiguration('replay')},],
+    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
     condition = IfCondition(LaunchConfiguration("rviz")),
   )
 
@@ -89,98 +91,128 @@ def generate_launch_description():
   # Ouster points conversion
   with open(os.path.join(lidar_conversion_share_path, 'params', "conversion_config.yaml"), 'r') as f:
     params_conversion = yaml.safe_load(f)['/lidar_conversions']['ros__parameters']
-  # Manualy override conversions parameters from parameter file
   params_conversion['use_sim_time'] = LaunchConfiguration("replay")
-  ouster_conversion_node = Node(
-    name="ouster_conversion", package="lidar_conversions", executable="ouster_conversion_node", output="screen",
-    parameters=[params_conversion],
-  )
 
-  # LiDAR SLAM : compute TF slam_init -> ouster
+  ouster_conversion_node = Node(
+    name="ouster_conversion",
+    package="lidar_conversions",
+    executable="ouster_conversion_node",
+    output="screen",
+    parameters=[params_conversion]
+  )
 
   # Outdoor Lidar Slam node
   with open(os.path.join(lidar_slam_share_path, 'params', "slam_config_outdoor.yaml"), 'r') as f:
     params_slam_out = yaml.safe_load(f)['/lidar_slam']['ros__parameters']
-  # Manualy override lidar_config_outdoor_node parameters from parameter file
   params_slam_out['use_sim_time'] = LaunchConfiguration("replay")
 
-  slam_outdoor_node = Node(name="lidar_slam", package="lidar_slam", executable="lidar_slam_node", output="screen",
+  slam_outdoor_node = Node(
+    name="lidar_slam",
+    package="lidar_slam",
+    executable="lidar_slam_node",
+    output="screen",
     parameters=[params_slam_out],
     remappings=[("tag_detections", LaunchConfiguration("tags_topic")),
                 ("camera", LaunchConfiguration("camera_topic")),
                 ("camera_info", LaunchConfiguration("camera_info_topic")),],
-    condition=IfCondition(LaunchConfiguration("outdoor")),
+    condition=IfCondition(LaunchConfiguration("outdoor"))
   )
 
   # Indoor Lidar Slam node
   with open(os.path.join(lidar_slam_share_path, 'params', "slam_config_indoor.yaml"), 'r') as f:
     params_slam_in = yaml.safe_load(f)['/lidar_slam']['ros__parameters']
-  # Manualy override lidar_config_indoor_node parameters from parameter file
   params_slam_in['use_sim_time'] = LaunchConfiguration("replay")
 
-  slam_indoor_node = Node(name="lidar_slam", package="lidar_slam", executable="lidar_slam_node", output="screen",
+  slam_indoor_node = Node(
+    name="lidar_slam",
+    package="lidar_slam",
+    executable="lidar_slam_node",
+    output="screen",
     parameters=[params_slam_in],
     remappings=[("tag_detections", LaunchConfiguration("tags_topic")),
                 ("camera", LaunchConfiguration("camera_topic")),
                 ("camera_info", LaunchConfiguration("camera_info_topic")),],
-    condition= UnlessCondition(LaunchConfiguration("outdoor")),
+    condition= UnlessCondition(LaunchConfiguration("outdoor"))
   )
 
-  # Aggregate points
-  slam_aggregation_config_path = os.path.join(lidar_slam_share_path, "params", "aggregation_config.yaml")
-  aggregation_node = Node(name="aggregation", package="lidar_slam", executable="aggregation_node", output="screen",
-    parameters=[slam_aggregation_config_path],
-    condition=IfCondition(LaunchConfiguration("aggregate")),
+  # Aggregation node
+  with open(os.path.join(lidar_slam_share_path, 'params', "aggregation_config.yaml"), 'r') as f:
+    params_aggregation = yaml.safe_load(f)['/aggregation']['ros__parameters']
+  params_aggregation['use_sim_time'] = LaunchConfiguration("replay")
+
+  aggregation_node = Node(
+    name="aggregation",
+    package="lidar_slam",
+    executable="aggregation_node",
+    output="screen",
+    parameters=[params_aggregation],
+    condition=IfCondition(LaunchConfiguration("aggregate"))
   )
 
-  # Base link to Ouster frame version 1
-  tf_base_to_os_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_lidar",
+  ##########
+  ##  TF  ##
+  ##########
+
+  # Static TF base to Os sensor (for compatibility with ROS1 bags)
+  tf_base_to_os_sensor = Node(
+    package="tf2_ros",
+    executable="static_transform_publisher",
+    name="tf_base_to_os_sensor",
+    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "laser_sensor_frame"],
-  )
-  tf_base_to_laser_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_laser",
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "laser_data_frame"],
-    )
-
-  # Base link to Ouster frame version 2
-  tf_base_to_os_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_lidar",
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "os_sensor"],
+               "--frame-id", "base_link", "--child-frame-id", "os_sensor"]
   )
 
-  # Base link to gps frame
-  gps_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_gps",
+  # Static TF base to laser sensor
+  tf_base_to_laser_sensor = Node(
+    package="tf2_ros",
+    executable="static_transform_publisher",
+    name="tf_base_to_laser_sensor_frame",
+    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "gps"],
+               "--frame-id", "base_link", "--child-frame-id", "laser_sensor_frame"]
   )
 
-  # Base link to wheel encoder
-  wheel_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_wheel",
-    parameters=[{'use_sim_time': LaunchConfiguration('replay')},],
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "wheel"],
+  # Static TF laser to Os lidar (when the driver is not launched)
+  # To be read from the json config file in replay
+  # default are for OS1 64
+  # cf. https://data.ouster.io/downloads/software-user-manual/software-user-manual-v2p0.pdf
+  tf_laser_to_os_lidar = Node(
+    package="tf2_ros",
+    executable="static_transform_publisher",
+    name="tf_laser_sensor_frame_to_os_lidar",
+    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
+    arguments=["--x", "0", "--y", "0", "--z", "0.0036",
+               "--roll", "0", "--pitch", "0", "--yaw", "3.14",
+               "--frame-id", "laser_sensor_frame", "--child-frame-id", "os_lidar"]
   )
 
-  # Base link to imu frame
-  # The calibration data is from: https://data.ouster.io/downloads/software-user-manual/software-user-manual-v2p0.pdf
-  imu_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_imu",
+  # Static TF laser to IMU (when the driver is not launched)
+  # To be read from the json config file in replay
+  # default are for OS1 64
+  # cf. https://data.ouster.io/downloads/software-user-manual/software-user-manual-v2p0.pdf
+  tf_laser_to_imu = Node(
+    package="tf2_ros",
+    executable="static_transform_publisher",
+    name="tf_laser_sensor_frame_to_imu_data_frame",
+    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
     arguments=["--x", "0.006253", "--y", "-0.011775", "--z", "0.007645",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "os_imu"],
+               "--frame-id", "laser_sensor_frame", "--child-frame-id", "imu_data_frame"]
   )
 
-  # Init odom to base_link frame
-  odom_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_odom_to_base",
+  # Static TF base to wheel (to set by the user)
+  tf_base_to_wheel = Node(
+    package="tf2_ros",
+    executable="static_transform_publisher",
+    name="tf_base_to_wheel",
+    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "odom", "--child-frame-id", "base_link"],
-    )
+               "--frame-id", "base_link", "--child-frame-id", "wheel"]
+  )
 
   ld.add_action(rviz_node)
   ld.add_action(ouster_conversion_node)
@@ -189,10 +221,11 @@ def generate_launch_description():
   ld.add_action(slam_outdoor_node)
   ld.add_action(slam_indoor_node)
   ld.add_action(aggregation_node)
-  ld.add_action(tf_base_to_os_node)
-  ld.add_action(gps_tf_node)
-  ld.add_action(wheel_tf_node)
-  ld.add_action(imu_tf_node)
-  ld.add_action(odom_tf_node)
-  ld.add_action(tf_base_to_laser_node)
+  # TF
+  ld.add_action(tf_base_to_os_sensor)
+  ld.add_action(tf_base_to_laser_sensor)
+  if LaunchConfiguration('os_driver') == 'false':
+    ld.add_action(tf_laser_to_os_lidar)
+    ld.add_action(tf_laser_to_imu)
+  ld.add_action(tf_base_to_wheel)
   return (ld)
