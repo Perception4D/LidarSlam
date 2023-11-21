@@ -5,17 +5,18 @@
 # SLAM will compute the pose of tracking_frame in odometry_frame coordinates system, using measurements in input pointcloud frames.
 odometry_frame: "odom"       # Frame in which SLAM odometry and maps are expressed (default: odom)
 tracking_frame: "base_link"  # Frame to track (ensure a valid TF tree is published to link input pointcloud frame_id) (default: base_link)
+wheel_frame: "wheel"         # Frame for the wheel encoder
 
-lidars_nb: 1     # Number of lidars used. When various lidars used, keypoints extraction parameters need to be specify for each sensor.
-frames_mode: 1   # The frames collection mode. 0: wait a specific time to collect frames; 1: wait for all lidar devices
-frames_waiting_time: 0.2 # Time to wait to receive frames (second)
+lidars_nb: 1             # Number of lidars used. When various lidars used, keypoints extraction parameters need to be specify for each sensor.
+frames_mode: 1           # The frames collection mode. 0: wait a specific time to collect frames; 1: wait for all lidar devices
+frames_waiting_time: 0.2 # [s] Time to wait to receive frames (second)
 # Input LiDAR frames topics, expected as sensor_msgs/PointCloud2 messages with the following fields:
 # - x, y, z (float): point coordinates
 # - time (double): time offset to add to the pointcloud header timestamp to get approximate point-wise acquisition timestamp
 # - intensity (float): intensity/reflectivity of the point
 # - laser_id (uint16): numeric identifier of the laser ring that shot this point. The lowest/bottom laser ring should be 0, and it should increase upward.
 # - label (uint8): optional input, not yet used.
-input: "lidar_points"  # Single LiDAR input (default: lidar_points)
+input: "lidar_points"   # Single LiDAR input (default: lidar_points)
 # input:  # multi LiDAR inputs
 #   - "lidar_points_1"  # Main topic: SLAM will be run each time a non-empty frame is received on this topic
 #   - "lidar_points_2"  # Secondary topics: non-empty frames will be buffered and added to main frame for multi-LiDAR SLAM.
@@ -30,7 +31,7 @@ output:
     tf: true               # Publish SLAM pose as a TF from 'odometry_frame' to 'tracking_frame'.
     predicted_odom: false  # Publish latency-corrected SLAM pose as an Odometry msg on 'slam_predicted_odom' topic (default: false).
     predicted_tf: false    # Publish latency-corrected SLAM pose as a TF from 'odometry_frame' to '<tracking_frame>_prediction' (default: false).
-    frequency: -1          # Frequency of output SLAM pose (Hz). For each new scan, all previous poses since last scan
+    frequency: -1.         # Frequency of output SLAM pose (Hz). For each new scan, all previous poses since last scan
                            # are published following this frequency. If negative, publish at SLAM frequency.
   maps:
     edges: true            # Publish edges keypoints map as a LidarPoint PointCloud2 msg to topic 'maps/edges'.
@@ -83,7 +84,6 @@ external_sensors:
   # It allows to estimate calibration between GPS and SLAM trajectories,
   # or post-optimize SLAM trajectory with pose graph optimization (PGO).
   gps:
-
     # Optional GPS positions use to calibrate output SLAM pose to world coordinates and/or optimize SLAM trajectory.
     # If true, subscribes to topic 'gps_odom' (nav_msgs/Odometry), and logs GPS positions during 'logging/timeout' seconds.
     # (WARNING Can be overridden in launch files with 'gps' arg).
@@ -372,8 +372,8 @@ slam:
       plane: true
       blob: false
     max_points: 1000                   # [points] Maximum number of keypoints of each type to extract
-    voxel_grid_resolution: 1           # [m/voxel] Size of a voxel to downsample the extracted keypoints
-    input_sampling_ratio: 1.          # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
+    voxel_grid_resolution: 1.          # [m/voxel] Size of a voxel to downsample the extracted keypoints
+    input_sampling_ratio: 1.           # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
     min_distance_to_sensor: 1.         # [m] Minimal point to sensor distance to consider a point as valid.
     max_distance_to_sensor: 200.       # [m] Maximal point to sensor distance to consider a point as valid.
     min_azimuth: 0.                    # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
@@ -404,8 +404,8 @@ slam:
     #   voxel_grid_resolution: 0.5         # [m/voxel] Size of a voxel to downsample the extracted keypoints
     #   input_sampling_ratio: 1.           # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
     #   min_distance_to_sensor: 1.         # [m] Minimal point to sensor distance to consider a point as valid.
-    #   min_azimuth: -90                   # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
-    #   max_azimuth: 90                    # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
+    #   min_azimuth: -90.                  # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
+    #   max_azimuth: 90.                   # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
     #   min_beam_surface_angle: 10.        # [°] Minimal angle between the point surface and the laser beam to consider a point as valid.
     #   neighbors_side_nb: 4               # [>1] Minimum number of neighbors used on each side to estimate curvature and detect edges and planes.
     #   neighbors_radius: 0.10             # [m] Minimum radius to define a neighborhood on each side of the studied point.
@@ -424,8 +424,8 @@ slam:
     #   voxel_grid_resolution: 0.5         # [m/voxel] Size of a voxel to downsample the extracted keypoints
     #   input_sampling_ratio: 0.6          # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
     #   min_distance_to_sensor: 1.         # [m] Minimal point to sensor distance to consider a point as valid.
-    #   min_azimuth: -45                   # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
-    #   max_azimuth: 45                    # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
+    #   min_azimuth: -45.                  # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
+    #   max_azimuth: 45.                   # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
     #   min_beam_surface_angle: 10.        # [°] Minimal angle between the point surface and the laser beam to consider a point as valid.
     #   neighbors_side_nb: 4               # [>1] Minimum number of neighbors used on each side to estimate curvature and detect edges and planes.
     #   neighbors_radius: 0.10             # [m] Minimum radius to define a neighborhood on each side of the studied point.
