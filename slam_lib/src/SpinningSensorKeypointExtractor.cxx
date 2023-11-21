@@ -247,14 +247,14 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
   {
     // Useful shortcuts
     const PointCloud& scanLineCloud = *this->GetScanlineCloud(scanLine);
-    const int Npts = scanLineCloud.size();
+    const int nPts = scanLineCloud.size();
 
     // if the line is almost empty, skip it
-    if (this->IsScanLineAlmostEmpty(Npts))
+    if (this->IsScanLineAlmostEmpty(nPts))
       continue;
 
     // Loop over points in the current scan line
-    for (int index = 0; index < Npts; ++index)
+    for (int index = 0; index < nPts; ++index)
     {
       // Random sampling to decrease keypoints extraction
       // computation time
@@ -296,9 +296,9 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
         float lineLength = 0.f;
         while ((int(neighbors.size()) < this->MinNeighNb
                 || lineLength < this->MinNeighRadius)
-                && int(neighbors.size()) < Npts)
+                && int(neighbors.size()) < nPts)
         {
-          neighbors.emplace_back((index + plusOrMinus * idxNeigh + Npts) % Npts); // +Npts to avoid negative values
+          neighbors.emplace_back((index + plusOrMinus * idxNeigh + nPts) % nPts); // +nPts to avoid negative values
           lineLength = (scanLineCloud[neighbors.back()].getVector3fMap() - scanLineCloud[neighbors.front()].getVector3fMap()).norm();
           ++idxNeigh;
         }
@@ -356,7 +356,7 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
 
         // Stop search for first and last points of the scan line
         // because the discontinuity may alter the other criteria detection
-        if (index < int(leftNeighbors.size()) || index >= Npts - int(rightNeighbors.size()))
+        if (index < int(leftNeighbors.size()) || index >= nPts - int(rightNeighbors.size()))
           continue;
 
         // Compute depth gap
@@ -472,12 +472,13 @@ void SpinningSensorKeypointExtractor::AddKptsUsingCriterion (Keypoint k,
                                                              double weightBasis)
 {
   // Loop over the scan lines
-  for (int scanlineIdx = 0; scanlineIdx < static_cast<int>(this->NbLaserRings); ++scanlineIdx)
+  for (unsigned int scanlineIdx = 0; scanlineIdx < this->NbLaserRings; ++scanlineIdx)
   {
-    const int Npts = this->GetScanlineCloud(scanlineIdx)->size();
+    const PointCloud& scanlineCloud = *this->GetScanlineCloud(scanlineIdx);
+    const int nPts = scanlineCloud.size();
 
     // If the line is almost empty, skip it
-    if (this->IsScanLineAlmostEmpty(Npts))
+    if (this->IsScanLineAlmostEmpty(nPts))
       continue;
 
     // Initialize original index locations
@@ -517,7 +518,7 @@ void SpinningSensorKeypointExtractor::AddKptsUsingCriterion (Keypoint k,
       // Indicate the type of the keypoint to debug and to exclude double edges
       this->Label[scanlineIdx][index].set(k);
       // Add keypoint
-      this->Keypoints[k].AddPoint(this->GetScanlineCloud(scanlineIdx)->at(index), weight);
+      this->Keypoints[k].AddPoint(scanlineCloud.at(index), weight);
     }
   }
 }
@@ -553,13 +554,14 @@ void SpinningSensorKeypointExtractor::ComputeBlobs()
 
   for (unsigned int scanLine = 0; scanLine < this->NbLaserRings; ++scanLine)
   {
-    for (unsigned int index = 0; index < this->GetScanlineCloud(scanLine)->size(); ++index)
+    const PointCloud& scanlineCloud = *this->GetScanlineCloud(scanLine);
+    for (unsigned int index = 0; index < scanlineCloud.size(); ++index)
     {
       // Random sampling to decrease keypoints extraction
       // computation time
       if (this->InputSamplingRatio < 1.f && dis(gen) > this->InputSamplingRatio)
         continue;
-      this->Keypoints[Keypoint::BLOB].AddPoint(this->GetScanlineCloud(scanLine)->at(index));
+      this->Keypoints[Keypoint::BLOB].AddPoint(scanlineCloud[index]);
     }
   }
 }
@@ -570,7 +572,7 @@ void SpinningSensorKeypointExtractor::EstimateAzimuthalResolution()
   // Compute horizontal angle values between successive points
   std::vector<float> angles;
   angles.reserve(this->Scan->size());
-  for (int scanLineIdx = 0; scanLineIdx < this->NbLaserRings; ++scanLineIdx)
+  for (unsigned int scanLineIdx = 0; scanLineIdx < this->NbLaserRings; ++scanLineIdx)
   {
     const auto& scanLineCloud = *this->GetScanlineCloud(scanLineIdx);
     for (unsigned int index = 1; index < scanLineCloud.size(); ++index)

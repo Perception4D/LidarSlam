@@ -16,7 +16,6 @@
 // limitations under the License.
 //==============================================================================
 
-#include <rclcpp/rclcpp.hpp>
 #include <pcl_conversions/pcl_conversions.h>
 
 #ifndef PCL_POINT_TYPES_H
@@ -36,15 +35,15 @@
   POINT_CLOUD_REGISTER_POINT_STRUCT(point_conversions::name,   \
                                     (fieldType, field, field))
 
-#define INIT_AND_REGISTER_TYPE(pointName, fieldMsg)                             \
-  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Int8, int8_t, fieldMsg)     \
-  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Uint8, uint8_t, fieldMsg)   \
-  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Int16, int16_t, fieldMsg)   \
-  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Uint16, uint16_t, fieldMsg) \
-  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Int32, int32_t, fieldMsg)   \
-  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Uint32, uint32_t, fieldMsg) \
-  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Float, float, fieldMsg)     \
-  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Double, double, fieldMsg)
+#define INIT_AND_REGISTER_TYPE(pointName, fieldMsg)                                  \
+  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Int8,   std::int8_t,   fieldMsg) \
+  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Uint8,  std::uint8_t,  fieldMsg) \
+  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Int16,  std::int16_t,  fieldMsg) \
+  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Uint16, std::uint16_t, fieldMsg) \
+  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Int32,  std::int32_t,  fieldMsg) \
+  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Uint32, std::uint32_t, fieldMsg) \
+  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Float,  float,         fieldMsg) \
+  DEFINE_AND_REGISTER_POINT_TYPE(Point##pointName##_Double, double,        fieldMsg)
 
 INIT_AND_REGISTER_TYPE(I, intensity)
 INIT_AND_REGISTER_TYPE(Ref, reflectivity)

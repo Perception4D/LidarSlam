@@ -80,7 +80,7 @@ private:
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
   rclcpp::Service<lidar_conversions::srv::EstimSense>::SharedPtr EstimService;
 
-  double NbLasers = 64.;  ///< Minimal number of lasers in the LiDAR
+  unsigned int NbLasers = 64;  ///< Minimal number of lasers in the LiDAR
   bool RotationSenseEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations.
   bool RotationIsClockwise;  ///< True if the LiDAR rotates clockwise, false otherwise.
 

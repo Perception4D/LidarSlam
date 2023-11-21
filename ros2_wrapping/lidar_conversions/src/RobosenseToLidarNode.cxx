@@ -90,11 +90,11 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
   // Init SLAM pointcloud
   CloudS cloudS = Utils::InitCloudS<CloudRS>(cloudRS);
 
-  const int nbLasers = ((cloudRS.height >= 8 && cloudRS.height <= 128)
-                   ? static_cast<double>(cloudRS.height)
-                   : (cloudRS.width >= 8 && cloudRS.width <= 128)
-                     ? static_cast<double>(cloudRS.width)
-                     : this->NbLasers);
+  const unsigned int nbLasers = (cloudRS.height >= 8 && cloudRS.height <= 128) ?
+                                 cloudRS.height :
+                                  (cloudRS.width >= 8 && cloudRS.width <= 128) ?
+                                   cloudRS.width :
+                                   this->NbLasers;
 
   // Init of parameters useful for laser_id and time estimations
   if (!this->RotSenseAndClustersEstimated)

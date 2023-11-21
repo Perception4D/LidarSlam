@@ -92,11 +92,11 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
   // Init SLAM pointcloud
   CloudS cloudS = Utils::InitCloudS<CloudV>(cloudV);
 
-  const int nbLasers = ((cloudV.height >= 8 && cloudV.height <= 128)
-                   ? static_cast<double>(cloudV.height)
-                   : (cloudV.width >= 8 && cloudV.width <= 128)
-                     ? static_cast<double>(cloudV.width)
-                     : this->NbLasers);
+  const unsigned int nbLasers = (cloudV.height >= 8 && cloudV.height <= 128) ?
+                                 cloudV.height :
+                                  (cloudV.width >= 8 && cloudV.width <= 128) ?
+                                   cloudV.width :
+                                   this->NbLasers;
 
   // Estimate the rotation sense
   if (!this->RotationSenseEstimated)

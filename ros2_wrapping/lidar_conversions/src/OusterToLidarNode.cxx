@@ -96,11 +96,11 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   // Init SLAM pointcloud
   CloudS cloudS = Utils::InitCloudS<CloudO>(cloudO);
 
-  const int nbLasers = ((cloudO.height >= 8 && cloudO.height <= 128)
-                   ? static_cast<double>(cloudO.height)
-                   : (cloudO.width >= 8 && cloudO.width <= 128)
-                     ? static_cast<double>(cloudO.width)
-                     : this->NbLasers);
+  const unsigned int nbLasers = (cloudO.height >= 8 && cloudO.height <= 128) ?
+                                 cloudO.height :
+                                  (cloudO.width >= 8 && cloudO.width <= 128) ?
+                                   cloudO.width :
+                                   this->NbLasers;
 
   // Estimate the rotation sense
   if (!this->RotationSenseEstimated)

@@ -942,7 +942,7 @@ private:
   // **** COORDINATES SYSTEMS ****
 
   // Coordinates systems (CS) names to fill in pointclouds or poses headers
-  std::string WorldFrameId = "odom";  // CS of trajectory and maps
+  std::string WorldFrameId = "odom";        // CS of trajectory and maps
   std::string BaseFrameId = "base_link";    // CS of current keypoints
 
   // **** LOCALIZATION ****
