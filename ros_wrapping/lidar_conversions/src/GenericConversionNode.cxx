@@ -32,13 +32,15 @@ GenericConversionNode::GenericConversionNode(ros::NodeHandle& nh, ros::NodeHandl
   , PrivNh(priv_nh)
 {
   // Get number of lasers
-  this->PrivNh.param("nb_laser", this->NbLasers, this->NbLasers);
+  int nbLasers = 16;
+  if (this->PrivNh.getParam("nb_laser", nbLasers))
+    this->NbLasers = static_cast<unsigned int>(nbLasers);
 
   // Get possible frequencies
   this->PrivNh.param("possible_frequencies", this->PossibleFrequencies, this->PossibleFrequencies);
 
   // Get number of threads
-  this->PrivNh.param("nb_threads", this->NbThreads, NbThreads);
+  this->PrivNh.param("nb_threads", this->NbThreads, this->NbThreads);
 
   // Init ROS publisher
   this->Talker = nh.advertise<CloudS>("lidar_points", 1);
@@ -90,11 +92,11 @@ void GenericConversionNode::Callback(const sensor_msgs::PointCloud2& msg_receive
 
   CloudS cloudS = Utils::InitCloudS<CloudXYZ>(cloudRaw);
 
-  const int nbLasers = ((cloudRaw.height >= 8 && cloudRaw.height <= 128)
-                   ? static_cast<int>(cloudRaw.height)
-                   : (cloudRaw.width >= 8 && cloudRaw.width <= 128)
-                     ? static_cast<int>(cloudRaw.width)
-                     : this->NbLasers);
+  const unsigned int nbLasers = (cloudRaw.height >= 8 && cloudRaw.height <= 128) ?
+                                 cloudRaw.height :
+                                   (cloudRaw.width >= 8 && cloudRaw.width <= 128) ?
+                                    cloudRaw.width :
+                                    this->NbLasers;
 
   // Init of parameters useful for laser_id and time estimations
   if (!this->RotSenseAndClustersEstimated)
