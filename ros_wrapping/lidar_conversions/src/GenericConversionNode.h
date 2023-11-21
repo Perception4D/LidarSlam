@@ -79,7 +79,7 @@ private:
   ros::ServiceServer EstimService;
 
   // Number of lasers of the LiDAR.
-  int NbLasers = 16.;
+  unsigned int NbLasers = 16;
 
   // Useful variable to estimate rotation duration (itself used to estimate time)
   // NOTE: to be precise, this rotation duration estimation requires that each input

@@ -57,7 +57,7 @@ void SlamControlPanel::CreateLayout()
   resetTrajButton->setToolTip("Reset the trajectory from a CSV file with header:\n"
                               "frame_id\n"
                               "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n"
-                              "t being the time\n,"
+                              "t being the time,\n"
                               "x,y,z being the position and\n"
                               "xi,yi,zi being an axis of the 3D frame\n"
                               "of the trajectory pose (ith column of the rotation).");

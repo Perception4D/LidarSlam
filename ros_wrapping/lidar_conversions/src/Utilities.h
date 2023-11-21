@@ -175,7 +175,7 @@ inline double GetTimeFactor(double duration, double rotationDuration)
  * @param nbThreads Number of threads to use for the clustering
  */
 template <typename PointType>
-inline void ClusterizeVerticalAngles(const pcl::PointCloud<PointType>& cloudRaw, int nbLasers, std::vector<Cluster>& clusters, int nbThreads)
+inline void ClusterizeVerticalAngles(const pcl::PointCloud<PointType>& cloudRaw, unsigned int nbLasers, std::vector<Cluster>& clusters, int nbThreads)
 {
   std::vector<double> verticalAngles;
   verticalAngles.reserve(cloudRaw.size());
@@ -289,7 +289,7 @@ inline void ClusterizeVerticalAngles(const pcl::PointCloud<PointType>& cloudRaw,
 * @param nbLasers Number of lasers of the LiDAR sensor
 * @param clusters Clusters of vertical angles
 */
-inline int ComputeLaserId(const Eigen::Vector3d& currentPoint, int nbLasers, const std::vector<Cluster>& clusters)
+inline int ComputeLaserId(const Eigen::Vector3d& currentPoint, unsigned int nbLasers, const std::vector<Cluster>& clusters)
 {
   // Estimate laser ID thanks to a clustering of vertical angles
   double vertAngle = (180./M_PI) * std::acos(double(currentPoint.z()) / currentPoint.norm());
@@ -304,7 +304,7 @@ inline int ComputeLaserId(const Eigen::Vector3d& currentPoint, int nbLasers, con
     return nbLasers - 1;
 
   auto prev = std::prev(insertionIt);
-  return std::distance(clusters.begin(), (vertAngle - (*prev).Mean < (*insertionIt).Mean - vertAngle) ? prev : insertionIt);
+  return std::distance(clusters.begin(), (vertAngle - prev->Mean < insertionIt->Mean - vertAngle) ? prev : insertionIt);
 }
 
 //----------------------------------------------------------------------------
@@ -315,7 +315,7 @@ inline int ComputeLaserId(const Eigen::Vector3d& currentPoint, int nbLasers, con
  * @param nbLasers Number of lasers of the lidar
  */
 template <typename PointType>
-inline bool IsRotationClockwise(const pcl::PointCloud<PointType> cloudRaw, int nbLasers)
+inline bool IsRotationClockwise(const pcl::PointCloud<PointType> cloudRaw, unsigned int nbLasers)
 {
   Eigen::Vector2d firstPointFirstLine ({cloudRaw.front().x, cloudRaw.front().y});
   Eigen::Vector2d firstPointSecondLine ({cloudRaw[nbLasers].x, cloudRaw[nbLasers].y});
@@ -352,7 +352,7 @@ inline double EstimateTime(const Eigen::Vector2d& currentPoint, double rotationD
  */
 template<typename PointT>
 inline void InitEstimationParameters(const pcl::PointCloud<PointT>& cloudRaw,
-                                     int nbLasers,
+                                     unsigned int nbLasers,
                                      std::vector<Cluster>& clusters,
                                      bool& rotationIsClockwise,
                                      int nbThreads = 1)
