@@ -22,88 +22,97 @@ def generate_launch_description():
     DeclareLaunchArgument("camera_info_topic", default_value="camera_info", description="topic from which to get the rgb camera info"),
     DeclareLaunchArgument("aggregate", default_value="false", description="run aggregation node"),
     DeclareLaunchArgument("domain_id", default_value="0", description="Set to different value to avoid interference when several computers running ROS2 on the same network."),
-    SetEnvironmentVariable(name='ROS_DOMAIN_ID',value=LaunchConfiguration('domain_id')),
+    SetEnvironmentVariable(name='ROS_DOMAIN_ID',value=LaunchConfiguration('domain_id'))
   ])
 
   ##########
   ## Rviz ##
   ##########
-  rviz_node = Node(package="rviz2", executable="rviz2",
+  rviz_node = Node(
+    package="rviz2",
+    executable="rviz2",
     arguments=["-d", os.path.join(lidar_slam_share_path, 'params', 'slam.rviz')],
-    parameters=[{'use_sim_time': LaunchConfiguration('replay')},],
-    condition = IfCondition(LaunchConfiguration("rviz")),
+    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
+    condition = IfCondition(LaunchConfiguration("rviz"))
   )
 
+  # Conversion node
   livox_conversion_node = Node(
-      name="livox_conversion_node", package="lidar_conversions", executable="livox_conversion_node", output="screen",
-      parameters=[{
-          "pointcloud2" :LaunchConfiguration("pointcloud2"),
-      }],
+      name="livox_conversion_node",
+      package="lidar_conversions",
+      executable="livox_conversion_node",
+      output="screen",
+      parameters=[{"pointcloud2" :LaunchConfiguration("pointcloud2")}]
   )
-
-  # LiDAR SLAM : compute TF slam_init -> velodyne
 
   # Outdoor Lidar Slam node
   with open(os.path.join(lidar_slam_share_path, 'params', "slam_config_outdoor.yaml"), 'r') as f:
     params_slam_out = yaml.safe_load(f)['/lidar_slam']['ros__parameters']
-  # Manualy override lidar_config_outdoor_node parameters from parameter file
   params_slam_out['use_sim_time'] = LaunchConfiguration("replay")
 
-  slam_outdoor_node = Node(name="lidar_slam", package="lidar_slam", executable="lidar_slam_node", output="screen",
+  slam_outdoor_node = Node(
+    name="lidar_slam",
+    package="lidar_slam",
+    executable="lidar_slam_node",
+    output="screen",
     parameters=[params_slam_out],
     remappings=[("tag_detections", LaunchConfiguration("tags_topic")),
                 ("camera", LaunchConfiguration("camera_topic")),
                 ("camera_info", LaunchConfiguration("camera_info_topic")),],
-    condition=IfCondition(LaunchConfiguration("outdoor")),
+    condition=IfCondition(LaunchConfiguration("outdoor"))
   )
 
   # Indoor Lidar Slam node
   with open(os.path.join(lidar_slam_share_path, 'params', "slam_config_indoor.yaml"), 'r') as f:
     params_slam_in = yaml.safe_load(f)['/lidar_slam']['ros__parameters']
-  # Manualy override lidar_config_indoor_node parameters from parameter file
   params_slam_in['use_sim_time'] = LaunchConfiguration("replay")
 
-  slam_indoor_node = Node(name="lidar_slam", package="lidar_slam", executable="lidar_slam_node", output="screen",
+  slam_indoor_node = Node(
+    name="lidar_slam",
+    package="lidar_slam",
+    executable="lidar_slam_node",
+    output="screen",
     parameters=[params_slam_in],
     remappings=[("tag_detections", LaunchConfiguration("tags_topic")),
                 ("camera", LaunchConfiguration("camera_topic")),
                 ("camera_info", LaunchConfiguration("camera_info_topic")),],
-    condition= UnlessCondition(LaunchConfiguration("outdoor")),
+    condition= UnlessCondition(LaunchConfiguration("outdoor"))
   )
+
   # Aggregate points
-  slam_aggregation_config_path = os.path.join(lidar_slam_share_path, "params", "aggregation_config.yaml")
-  aggregation_node = Node(name="aggregation", package="lidar_slam", executable="aggregation_node", output="screen",
-    parameters=[slam_aggregation_config_path],
-    condition=IfCondition(LaunchConfiguration("aggregate")),
+  with open(os.path.join(lidar_slam_share_path, 'params', "aggregation_config.yaml"), 'r') as f:
+    params_aggregation = yaml.safe_load(f)['/aggregation']['ros__parameters']
+  params_aggregation['use_sim_time'] = LaunchConfiguration("replay")
+
+  aggregation_node = Node(
+    name="aggregation",
+    package="lidar_slam",
+    executable="aggregation_node",
+    output="screen",
+    parameters=[params_aggregation],
+    condition=IfCondition(LaunchConfiguration("aggregate"))
   )
 
-  # Moving base coordinates systems description                                         tf_FROM_to_TO
-  tf_base_to_os_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_lidar",
+  # Static TF base to livox LiDAR
+  tf_base_to_livox = Node(
+    package="tf2_ros",
+    executable="static_transform_publisher",
+    name="tf_base_to_lidar",
+    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "livox_frame"],
+               "--frame-id", "base_link", "--child-frame-id", "livox_frame"]
   )
 
-  # Moving base coordinates systems description                                     tf_FROM_to_TO
-  gps_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_gps",
+  # Static TF base to wheel
+  tf_base_to_wheel = Node(
+    package="tf2_ros",
+    executable="static_transform_publisher",
+    name="tf_base_to_wheel",
+    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "gps"],
-  )
-
-  # Base link to wheel encoder
-  wheel_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_wheel",
-    parameters=[{'use_sim_time': LaunchConfiguration('replay')},],
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "wheel"],
-  )
-
-  # Default transformation for Odom frame
-  odom_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_odom_to_base",
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "odom", "--child-frame-id", "base_link"],
+               "--frame-id", "base_link", "--child-frame-id", "wheel"]
   )
 
   ld.add_action(rviz_node)
@@ -111,9 +120,8 @@ def generate_launch_description():
   ld.add_action(slam_outdoor_node)
   ld.add_action(slam_indoor_node)
   ld.add_action(aggregation_node)
-  ld.add_action(tf_base_to_os_node)
-  ld.add_action(gps_tf_node)
-  ld.add_action(wheel_tf_node)
-  ld.add_action(odom_tf_node)
+  # TF
+  ld.add_action(tf_base_to_livox)
+  ld.add_action(tf_base_to_wheel)
 
   return (ld)

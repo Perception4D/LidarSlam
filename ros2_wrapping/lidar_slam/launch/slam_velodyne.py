@@ -22,7 +22,6 @@ def generate_launch_description():
     DeclareLaunchArgument("use_sim_time", default_value="true", description="Use simulation time when replaying rosbags with '--clock' option."),
     DeclareLaunchArgument("outdoor", default_value="true", description="Decide which set of parameters to use"),
     DeclareLaunchArgument("rviz", default_value="true", description="Visualize results with RViz."),
-    DeclareLaunchArgument("gps", default_value="false", description="If true, use GPS data to calibrate SLAM output. Otherwise, provide calibration."),
     DeclareLaunchArgument("tags_topic", default_value="tag_detections", description="Topic from which to get the tag measurements"),
     DeclareLaunchArgument("camera_topic", default_value="camera", description="topic from which to get the rgb camera data"),
     DeclareLaunchArgument("camera_info_topic", default_value="camera_info", description="topic from which to get the rgb camera info"),
@@ -41,21 +40,23 @@ def generate_launch_description():
   ##########
   ## Rviz ##
   ##########
-  rviz_node = Node(package="rviz2", executable="rviz2",
+  rviz_node = Node(
+    package="rviz2",
+    executable="rviz2",
     arguments=["-d", os.path.join(lidar_slam_share_path, 'params', 'slam.rviz')],
     parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')},],
-    condition = IfCondition(LaunchConfiguration("rviz")),
+    condition = IfCondition(LaunchConfiguration("rviz"))
   )
 
   ##############
   ## Velodyne ##
   ##############
 
-  #! For now velodyne packages are not ported on Windows 10
+  #! For now, velodyne packages are not ported on Windows 10
   if os.name != 'nt':
-    # Manualy override velodyne_driver_node parameters
-    params_velod_driver_path = os.path.join(get_package_share_directory('velodyne_driver'), 'config', 'VLP16-velodyne_driver_node-params.yaml')
-    with open(params_velod_driver_path, 'r') as f:
+    # Manually override velodyne_driver_node parameters
+    params_driver_path = os.path.join(get_package_share_directory('velodyne_driver'), 'config', 'VLP16-velodyne_driver_node-params.yaml')
+    with open(params_driver_path, 'r') as f:
       params_velod_driv = yaml.safe_load(f)['velodyne_driver_node']['ros__parameters']
 
     params_velod_driv['device_ip']    =  LaunchConfiguration('device_ip')
@@ -68,8 +69,9 @@ def generate_launch_description():
     params_velod_driv["rpm"]          = LaunchConfiguration('rpm')
     params_velod_driv["pcap"]         = LaunchConfiguration('pcap')
     params_velod_driv["port"]         = LaunchConfiguration('port')
+    params_velod_driv["use_sim_time"] = False
 
-    # Manualy override velodyne_convert_node parameters
+    # Manually override velodyne_convert_node parameters
     velodyne_pointcloud_share_path = get_package_share_directory('velodyne_pointcloud')
     params_velod_pcl_path = os.path.join(velodyne_pointcloud_share_path, 'config', 'VLP16-velodyne_transform_node-params.yaml')
     with open(params_velod_pcl_path, 'r') as f:
@@ -82,15 +84,24 @@ def generate_launch_description():
     params_velod_pcl["organize_cloud"] = False
     params_velod_pcl["target_frame"]   = ""
     params_velod_pcl["fixed_frame"]    = ""
+    params_velod_pcl["use_sim_time"]   = LaunchConfiguration('use_sim_time')
 
     velodyne_group = GroupAction(
       actions=[
-        # Start driver node
-        Node(package='velodyne_driver', executable='velodyne_driver_node', name='velodyne_driver_node', output='both',
+        # Part 1
+        Node(
+          package='velodyne_driver',
+          executable='velodyne_driver_node',
+          name='velodyne_driver_node',
+          output='both',
           parameters=[params_velod_driv]),
-        # Start convertion node
-        Node(package='velodyne_pointcloud', executable='velodyne_transform_node', output='both', name='velodyne_transform_node',
-          parameters=[params_velod_pcl],)
+        # Part 2
+        Node(
+          package='velodyne_pointcloud',
+          executable='velodyne_transform_node',
+          output='both',
+          name='velodyne_transform_node',
+          parameters=[params_velod_pcl])
       ],
       condition = IfCondition(LaunchConfiguration("velodyne_driver"))
     )
@@ -102,100 +113,96 @@ def generate_launch_description():
   # Velodyne points conversion
   with open(os.path.join(lidar_conversion_share_path, 'params', "conversion_config.yaml"), 'r') as f:
     params_conversion = yaml.safe_load(f)['/lidar_conversions']['ros__parameters']
-  # Manualy override conversions parameters from parameter file
   params_conversion['use_sim_time'] = LaunchConfiguration("use_sim_time")
-  velodyne_conversion_node = Node(
-    package="lidar_conversions", executable="velodyne_conversion_node", name="velodyne_conversion", output="screen",
-    parameters=[params_conversion],
-  )
 
-  # LiDAR SLAM : compute TF slam_init -> velodyne
+  velodyne_conversion_node = Node(
+    package="lidar_conversions",
+    executable="velodyne_conversion_node",
+    name="velodyne_conversion",
+    output="screen",
+    parameters=[params_conversion]
+  )
 
   # Outdoor Lidar Slam node
   with open(os.path.join(lidar_slam_share_path, 'params', "slam_config_outdoor.yaml"), 'r') as f:
     params_slam_out = yaml.safe_load(f)['/lidar_slam']['ros__parameters']
-  # Manualy override lidar_config_outdoor_node parameters from parameter file
   params_slam_out['use_sim_time'] = LaunchConfiguration("use_sim_time")
-  params_slam_out['gps.use_gps'] = LaunchConfiguration("gps")
 
-  slam_outdoor_node = Node(name="lidar_slam", package="lidar_slam", executable="lidar_slam_node", output="screen",
+  slam_outdoor_node = Node(
+    name="lidar_slam",
+    package="lidar_slam",
+    executable="lidar_slam_node",
+    output="screen",
     parameters=[params_slam_out],
     remappings=[("tag_detections", LaunchConfiguration("tags_topic")),
                 ("camera", LaunchConfiguration("camera_topic")),
                 ("camera_info", LaunchConfiguration("camera_info_topic")),],
-    condition=IfCondition(LaunchConfiguration("outdoor")),
+    condition=IfCondition(LaunchConfiguration("outdoor"))
   )
 
   # Indoor Lidar Slam node
   with open(os.path.join(lidar_slam_share_path, 'params', "slam_config_indoor.yaml"), 'r') as f:
     params_slam_in = yaml.safe_load(f)['/lidar_slam']['ros__parameters']
-  # Manualy override lidar_config_indoor_node parameters from parameter file
   params_slam_in['use_sim_time'] = LaunchConfiguration("use_sim_time")
-  params_slam_in['gps.use_gps'] = LaunchConfiguration("gps")
 
-  slam_indoor_node = Node(name="lidar_slam", package="lidar_slam", executable="lidar_slam_node", output="screen",
+  slam_indoor_node = Node(
+    name="lidar_slam",
+    package="lidar_slam",
+    executable="lidar_slam_node",
+    output="screen",
     parameters=[params_slam_in],
     remappings=[("tag_detections", LaunchConfiguration("tags_topic")),
                 ("camera", LaunchConfiguration("camera_topic")),
                 ("camera_info", LaunchConfiguration("camera_info_topic")),],
-    condition= UnlessCondition(LaunchConfiguration("outdoor")),
+    condition= UnlessCondition(LaunchConfiguration("outdoor"))
   )
 
   # Aggregate points
-  slam_aggregation_config_path = os.path.join(lidar_slam_share_path, "params", "aggregation_config.yaml")
-  aggregation_node = Node(name="aggregation", package="lidar_slam", executable="aggregation_node", output="screen",
-    parameters=[slam_aggregation_config_path],
-    condition=IfCondition(LaunchConfiguration("aggregate")),
+  print( os.path.join(lidar_slam_share_path, 'params', "aggregation_config.yaml"))
+  with open(os.path.join(lidar_slam_share_path, 'params', "aggregation_config.yaml"), 'r') as f:
+    params_aggregation = yaml.safe_load(f)['/aggregation']['ros__parameters']
+  params_aggregation['use_sim_time'] = LaunchConfiguration("use_sim_time")
+
+  aggregation_node = Node(
+    name="aggregation",
+    package="lidar_slam",
+    executable="aggregation_node",
+    output="screen",
+    parameters=[params_aggregation],
+    condition=IfCondition(LaunchConfiguration("aggregate"))
   )
 
-  # Moving base coordinates systems description            tf_FROM_to_TO           X  Y  Z  rZ rY rX  FROM     TO
-  tf_base_to_velo_node = Node( package="tf2_ros",executable="static_transform_publisher",name="tf_base_to_lidar",
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "velodyne"],
+  # Static TF base to velodyne LiDAR
+  tf_base_to_velodyne = Node(
+    package="tf2_ros",
+    executable="static_transform_publisher",
+    name="tf_base_to_lidar",
     parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')},],
-  )
-
-
-
-  # Launch GPS/UTM conversions nodes
-  gps_conversions_include = IncludeLaunchDescription(
-    PythonLaunchDescriptionSource([os.path.join(lidar_slam_share_path, "launch", "gps_conversions.launch")]),
-    condition=IfCondition(LaunchConfiguration("gps"))
-  )
-
-  # Moving base coordinates systems description                                     tf_FROM_to_TO
-  gps_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_gps",
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "gps"],
+               "--frame-id", "base_link", "--child-frame-id", "velodyne"]
   )
 
-  # Base link to wheel encoder
-  wheel_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_base_to_wheel",
-    parameters=[{'use_sim_time': LaunchConfiguration('replay')},],
+  # Static TF base to wheel
+  tf_base_to_wheel = Node(
+    package="tf2_ros",
+    executable="static_transform_publisher",
+    name="tf_base_to_wheel",
+    parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
     arguments=["--x", "0", "--y", "0", "--z", "0",
                "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "wheel"],
+               "--frame-id", "base_link", "--child-frame-id", "wheel"]
   )
 
-  # Default transformation for Odom frame
-  odom_tf_node = Node(package="tf2_ros", executable="static_transform_publisher", name="tf_odom_to_base",
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "odom", "--child-frame-id", "base_link"],
-  )
-
+  ld.add_action(rviz_node)
   if os.name != "nt" :
     ld.add_action(velodyne_group)
   ld.add_action(velodyne_conversion_node)
   ld.add_action(slam_outdoor_node)
   ld.add_action(slam_indoor_node)
   ld.add_action(aggregation_node)
-  ld.add_action(tf_base_to_velo_node)
-  ld.add_action(gps_conversions_include)
-  ld.add_action(gps_tf_node)
-  ld.add_action(wheel_tf_node)
-  ld.add_action(odom_tf_node)
-  ld.add_action(rviz_node)
+  # TF
+  ld.add_action(tf_base_to_velodyne)
+  ld.add_action(tf_base_to_wheel)
+
   return (ld)
