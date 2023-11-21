@@ -16,7 +16,6 @@
 // limitations under the License.
 //==============================================================================
 
-#include <rclcpp/rclcpp.hpp>
 #include <pcl_conversions/pcl_conversions.h>
 
 #ifndef PCL_POINT_TYPES_H
