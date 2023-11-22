@@ -28,6 +28,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <nav_msgs/msg/odometry.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/point_stamped.hpp>
 #include <lidar_slam/msg/confidence.hpp>
 #include <lidar_slam/msg/slam_command.hpp>
 #include <apriltag_ros/msg/april_tag_detection.hpp>
@@ -130,6 +131,13 @@ public:
    * @param[in] msg imu acceleration
    */
   void ImuCallback(const sensor_msgs::msg::Imu& imuMsg);
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief     Rviz clicked point callback, adding loop closure revisited frame indice
+   * @param[in] msg clicked point coordinates
+   */
+  void ClickedPointCallback(const geometry_msgs::msg::PointStamped& pointMsg);
 
   //----------------------------------------------------------------------------
   /*!
@@ -365,6 +373,9 @@ protected:
 
   // IMU
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr ImuSub;
+
+  // Clicked point in rviz
+  rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr ClickedPtSub;
 };
 
 #endif // LIDAR_SLAM_NODE_H

@@ -185,6 +185,12 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
     this->GpsOdomSub = this->create_subscription<nav_msgs::msg::Odometry>("gps_odom", 1,
                                                                           std::bind(&LidarSlamNode::GpsCallback, this, std::placeholders::_1));
 
+  if (this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE))
+  {
+    this->ClickedPtSub = this->create_subscription<geometry_msgs::msg::PointStamped>("clicked_point", 1,
+                                                                                     std::bind(&LidarSlamNode::ClickedPointCallback, this, std::placeholders::_1));
+  }
+
   // Init logging of landmark data, Camera data, external pose data, wheel encoder data and/or IMU data
   if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ||
       this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] ||
@@ -683,6 +689,37 @@ void LidarSlamNode::ImuCallback(const sensor_msgs::msg::Imu& imuMsg)
   }
   else
     RCLCPP_WARN_STREAM(this->get_logger(), "The transform between the IMU and the tracking frame was not found -> IMU info ignored");
+}
+
+//------------------------------------------------------------------------------
+void LidarSlamNode::ClickedPointCallback(const geometry_msgs::msg::PointStamped& pointMsg)
+{
+  if (!this->SlamEnabled)
+    return;
+
+  if (!this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE))
+  {
+    RCLCPP_WARN_STREAM(this->get_logger(), "Loop closure constraint is disabled: clicked point is not considered");
+    return;
+  }
+
+  // Get the clicked point in rviz
+  Eigen::Vector3d clickedPoint = Eigen::Vector3d(pointMsg.point.x, pointMsg.point.y, pointMsg.point.z);
+  double time = pointMsg.header.stamp.sec + pointMsg.header.stamp.nanosec * 1e-9;
+  auto itState = this->LidarSlam.GetClosestState(clickedPoint);
+  if ((itState->Isometry.translation() - clickedPoint).squaredNorm() > 1.0)
+  {
+    RCLCPP_WARN_STREAM(this->get_logger(), "The clicked point is too far from the trajectory: Please pick another point.");
+    return;
+  }
+  // Add clicked point as revisited frame of the loop which is formed with current frame
+  LidarSlam::LoopClosure::LoopIndices loop(this->LidarSlam.GetLastState().Index, itState->Index, time);
+  this->LidarSlam.AddLoopClosureIndices(loop);
+  if (this->LidarSlam.GetVerbosity() >= 3)
+    RCLCPP_INFO_STREAM(this->get_logger(),
+                       "Loop closure point added with time "
+                       << std::fixed << std::setprecision(14)
+                       << time);
 }
 
 //------------------------------------------------------------------------------
