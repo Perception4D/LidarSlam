@@ -568,11 +568,12 @@ Another node called **aggregation_node** is included in the **lidar_slam** packa
 
 ## Classic aggregation
 
-**aggregation_node** has 3 parameters :
+**aggregation_node** has 4 parameters :
 
 - *leaf_size* : corresponds to the size of a voxel in meters in which to store one unique point. It is equivalent to the required mean distance between nearest neighbors. The maximum distance between nearest distance to downsample the cloud would be 2 * leaf_size
 - *max_size* : corresponds to the maximum size of the voxel grid and so the maximum width of the output cloud to tackle possible memory issues.
 - *min_points_per_voxel* : corresponds to the minimum number of frames which should have a point in a voxel to consider this voxel is not a moving object. It has been seen more than *min_points_per_voxel*, so it is considered "enough" to be a static object. All voxels that have been seen less than *min_points_per_voxel* times are not included to the output cloud.
+- *min_dist_around_trajectory* : If positive, it is the distance (in meters) from each SLAM pose under which no point will be added to the aggregated map. It allows to remove moving objects passing through trajectory. Hypothesis is : if the robot/person has been there, no point should be added.
 
 This node can answer to a service called **save_pc** to save the pointcloud on disk as a PCD file. The command should be :
 

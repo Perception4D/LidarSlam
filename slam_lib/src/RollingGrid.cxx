@@ -351,39 +351,74 @@ void RollingGrid::ClearPoints(double currentTime, bool clearOldPoints)
   auto itVoxelsOut = this->Voxels.begin();
   while(itVoxelsOut != this->Voxels.end())
   {
-    // Loop on the inner voxels (sampling vg)
-    auto itVoxelsIn = itVoxelsOut->second.begin();
-    while(itVoxelsIn != itVoxelsOut->second.end())
-    {
-      // Shortcut to voxel
-      Voxel& voxel = itVoxelsIn->second;
-      // If voxel is removable and too old (or too new), remove it
-      bool removePoint = clearOldPoints ? currentTime - voxel.point.time > this->DecayingThreshold : voxel.point.time > currentTime;
-      if (!voxel.point.label && removePoint)
-        itVoxelsIn = itVoxelsOut->second.erase(itVoxelsIn);
-      else
-        ++itVoxelsIn;
-    }
-
-    // Remove empty outer voxels
-    if (itVoxelsOut->second.empty())
-      itVoxelsOut = this->Voxels.erase(itVoxelsOut);
-    else
-      ++itVoxelsOut;
+    this->Erase(itVoxelsOut->first,
+                [&](const Point& pt)
+                   {return clearOldPoints ? currentTime - pt.time > this->DecayingThreshold
+                                          : pt.time > currentTime;});
   }
 }
 
 //------------------------------------------------------------------------------
-void RollingGrid::BuildSubMapKdTree()
+void RollingGrid::EmptyAroundPoint(double distThreshold, const Eigen::Array3f& position)
 {
-  // Get all points from all voxels
-  this->SubMap = this->Get();
-  // Build the internal KD-Tree for fast NN queries in map
-  this->KdTree.Reset(this->SubMap);
+  // Extract the voxels around positions so distTreshold lays inside
+  Eigen::Array3f voxelGridOrigin = this->VoxelGridPosition - int(this->GridSize / 2) * this->VoxelWidth;
+  Eigen::Array3i voxelCoordOut = Utils::PositionToVoxel<Eigen::Array3f>(position, voxelGridOrigin, this->VoxelWidth);
+  // Shortcuts
+  int xPos = voxelCoordOut.x();
+  int yPos = voxelCoordOut.y();
+  int zPos = voxelCoordOut.z();
+  // Compute radius of voxels to examinate
+  int radius = 1 + distThreshold / this->VoxelWidth;
+  Eigen::Vector3f positionFloat = position.cast<float>();
+  for (int xIdx = std::max(xPos - radius, 0); xIdx <= std::min(xPos + radius, this->GridSize - 1); ++xIdx)
+  {
+    for (int yIdx = std::max(yPos - radius, 0); yIdx <= std::min(yPos + radius, this->GridSize - 1); ++yIdx)
+    {
+      for (int zIdx = std::max(zPos - radius, 0); zIdx <= std::min(zPos + radius, this->GridSize - 1); ++zIdx)
+      {
+        int voxIdx = this->To1d({xIdx, yIdx, zIdx}, this->GridSize);
+        if (this->Voxels.count(voxIdx))
+        {
+          this->Erase(voxIdx,
+                      [&](const Point& pt)
+                         {return (pt.getVector3fMap() - positionFloat).norm() < distThreshold;});
+        }
+      }
+    }
+  }
 }
 
 //------------------------------------------------------------------------------
-void RollingGrid::BuildSubMapKdTree(const Eigen::Array3f& minPoint, const Eigen::Array3f& maxPoint, int minNbPoints)
+void RollingGrid::Erase(int outVoxIdx, std::function<bool(const Point&)> heuristic)
+{
+  auto itVoxelsIn = this->Voxels[outVoxIdx].begin();
+  while(itVoxelsIn != this->Voxels[outVoxIdx].end())
+  {
+    // Shortcut to voxel
+    Voxel& voxel = itVoxelsIn->second;
+    // If voxel is removable and in sphere, remove it
+    if (!voxel.point.label && heuristic(itVoxelsIn->second.point))
+    {
+      itVoxelsIn = this->Voxels[outVoxIdx].erase(itVoxelsIn);
+      --this->NbPoints;
+    }
+    else
+      ++itVoxelsIn;
+  }
+  if (this->Voxels[outVoxIdx].empty())
+    this->Voxels.erase(outVoxIdx);
+}
+
+//------------------------------------------------------------------------------
+void RollingGrid::BuildSubMap()
+{
+  // Get all points from all voxels
+  this->SubMap = this->Get();
+}
+
+//------------------------------------------------------------------------------
+void RollingGrid::BuildSubMap(const Eigen::Array3f& minPoint, const Eigen::Array3f& maxPoint, int minNbPoints)
 {
   // Compute the position of the origin cell (0, 0, 0) of the grid
   Eigen::Array3f voxelGridOrigin = this->VoxelGridPosition - int(this->GridSize / 2) * this->VoxelWidth;
@@ -461,12 +496,10 @@ void RollingGrid::BuildSubMapKdTree(const Eigen::Array3f& minPoint, const Eigen:
 
   if (this->SubMap->empty())
     PRINT_WARNING("No intersecting voxels found with current scan");
-  // Build the internal KD-Tree for fast NN queries in sub-map
-  this->KdTree.Reset(this->SubMap);
 }
 
 //------------------------------------------------------------------------------
-void RollingGrid::BuildSubMapKdTree(const PointCloud& pc, int minNbPoints)
+void RollingGrid::BuildSubMap(const PointCloud& pc, int minNbPoints)
 {
   // Compute the position of the origin cell (0, 0, 0) of the grid
   Eigen::Array3f voxelGridOrigin = this->VoxelGridPosition - int(this->GridSize / 2) * this->VoxelWidth;
@@ -569,7 +602,20 @@ void RollingGrid::BuildSubMapKdTree(const PointCloud& pc, int minNbPoints)
 
   if (this->SubMap->empty())
     PRINT_WARNING("No intersecting voxels found with current scan");
-  // Build the internal KD-Tree for fast NN queries in sub-map
+}
+
+//------------------------------------------------------------------------------
+void RollingGrid::BuildKdTree(bool allPoints)
+{
+  if (allPoints)
+    this->SubMap = this->Get();
+
+  if (!this->SubMap)
+  {
+    PRINT_WARNING("RollingGrid: no submap, Kdtree cannot be built");
+    return;
+  }
+
   this->KdTree.Reset(this->SubMap);
 }
 

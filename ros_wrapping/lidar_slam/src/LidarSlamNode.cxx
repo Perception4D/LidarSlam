@@ -408,9 +408,10 @@ void LidarSlamNode::ImageCallback(const sensor_msgs::Image& imageMsg)
     image.Data = cvPtr->image;
     this->LidarSlam.AddCameraImage(image);
 
-    ROS_INFO_STREAM("Camera image added with time "
-                    << std::fixed << std::setprecision(9)
-                    << image.Time);
+    if (this->LidarSlam.GetVerbosity() >= 3)
+      ROS_INFO_STREAM("Camera image added with time "
+                      << std::fixed << std::setprecision(9)
+                      << image.Time);
 }
   #else
   static_cast<void>(imageMsg);
@@ -483,9 +484,10 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::PoseWithCovarianceStamp
   // Add pose measurement to measurements list
   this->LidarSlam.AddPoseMeasurement(poseMeas);
 
-  ROS_INFO_STREAM("External pose added with time "
-                    << std::fixed << std::setprecision(9)
-                    << poseMeas.Time);
+  if (this->LidarSlam.GetVerbosity() >= 3)
+    ROS_INFO_STREAM("External pose added with time "
+                      << std::fixed << std::setprecision(9)
+                      << poseMeas.Time);
 }
 
 //------------------------------------------------------------------------------
@@ -530,9 +532,10 @@ void LidarSlamNode::GpsCallback(const nav_msgs::Odometry& gpsMsg)
     this->GpsLastTime = ros::Time(this->LastGpsMeas.Time);
     this->GpsFrameId = gpsMsg.header.frame_id;
 
-    ROS_INFO_STREAM("GPS position added with time "
-                    << std::fixed << std::setprecision(9)
-                    << this->LastGpsMeas.Time);
+    if (this->LidarSlam.GetVerbosity() >= 3)
+      ROS_INFO_STREAM("GPS position added with time "
+                      << std::fixed << std::setprecision(9)
+                      << this->LastGpsMeas.Time);
   }
   else
     ROS_WARN_STREAM("The transform between the GPS and the tracking frame was not found -> GPS info ignored");
@@ -563,9 +566,10 @@ void LidarSlamNode::WheelOdomCallback(const std_msgs::Float64& odomMsg)
     measure.Distance = odomMsg.data;
     this->LidarSlam.AddWheelOdomMeasurement(measure);
 
-    ROS_INFO_STREAM("Wheel encoder measure added with time "
-                    << std::fixed << std::setprecision(9)
-                    << measure.Time);
+    if (this->LidarSlam.GetVerbosity() >= 3)
+      ROS_INFO_STREAM("Wheel encoder measure added with time "
+                      << std::fixed << std::setprecision(9)
+                      << measure.Time);
   }
 }
 
@@ -633,9 +637,10 @@ void LidarSlamNode::TagCallback(const apriltag_ros::AprilTagDetectionArray& tags
       // Add tag detection to measurements
       this->LidarSlam.AddLandmarkMeasurement(lm, id);
 
-      ROS_INFO_STREAM("Tag pose added with time "
-                      << std::fixed << std::setprecision(9)
-                      << lm.Time);
+      if (this->LidarSlam.GetVerbosity() >= 3)
+        ROS_INFO_STREAM("Tag pose added with time "
+                        << std::fixed << std::setprecision(9)
+                        << lm.Time);
 
       if (this->PublishTags)
       {
@@ -682,9 +687,10 @@ void LidarSlamNode::ImuCallback(const sensor_msgs::Imu& imuMsg)
     gravityMeasurement.Acceleration.z() = imuMsg.linear_acceleration.z;
     this->LidarSlam.AddGravityMeasurement(gravityMeasurement);
 
-    ROS_INFO_STREAM("Imu gravity data added with time "
-                    << std::fixed << std::setprecision(9)
-                    << gravityMeasurement.Time);
+    if (this->LidarSlam.GetVerbosity() >= 3)
+      ROS_INFO_STREAM("Imu gravity data added with time "
+                      << std::fixed << std::setprecision(9)
+                      << gravityMeasurement.Time);
   }
   else
     ROS_WARN_STREAM("The transform between the IMU and the tracking frame was not found -> IMU info ignored");
