@@ -8,7 +8,7 @@ No reference data nor dataset is supplied with this package for now. It is mainl
 **1. Create the reference data**
 
 ```bash
-ros2 launch lidar_slam_test slam.launch test_data:="path/to/rosbag" res_path:="path/to/folder/where/to/store/log/files"
+ros2 launch lidar_slam_test slam.py test_data:="path/to/rosbag" res_path:="path/to/folder/where/to/store/log/files"
 ```
 
 This creates 2 files : _path/to/folder/where/to/store/log/files/Poses.csv_ and _path/to/folder/where/to/store/log/files/Evaluators.csv_. The first file contains the 6D poses for each frame received. The second one contains some confidence estimators relative to each pose: the overlap, the number of matches and the computation time.
@@ -16,7 +16,7 @@ This creates 2 files : _path/to/folder/where/to/store/log/files/Poses.csv_ and _
 **2. Run a comparison**
 
 ```bash
-ros2 launch lidar_slam_test slam.launch test_data:="path/to/rosbag" ref_path:="path/to/reference/folder" res_path:="path/to/folder/where/to/store/log/files"
+ros2 launch lidar_slam_test slam.py test_data:="path/to/rosbag" ref_path:="path/to/reference/folder" res_path:="path/to/folder/where/to/store/log/files"
 ```
 
 Where _"path/to/reference/folder"_ refers to the previous log storage folder or to the new folder where the reference log data have been store.
