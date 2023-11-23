@@ -123,23 +123,14 @@ def generate_launch_description():
   params_lidar_slam_test["use_sim_time"]  = LaunchConfiguration("use_sim_time")
   params_lidar_slam_test["verbose"]       = LaunchConfiguration("verbose")
 
-  lidar_slam_test_req = Node(
+  lidar_slam_test = Node(
     name="test",
     package="lidar_slam_test",
     executable="lidar_slam_test_node",
     output="screen",
     parameters=[params_lidar_slam_test],
-    condition= LaunchConfigurationEquals('ref_path', ''),
-    on_exit=Shutdown(),
-  )
-
-  lidar_slam_test_not_req = Node(
-    name="test",
-    package="lidar_slam_test",
-    executable="lidar_slam_test_node",
-    output="screen",
-    parameters=[params_lidar_slam_test],
-    condition= LaunchConfigurationNotEquals('ref_path', ''),
+    on_exit=GroupAction([Shutdown()],
+                        condition=LaunchConfigurationNotEquals('ref_path', ''))
   )
 
   # LiDAR SLAM
@@ -189,31 +180,21 @@ def generate_launch_description():
   # Play bag
   # If comparison is required, end process when the reference is finished
   # If comparison is not required (simple evaluation), end process when the bag ends
-  rosbag_action_req = ExecuteProcess(
+  rosbag_action = ExecuteProcess(
     name='exec_rosbag',
     cmd=['ros2', 'bag', 'play', LaunchConfiguration("test_data"), '--clock', '-d', LaunchConfiguration("wait_init")],
     output= 'screen',
     log_cmd= True,
-    condition=LaunchConfigurationEquals('ref_path', ''),
-    on_exit= Shutdown()
-  )
-
-  rosbag_action_not_req = ExecuteProcess(
-    name='exec_rosbag',
-    cmd=['ros2', 'bag', 'play', LaunchConfiguration("test_data"), '--clock', '-d', LaunchConfiguration("wait_init")],
-    output= 'screen',
-    log_cmd= True,
-    condition=LaunchConfigurationNotEquals('ref_path', '')
+    on_exit=GroupAction([Shutdown()],
+                        condition=LaunchConfigurationEquals('ref_path', ''))
   )
 
   ld.add_action(velodyne_group)
   ld.add_action(velodyne_conversion_node)
-  ld.add_action(lidar_slam_test_req)
-  ld.add_action(lidar_slam_test_not_req)
+  ld.add_action(lidar_slam_test)
   ld.add_action(slam_outdoor_node)
   ld.add_action(slam_indoor_node)
   ld.add_action(tf_base_to_lidar)
-  ld.add_action(rosbag_action_req)
-  ld.add_action(rosbag_action_not_req)
+  ld.add_action(rosbag_action)
 
   return (ld)
