@@ -11,6 +11,7 @@ variables:
 stages:
   - superbuild
   - slam_lib
+  - ros2_wrapping_build
 
 # Windows specific configuration
 .windows_runner_config:
@@ -125,7 +126,7 @@ linux_build_superbuild:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
-    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_BRANCH == "feat/ROS2"
       when: always
   script:
     - cmake -E remove_directory $build_dir
@@ -175,3 +176,38 @@ windows_slam_lib:
   - .slam_lib
   variables:
     slam_cmake_option_PCL_DIR: "-DPCL_DIR=${SB_deps_install_path}/cmake"
+
+# ------------------------------------------------------------------------------
+#   Build ROS2 wrapping (on docker)
+# ------------------------------------------------------------------------------
+
+# Build ROS2 wrapping on linux
+linux_ros2_wrapping_build:
+  tags: [linux, ros]
+  stage: ros2_wrapping_build
+  needs: []
+  image: gitlab.kitware.com:4567/keu-computervision/slam:ros2_humble
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: always
+    - if: $CI_COMMIT_BRANCH == "feat/ROS2"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+  artifacts:
+      paths:
+        - ros2_ws
+      expire_in: "60 days"
+  script:
+    # Create a hidden ros2 workspace folder beside sources
+    # This is used to move all files from the current directory
+    - cmake -E make_directory .ros2_ws/src/slam
+    # Move sources to workspace
+    - mv * .ros2_ws/src/slam
+    # Convert to not hidden folder to be able to cache it for next jobs
+    - mv .ros2_ws ros2_ws
+    # Compile
+    - cd ros2_ws
+    - source /opt/ros/humble/setup.bash
+    - colcon build --base-paths src/slam/ros2_wrapping --cmake-args ${cmake_option_build_type}
+
