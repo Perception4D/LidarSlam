@@ -108,7 +108,7 @@ void SlamControlPanel::CreateLayout()
   auto saveTrajButton = new QPushButton;
   saveTrajButton->setText("Save trajectory");
   saveTrajButton->setToolTip("This will save the trajectory as a CSV type file\n"
-                             "with header <t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2>\n"
+                             "with header <index,t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2>\n"
                              "x,y,z being the position and \n"
                              "xi,yi,zi being an axis of the 3D frame \n"
                              "of the trajectory pose (ith column of the rotation).");
