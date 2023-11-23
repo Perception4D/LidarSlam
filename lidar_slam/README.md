@@ -15,6 +15,7 @@
       - [Online configuration](#online-configuration)
         - [Reset state](#reset-state)
         - [Map update modes](#map-update-modes)
+        - [Reset the trajectory](#reset-the-trajectory)
         - [Save the current trajectory](#save-the-current-trajectory)
         - [Save maps](#save-maps)
         - [Set pose](#set-pose)
@@ -223,8 +224,18 @@ Example :
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 9"
 ```
 
+##### Reset the trajectory
+You can reset the slam trajectory with a trajectory CSV file, the map will be updated with the new trajectory.
+This file should contain fields "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2" which represents the time and the transformation of a pose.
+
+Example:
+```bash
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 11, string_arg: path/to/slamTrajectory.csv}"
+```
+
 ##### Save the current trajectory
 At any time, the logged poses can be saved in a trajectory CSV file. This file contains several fields to represent the time and the transformation:
+* Index
 * Time (in seconds)
 * X
 * Y
@@ -273,7 +284,7 @@ This disables the sensor messages handling of the node.
 ##### Switch ON/OFF the external sensors
 At any time, the data reception can be enabled/disabled for any sensor using the command message :
 ```bash
-rostopic pub -1 /slam_command lidar_slam/SlamCommand "command: 25, string_arg: idSensor"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 25, string_arg: idSensor}"
 ```
 with idSensor being:
 * WHEEL_ENCODER : 0
@@ -351,6 +362,11 @@ Then trigger pose graph optimization when needed by clicking on `Optimize graph`
 ```bash
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 20"
 ```
+
+If loop closure indices are unknown, there are two ways to get them:
+* Publish a 3D point ([geometry_msgs::msg::PointStamped](https://docs.ros2.org/latest/api/geometry_msgs/msg/PointStamped.html)) on *clicked_point* topic, refering to a pose that forms a loop with the current position. This can be done in rviz, selecting `Publish point` and click on the pose.
+* Save current trajectory and map. Observe them in a visual tool. Then create a csv file of loop indices. In this way, you can added more than one loop.
+
 **NOTE** : You can save your slam trajectory before launch a pose graph optimization so that you can go back to states before PGO by re-setting slam trajectory.
 To save slam trajectory, you can click on `Save trajectory` button in rviz or you can use:
 ```bash
