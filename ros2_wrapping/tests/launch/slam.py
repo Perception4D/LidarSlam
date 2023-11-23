@@ -4,76 +4,116 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, Shutdown, ExecuteProcess
+from launch.actions import DeclareLaunchArgument, Shutdown, ExecuteProcess, GroupAction
 from launch.conditions import IfCondition, UnlessCondition, LaunchConfigurationEquals, LaunchConfigurationNotEquals
 from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
 
   lidar_slam_share_path = get_package_share_directory('lidar_slam')
+  lidar_conversion_share_path = get_package_share_directory('lidar_conversions')
 
   ###############
   ## ARGUMENTS ##
   ###############
   ld = LaunchDescription([
     # General args
-    DeclareLaunchArgument("test_data",    default_value="",      description="Path to the test data"),
-    DeclareLaunchArgument("res_path",     default_value="/tmp",  description="Path to the folder where to store the results"),
-    DeclareLaunchArgument("ref_path",     default_value="",      description="Path to the reference data folder for results comparison"),
-    DeclareLaunchArgument("outdoor",      default_value="true",  description="Decide which set of parameters to use"),
-    DeclareLaunchArgument("vlp16",        default_value="false", description="If true, start Velodyne VLP16 transform node."),
-    DeclareLaunchArgument("wait_init",    default_value="1",     description="Wait for test node initialization to replay data"),
-    DeclareLaunchArgument("use_sim_time", default_value="true", description="Sim Time, used when replaying rosbag files"),
+    DeclareLaunchArgument("test_data",       default_value="",      description="Path to the test data"),
+    DeclareLaunchArgument("res_path",        default_value="/tmp",  description="Path to the folder where to store the results"),
+    DeclareLaunchArgument("ref_path",        default_value="",      description="Path to the reference data folder for results comparison"),
+    DeclareLaunchArgument("wait_init",       default_value="1",     description="Wait for test node initialization to replay data"),
+    DeclareLaunchArgument("outdoor",         default_value="true",  description="Decide which set of parameters to use"),
+    DeclareLaunchArgument("use_sim_time",    default_value="true",  description="Sim Time, used when replaying rosbag files"),
+    DeclareLaunchArgument("velodyne_driver", default_value="false", description="If true, start Velodyne driver."),
+    DeclareLaunchArgument("verbose",         default_value="false", description="If true, print the difference with reference during the comparison"),
 
-  # LiDAR pointclouds conversions args. These are only used to generate
-  # approximate point-wise timestamps if 'time' field is not usable).
-  # These parameters should be set to the same values as ROS Velodyne driver's.
-  DeclareLaunchArgument("rpm", default_value="600.", description="Velodyne sensor spinning speed."),
-  DeclareLaunchArgument("timestamp_first_packet", default_value="false", description="If Velodyne timestamping is based on the first or last packet of each scan."),
-
+    # Velodyne arguments
+    DeclareLaunchArgument("calibration_file_path", default_value=os.path.join(get_package_share_directory('velodyne_pointcloud'), 'params', 'VLP16db.yaml'), description="calibration file path"),
+    DeclareLaunchArgument("model", default_value="VLP16", description="Model of Velodyne Lidar, choices are : VLP16 / 32C / VLS128"),
+    DeclareLaunchArgument("device_ip", default_value=""),
+    DeclareLaunchArgument("rpm",  default_value="600.0"),
+    DeclareLaunchArgument("port", default_value="2368"),
+    DeclareLaunchArgument("pcap", default_value=""),
   ])
 
   ##############
   ## Velodyne ##
   ##############
 
-  # Manualy override velodyne_convert_node parameters 
-  velodyne_pointcloud_share_path = get_package_share_directory('velodyne_pointcloud')
-  params_velod_pcl_path = os.path.join(velodyne_pointcloud_share_path, 'config', 'VLP16-velodyne_convert_node-params.yaml')
-  with open(params_velod_pcl_path, 'r') as f:
-      params_velod_pcl = yaml.safe_load(f)['velodyne_convert_node']['ros__parameters']
-  
-  params_velod_pcl['calibration']    = os.path.join(velodyne_pointcloud_share_path, 'params', 'VLP16db.yaml')
-  params_velod_pcl["min_range"]      = 0.4
-  params_velod_pcl["max_range"]      = 130.0
-  params_velod_pcl["organize_cloud"] = False
-  params_velod_pcl["target_frame"]   = ""
-  params_velod_pcl["fixed_frame"]    = ""
+  #! For now, velodyne packages are not ported on Windows 10
+  if os.name != 'nt':
+    # Manually override velodyne_driver_node parameters
+    params_driver_path = os.path.join(get_package_share_directory('velodyne_driver'), 'config', 'VLP16-velodyne_driver_node-params.yaml')
+    with open(params_driver_path, 'r') as f:
+      params_velod_driv = yaml.safe_load(f)['velodyne_driver_node']['ros__parameters']
 
-  # Convertion node
-  velodyne_pcl_node = Node(
-    package='velodyne_pointcloud', executable='velodyne_convert_node', output='both', name='velodyne_pcl_node',
-    parameters=[params_velod_pcl],
-    condition = IfCondition(LaunchConfiguration("vlp16"))
-  )
+    params_velod_driv['device_ip']    =  LaunchConfiguration('device_ip')
+    params_velod_driv["gps_time"]     = False
+    params_velod_driv["read_once"]    = True
+    params_velod_driv["read_fast"]    = False
+    params_velod_driv["repeat_delay"] = 0.0
+    params_velod_driv["frame_id"]     = "velodyne"
+    params_velod_driv["model"]        = LaunchConfiguration('model')
+    params_velod_driv["rpm"]          = LaunchConfiguration('rpm')
+    params_velod_driv["port"]         = LaunchConfiguration('port')
+    params_velod_driv["pcap"]         = LaunchConfiguration('pcap')
+    params_velod_driv["use_sim_time"] = False
+
+    # Manually override velodyne_convert_node parameters
+    velodyne_pointcloud_share_path = get_package_share_directory('velodyne_pointcloud')
+    params_velod_pcl_path = os.path.join(velodyne_pointcloud_share_path, 'config', 'VLP16-velodyne_transform_node-params.yaml')
+    with open(params_velod_pcl_path, 'r') as f:
+        params_velod_pcl = yaml.safe_load(f)['velodyne_transform_node']['ros__parameters']
+
+    params_velod_pcl['calibration']    = LaunchConfiguration('calibration_file_path')
+    params_velod_pcl["model"]          = LaunchConfiguration('model')
+    params_velod_pcl["min_range"]      = 0.4
+    params_velod_pcl["max_range"]      = 130.0
+    params_velod_pcl["organize_cloud"] = False
+    params_velod_pcl["target_frame"]   = ""
+    params_velod_pcl["fixed_frame"]    = ""
+    params_velod_pcl["use_sim_time"]   = LaunchConfiguration('use_sim_time')
+
+    velodyne_group = GroupAction(
+      actions=[
+        # Part 1
+        Node(
+          package='velodyne_driver',
+          executable='velodyne_driver_node',
+          name='velodyne_driver_node',
+          output='both',
+          parameters=[params_velod_driv]),
+        # Part 2
+        Node(
+          package='velodyne_pointcloud',
+          executable='velodyne_transform_node',
+          output='both',
+          name='velodyne_transform_node',
+          parameters=[params_velod_pcl])
+      ],
+      condition = IfCondition(LaunchConfiguration("velodyne_driver"))
+    )
 
   ##########
   ## Slam ##
   ##########
 
   # Velodyne points conversion
+  with open(os.path.join(lidar_conversion_share_path, 'params', "conversion_config.yaml"), 'r') as f:
+    params_conversion = yaml.safe_load(f)['/lidar_conversions']['ros__parameters']
+  params_conversion['use_sim_time'] = LaunchConfiguration("use_sim_time")
+
   velodyne_conversion_node = Node(
-    package="lidar_conversions", executable="velodyne_conversion_node", name="velodyne_conversion", output="screen",
-    parameters=[{
-      "use_sim_time": LaunchConfiguration("use_sim_time"),
-      "rpm": LaunchConfiguration("rpm"),
-      "timestamp_first_packet": LaunchConfiguration("timestamp_first_packet"),
-    }],
+    package="lidar_conversions",
+    executable="velodyne_conversion_node",
+    name="velodyne_conversion",
+    output="screen",
+    parameters=[params_conversion]
   )
 
   # Test : catch outputs and compare with reference
   # If comparison is required, end process when the reference is finished
-  # If comparison is not required, end process when the bag ends
+  # If comparison is not required (simple evaluation), end process when the bag ends
 
   with open(os.path.join(get_package_share_directory('lidar_slam_test'), "params/eval.yaml"), 'r') as f:
       params_lidar_slam_test = yaml.safe_load(f)['/lidar_slam_test']['ros__parameters']
@@ -81,21 +121,19 @@ def generate_launch_description():
   params_lidar_slam_test["res_path"]      = LaunchConfiguration("res_path")
   params_lidar_slam_test["ref_path"]      = LaunchConfiguration("ref_path")
   params_lidar_slam_test["use_sim_time"]  = LaunchConfiguration("use_sim_time")
+  params_lidar_slam_test["verbose"]       = LaunchConfiguration("verbose")
 
-  lidar_slam_test_req = Node(
-    name="test", package="lidar_slam_test", executable="lidar_slam_test_node", output="screen",
+  lidar_slam_test = Node(
+    name="test",
+    package="lidar_slam_test",
+    executable="lidar_slam_test_node",
+    output="screen",
     parameters=[params_lidar_slam_test],
-    condition= LaunchConfigurationEquals('ref_path', ''),
-    on_exit=Shutdown(),
+    on_exit=GroupAction([Shutdown()],
+                        condition=LaunchConfigurationNotEquals('ref_path', ''))
   )
 
-  lidar_slam_test_not_req = Node(
-    name="test", package="lidar_slam_test", executable="lidar_slam_test_node", output="screen",
-    parameters=[params_lidar_slam_test],
-    condition= LaunchConfigurationNotEquals('ref_path', ''),
-  )
-
-  # LiDAR SLAM : compute TF slam_init -> velodyne
+  # LiDAR SLAM
 
   # Outdoor Lidar Slam node
   with open(os.path.join(lidar_slam_share_path, 'params', "slam_config_outdoor.yaml"), 'r') as f:
@@ -104,9 +142,13 @@ def generate_launch_description():
   params_slam_out['use_sim_time'] = LaunchConfiguration("use_sim_time")
   params_slam_out['slam.verbosity'] = 0
 
-  slam_outdoor_node = Node(name="lidar_slam", package="lidar_slam", executable="lidar_slam_node", output="screen",
+  slam_outdoor_node = Node(
+    name="lidar_slam",
+    package="lidar_slam",
+    executable="lidar_slam_node",
+    output="screen",
     parameters=[params_slam_out],
-    condition=IfCondition(LaunchConfiguration("outdoor")),
+    condition=IfCondition(LaunchConfiguration("outdoor"))
   )
 
   # Indoor Lidar Slam node
@@ -116,46 +158,43 @@ def generate_launch_description():
   params_slam_in['use_sim_time'] = LaunchConfiguration("use_sim_time")
   params_slam_in['slam.verbosity'] = 0
 
-  slam_indoor_node = Node(name="lidar_slam", package="lidar_slam", executable="lidar_slam_node", output="screen",
+  slam_indoor_node = Node(
+    name="lidar_slam",
+    package="lidar_slam",
+    executable="lidar_slam_node",
+    output="screen",
     parameters=[params_slam_in],
-    condition= UnlessCondition(LaunchConfiguration("outdoor")),
+    condition= UnlessCondition(LaunchConfiguration("outdoor"))
   )
 
-  # Moving base coordinates systems description                                                 tf_FROM_to_TO
-  tf_base_to_lidar = Node( package="tf2_ros",executable="static_transform_publisher",name="tf_base_to_lidar",
+  # Moving base coordinates systems description
+  tf_base_to_lidar = Node(
+    package="tf2_ros",
+    executable="static_transform_publisher",
+    name="tf_base_to_lidar",
     #           X    Y    Z    rZ   rY   rX     FROM          TO
     arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'velodyne'],
-    parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')},],
+    parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')},]
   )
 
   # Play bag
   # If comparison is required, end process when the reference is finished
-  # If comparison is not required, end process when the bag ends
-  rosbag_action_req = ExecuteProcess(
-    name='test_rosbag',
+  # If comparison is not required (simple evaluation), end process when the bag ends
+  rosbag_action = ExecuteProcess(
+    name='exec_rosbag',
     cmd=['ros2', 'bag', 'play', LaunchConfiguration("test_data"), '--clock', '-d', LaunchConfiguration("wait_init")],
     output= 'screen',
     log_cmd= True,
-    condition=LaunchConfigurationEquals('ref_path', ''),
-    on_exit= Shutdown(),
+    on_exit=GroupAction([Shutdown()],
+                        condition=LaunchConfigurationEquals('ref_path', ''))
   )
 
-  rosbag_action_not_req = ExecuteProcess(
-    name='test_rosbag',
-    cmd=['ros2', 'bag', 'play', LaunchConfiguration("test_data"), '--clock', '-d', LaunchConfiguration("wait_init")],
-    output= 'screen',
-    log_cmd= True,
-    condition=LaunchConfigurationNotEquals('ref_path', ''),
-  )
-
-  ld.add_action(velodyne_pcl_node)
+  ld.add_action(velodyne_group)
   ld.add_action(velodyne_conversion_node)
-  ld.add_action(lidar_slam_test_req)
-  ld.add_action(lidar_slam_test_not_req)
+  ld.add_action(lidar_slam_test)
   ld.add_action(slam_outdoor_node)
   ld.add_action(slam_indoor_node)
   ld.add_action(tf_base_to_lidar)
-  ld.add_action(rosbag_action_req)
-  ld.add_action(rosbag_action_not_req)
+  ld.add_action(rosbag_action)
 
   return (ld)
