@@ -57,9 +57,6 @@ Architecture choices :
 Therefore, these are the detailed steps to add a test :
 1. Add a *testk* (for test #**k**) folder to the gitlab-runner/Testing/SLAM folder containing the new bag file on which to test the SLAM
 2. Add a COPY line to the Dockerfile for these new test data
-3. Build the new docker image on CI PC
-  ```
-  docker build -t slam-ros-noetic-perception path/to/new/DockerFile
-  ```
-4. Add a make_reference job with the *testk* variable and its specific parameters (vlp16, outdoor...)
+3. Build the new docker image, cf [ros2_humble/README.md](ros2_humble/README.md)
+4. Add a make_reference job with the *testk* variable and its specific parameters (velodyne_driver, outdoor...)
 5. Add a test job with the same config as the one used in reference creation

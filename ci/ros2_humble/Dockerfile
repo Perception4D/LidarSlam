@@ -1,11 +1,12 @@
-FROM osrf/ros:noetic-desktop-full
+FROM osrf/ros:humble-desktop-full
 LABEL maintainer="Arthur Bourbousson arthur.bourbousson@kitware.com"
 
 WORKDIR /tmp
 
+RUN apt update
+
 # Install Slam ROS dependencies
-RUN apt update && \
-    apt install -y ros-$ROS_DISTRO-geodesy ros-$ROS_DISTRO-gps-common
+RUN apt install -y ros-$ROS_DISTRO-velodyne
 
 # Install Slam dependencies
 COPY install_deps.sh install_deps.sh
@@ -20,6 +21,9 @@ RUN sh install_nanoflann.sh
 COPY install_g2o.sh install_g2o.sh
 RUN sh install_g2o.sh
 
+# Install gitlab CI utilities
+RUN apt install -y jq unzip
+
 # Graphic display on host
 RUN apt -y install libgl1-mesa-glx libgl1-mesa-dri
 
@@ -29,9 +33,7 @@ RUN rm -rf /var/lib/apt/lists/*
 # Testing data
 WORKDIR /usr/src/app
 # Dockerfile must be run in a folder containing all data folders (e.g test1, test2...)
-RUN mkdir -p ./data/test1
-RUN mkdir -p ./data/test2
-COPY ./test1/test1.bag ./data/test1
-COPY ./test2/test2.bag ./data/test2
+COPY ./test1 ./data/test1
+COPY ./test2 ./data/test2
 
 WORKDIR /root
