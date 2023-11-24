@@ -723,87 +723,64 @@ void LidarSlamNode::ClickedPointCallback(const geometry_msgs::msg::PointStamped&
 }
 
 //------------------------------------------------------------------------------
-std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& path,
-                                                             unsigned int nbFields,
-                                                             unsigned int nbHeaderLines)
+std::vector<std::string> LidarSlamNode::ParseSentence(std::string& currentLine,
+                                                      const std::string& delimiter)
 {
-  // Check the file
-  if (path.substr(path.find_last_of(".") + 1) != "csv")
-  {
-    RCLCPP_ERROR(this->get_logger(), "The file is not CSV! Cancel loading");
+  if (currentLine.empty())
     return {};
-  }
 
-  std::ifstream lmFile(path);
-  if (lmFile.fail())
+  // Remove the last character if the last character is not an alphabet or a number
+  if (!std::isalnum(currentLine.back()))
+    currentLine.pop_back();
+
+  // Remove potential extra spaces before and after the delimiter
+  // Change comma decimal separator to point.
+  auto extractWord = [&delimiter](const std::string& currentLine, unsigned int pos)
   {
-    RCLCPP_ERROR_STREAM(this->get_logger(), "The CSV file " << path << " was not found!");
-    return {};
-  }
+    unsigned int beginIdx = 0;
+    unsigned int endIdx = pos;
+    while (beginIdx < endIdx && currentLine[beginIdx] == ' ')
+      ++beginIdx;
+    while (endIdx - 1 > beginIdx && currentLine[endIdx - 1] == ' ')
+      --endIdx;
+    std::string word = currentLine.substr(beginIdx, endIdx - beginIdx);
+    size_t commaPos = 0;
+    if (delimiter != "," && (commaPos = word.find(",")) != std::string::npos)
+      word[commaPos] = '.';
+    return word;
+  };
 
-  // Check which delimiter is used
-  std::string lmStr;
-  std::string delimiter;
-  std::vector<std::string> fields;
-
-  // Get the first data line (after header)
-  for (int i = 0; i <= nbHeaderLines; ++i)
-    std::getline(lmFile, lmStr);
-
-  for (const auto& del : DELIMITERS)
+  size_t pos = 0;
+  std::vector<std::string> sentence;
+  while ((pos = currentLine.find(delimiter)) != std::string::npos)
   {
-    fields.clear();
-    size_t pos = 0;
-    std::string firstLine = lmStr;
-    pos = firstLine.find(del);
-    while (pos != std::string::npos)
-    {
-      fields.push_back(firstLine.substr(0, pos));
-      firstLine.erase(0, pos + del.length());
-      pos = firstLine.find(del);
-    }
-    // If there is some element after the last delimiter, add it
-    if (!firstLine.substr(0, pos).empty())
-      fields.push_back(firstLine.substr(0, pos));
-    // Check that the number of fields is correct
-    if (fields.size() == nbFields)
-    {
-      delimiter = del;
-      break;
-    }
+    sentence.emplace_back(extractWord(currentLine, pos));
+    currentLine.erase(0, pos + delimiter.length());
   }
-  if (fields.size() != nbFields)
-  {
-    RCLCPP_WARN_STREAM(this->get_logger(), "The CSV file is ill formed : " << fields.size() << " fields were found ("
-                                            << nbFields << " expected), the loading is cancelled");
-    return {};
-  }
+  sentence.emplace_back(extractWord(currentLine, currentLine.length()));
+  return sentence;
+}
 
+//------------------------------------------------------------------------------
+std::vector<std::vector<std::string>> LidarSlamNode::ParseCSV(const std::string& path,
+                                                              const unsigned int startLineIdx,
+                                                              const std::string& delimiter)
+{
+  // The check of csv file path should be done out of this function
+  // Get the first data line
+  std::ifstream csvFile(path);
+  std::string currentLine;
+  for (int i = 0; i <= startLineIdx; ++i)
+    std::getline(csvFile, currentLine);
+
+  int lineIdx = startLineIdx;
   std::vector<std::vector<std::string>> lines;
-
-  int lineIdx = nbHeaderLines;
   do
   {
-    size_t pos = 0;
-    std::vector<std::string> sentence;
-    while ((pos = lmStr.find(delimiter)) != std::string::npos)
-    {
-      // Remove potential extra spaces after the delimiter
-      unsigned int charIdx = 0;
-      while (charIdx < lmStr.size() && lmStr[charIdx] == ' ')
-        ++charIdx;
-      sentence.push_back(lmStr.substr(charIdx, pos));
-      lmStr.erase(0, pos + delimiter.length());
-    }
-    sentence.push_back(lmStr.substr(0, pos));
-    if (sentence.size() != nbFields)
-    {
-      RCLCPP_WARN_STREAM(this->get_logger(), "data on line " + std::to_string(lineIdx) + " of the CSV file is not correct -> Skip");
-      ++lineIdx;
-      continue;
-    }
+    std::vector<std::string> sentence = this->ParseSentence(currentLine, delimiter);
 
     // Check numerical values in the studied line
+    // If the studied line contains non numerical value, skip it
     bool numericalIssue = false;
     for (std::string field : sentence)
     {
@@ -819,24 +796,95 @@ std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& 
     }
     if (numericalIssue)
     {
-      RCLCPP_WARN_STREAM(this->get_logger(), "Data on line " + std::to_string(lineIdx) + " contains a not numerical value -> Skip");
+      RCLCPP_WARN_STREAM(this->get_logger(), "Data on line " << lineIdx << " contains a not numerical value -> Skip");
       ++lineIdx;
       continue;
     }
 
-    lines.push_back(sentence);
+    lines.emplace_back(sentence);
     ++lineIdx;
   }
-  while (std::getline(lmFile, lmStr));
+  while (std::getline(csvFile, currentLine));
 
-  lmFile.close();
+  return lines;
+}
+
+//------------------------------------------------------------------------------
+std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& path,
+                                                             const unsigned int nbHeaderLines,
+                                                             const unsigned int nbFields)
+{
+  // Check the file
+  if (path.substr(path.find_last_of(".") + 1) != "csv")
+  {
+    RCLCPP_ERROR(this->get_logger(), "The file is not CSV! Cancel loading");
+    return {};
+  }
+
+  std::ifstream csvFile(path);
+  if (csvFile.fail())
+  {
+    RCLCPP_ERROR_STREAM(this->get_logger(), "The CSV file " << path << " was not found!");
+    return {};
+  }
+
+  // Get the first data line (after header)
+  std::string firstLine;
+  for (int i = 0; i <= nbHeaderLines; ++i)
+    std::getline(csvFile, firstLine);
+  csvFile.close();
+
+  // Check which delimiter is used
+  std::string delimiter;
+  std::vector<std::string> fields;
+  for (const auto& del : DELIMITERS)
+  {
+    fields.clear();
+    size_t pos = 0;
+    pos = firstLine.find(del);
+    while (pos != std::string::npos)
+    {
+      fields.emplace_back(firstLine.substr(0, pos));
+      firstLine.erase(0, pos + del.length());
+      pos = firstLine.find(del);
+    }
+    // If there is some element after the last delimiter, add it
+    if (!firstLine.substr(0, pos).empty())
+      fields.emplace_back(firstLine.substr(0, pos));
+    // Check that the number of fields is correct
+    if (fields.size() == nbFields)
+    {
+      delimiter = del;
+      break;
+    }
+  }
+  if (fields.size() != nbFields)
+  {
+    RCLCPP_WARN_STREAM(this->get_logger(), "The CSV file is ill formed : " << fields.size() << " fields were found ("
+                                            << nbFields << " expected), the loading is cancelled");
+    return {};
+  }
+
+  // Get vector of numerical sentences from the csv file
+  auto lines = this->ParseCSV(path, nbHeaderLines, delimiter);
+
+  // Check field number for each sentence
+  auto itLine = lines.begin();
+  while (itLine != lines.end())
+  {
+    if (itLine->size() != nbFields)
+      lines.erase(itLine);
+    else
+      ++itLine;
+  }
+
   return lines;
 }
 
 //------------------------------------------------------------------------------
 std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
 {
-  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 13, 2);
+  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 2, 13);
   if (lines.empty())
   {
     RCLCPP_ERROR_STREAM(this->get_logger(), "Cannot read file :" << path << ", poses are not loaded");
@@ -844,9 +892,9 @@ std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
   }
 
   // Get frame ID
-  std::ifstream lmFile(path);
+  std::ifstream poseFile(path);
   std::string frameID;
-  std::getline(lmFile, frameID);
+  std::getline(poseFile, frameID);
   for (const auto& del : DELIMITERS)
   {
     if (frameID.find(del) != std::string::npos)
@@ -899,7 +947,7 @@ std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
 //------------------------------------------------------------------------------
 void LidarSlamNode::ReadTags(const std::string& path)
 {
-  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 43, 1);
+  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 1, 43);
   for (auto& l : lines)
   {
     // Build measurement
@@ -924,7 +972,7 @@ void LidarSlamNode::ReadTags(const std::string& path)
 //------------------------------------------------------------------------------
 void LidarSlamNode::ReadLoopIndices(const std::string& path)
 {
-  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 2, 1);
+  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 1, 2);
   if (lines.empty())
   {
     const std::list<LidarSlam::LidarState>& lidarStates = this->LidarSlam.GetLogStates();
