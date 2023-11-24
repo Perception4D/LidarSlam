@@ -964,6 +964,22 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       break;
     }
 
+    // Reset slam trajectory and update map
+    case lidar_slam::msg::SlamCommand::RESET_TRAJECTORY:
+    {
+      if (msg.string_arg.empty())
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "No path is specified, the trajectory cannot be reset");
+        break;;
+      }
+      this->ReadPoses(msg.string_arg, true);
+
+      this->LidarSlam.ClearLoopDetections();
+      RCLCPP_INFO_STREAM(this->get_logger(), "Loop indices are cleared");
+
+      break;
+    }
+
     // Reset the SLAM internal state.
     case lidar_slam::msg::SlamCommand::RESET_SLAM:
     {
@@ -984,7 +1000,8 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       this->SlamEnabled = !this->SlamEnabled;
       break;
     }
-   // Save current trajectory tracking base frame
+
+    // Save current trajectory tracking base frame
     case lidar_slam::msg::SlamCommand::SAVE_TRAJECTORY:
     {
       if (msg.string_arg.empty())
@@ -1139,6 +1156,11 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
 
     case lidar_slam::msg::SlamCommand::LOAD_LOOP_INDICES:
     {
+      if (!this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE))
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "Loop closure constraint is disabled: loading loop indices is cancelled");
+        break;
+      }
       // Clear current LoopDetections vector
       this->LidarSlam.ClearLoopDetections();
       if (!msg.string_arg.empty())
@@ -1218,17 +1240,6 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       RCLCPP_INFO_STREAM(this->get_logger(), "Calibration estimated to :\n" << calibration.matrix());
       // Clean the pose manager in the SLAM
       this->LidarSlam.ResetSensor(true, LidarSlam::ExternalSensor::POSE);
-      break;
-    }
-
-    case lidar_slam::msg::SlamCommand::RESET_TRAJECTORY:
-    {
-      if (msg.string_arg.empty())
-      {
-        RCLCPP_ERROR_STREAM(this->get_logger(), "No path is specified, the trajectory cannot be reset");
-        break;;
-      }
-      this->ReadPoses(msg.string_arg, true);
       break;
     }
 
