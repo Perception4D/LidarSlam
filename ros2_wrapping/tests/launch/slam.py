@@ -4,7 +4,7 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, Shutdown, ExecuteProcess, GroupAction
+from launch.actions import DeclareLaunchArgument, Shutdown, ExecuteProcess, GroupAction, SetEnvironmentVariable
 from launch.conditions import IfCondition, UnlessCondition, LaunchConfigurationEquals, LaunchConfigurationNotEquals
 from launch.substitutions import LaunchConfiguration
 
@@ -26,6 +26,8 @@ def generate_launch_description():
     DeclareLaunchArgument("use_sim_time",    default_value="true",  description="Sim Time, used when replaying rosbag files"),
     DeclareLaunchArgument("velodyne_driver", default_value="false", description="If true, start Velodyne driver."),
     DeclareLaunchArgument("verbose",         default_value="false", description="If true, print the difference with reference during the comparison"),
+    DeclareLaunchArgument("domain_id", default_value="0", description="Set to different value to avoid interference when several computers running ROS2 on the same network."),
+    SetEnvironmentVariable(name='ROS_DOMAIN_ID',value=LaunchConfiguration('domain_id')),
 
     # Velodyne arguments
     DeclareLaunchArgument("calibration_file_path", default_value=os.path.join(get_package_share_directory('velodyne_pointcloud'), 'params', 'VLP16db.yaml'), description="calibration file path"),

@@ -11,6 +11,8 @@ variables:
 stages:
   - superbuild
   - slam_lib
+  - ros2_wrapping_build
+  - ros2_test
 
 # Windows specific configuration
 .windows_runner_config:
@@ -56,9 +58,8 @@ clean_superbuild:
   variables:
     build_dir: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_SB"
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: manual
-    - if: $CI_COMMIT_BRANCH == "master"
+    # Can be launched only from the web interface
+    - if: $CI_PIPELINE_SOURCE == "web"
       when: manual
   script:
     - cmake -E remove_directory $build_dir
@@ -70,9 +71,8 @@ clean_superbuild:
   variables:
     build_dir: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_SB"
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: manual
-    - if: $CI_COMMIT_BRANCH == "master"
+    # Can be launched only from the web interface
+    - if: $CI_PIPELINE_SOURCE == "web"
       when: manual
   script:
     - cmake -E make_directory $build_dir
@@ -127,7 +127,7 @@ linux_build_superbuild:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
-    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_BRANCH == "feat/ROS2"
       when: always
   script:
     - cmake -E remove_directory $build_dir
@@ -177,3 +177,103 @@ windows_slam_lib:
   - .slam_lib
   variables:
     slam_cmake_option_PCL_DIR: "-DPCL_DIR=${SB_deps_install_path}/cmake"
+
+# ------------------------------------------------------------------------------
+#   Build ROS2 wrapping (on docker)
+# ------------------------------------------------------------------------------
+
+# Build ROS2 wrapping on linux
+linux_ros2_wrapping_build:
+  tags: [linux, ros]
+  stage: ros2_wrapping_build
+  needs: []
+  image: gitlab.kitware.com:4567/keu-computervision/slam:ros2_humble
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: always
+    - if: $CI_COMMIT_BRANCH == "feat/ROS2"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+  artifacts:
+      paths:
+        - ros2_ws
+      expire_in: "60 days"
+  script:
+    # Create a hidden ros2 workspace folder beside sources
+    # This is used to move all files from the current directory
+    - cmake -E make_directory .ros2_ws/src/slam
+    # Move sources to workspace
+    - mv * .ros2_ws/src/slam
+    # Convert to not hidden folder to be able to cache it for next jobs
+    - mv .ros2_ws ros2_ws
+    # Compile
+    - cd ros2_ws
+    - source /opt/ros/humble/setup.bash
+    - colcon build --base-paths src/slam/ros2_wrapping --cmake-args ${cmake_option_build_type}
+
+# ------------------------------------------------------------------------------
+#   Perform ROS tests (on docker)
+# ------------------------------------------------------------------------------
+
+# Create a reference for any test from feat/ROS2 branch
+.ros2_make_reference:
+  stage: ros2_test
+  tags: [linux, ros]
+  needs: [linux_ros2_wrapping_build]
+  image: gitlab.kitware.com:4567/keu-computervision/slam:ros2_humble
+  variables:
+    GIT_STRATEGY: none
+    PATH_REFERENCE_LOG: "test_log/${test_name}/reference"
+  artifacts:
+    paths:
+    - "ros2_ws/$PATH_REFERENCE_LOG"
+    expire_in: "60 days"
+  rules:
+    # Allow to manually create a reference for feat/ROS2 from the web interface
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "feat/ROS2"
+      when: manual
+    - if: $CI_COMMIT_BRANCH == "feat/ROS2"
+      when: always
+  script:
+    - cd ros2_ws
+    - echo "Creating reference log files for $test_name for next lib improvements"
+    - cmake -E make_directory "$PATH_REFERENCE_LOG"
+    - source install/setup.bash
+
+    - echo "ros2 launch lidar_slam_test slam.py
+      test_data:=${data_folder}/${test_name}
+      outdoor:=$outdoor
+      velodyne_driver:=$velodyne_driver
+      wait_init:=$wait_init
+      res_path:=${PWD}/${PATH_REFERENCE_LOG}
+      2>&1
+      | grep comparison ignored"
+    
+    - ros2 launch lidar_slam_test slam.py
+      test_data:="${data_folder}/${test_name}"
+      outdoor:=$outdoor
+      velodyne_driver:=$velodyne_driver
+      wait_init:=$wait_init
+      res_path:=${PWD}/${PATH_REFERENCE_LOG}
+      2>&1
+      | grep "comparison ignored"
+
+# Create a reference for test1 from feat/ROS2 branch
+ros2_make_reference1:
+  extends: .ros2_make_reference
+  variables:
+    test_name: "test1"
+    outdoor: "true"
+    velodyne_driver: "false"
+    wait_init: "2" # To have time to init the process
+
+# Create a reference for test2 from feat/ROS2 branch
+ros2_make_reference2:
+  extends: .ros2_make_reference
+  variables:
+    test_name: "test2"
+    outdoor: "false"
+    velodyne_driver: "true"
+    wait_init: "4" # To have time to init the process
+
