@@ -355,6 +355,11 @@ void RollingGrid::ClearPoints(double currentTime, bool clearOldPoints)
                 [&](const Point& pt)
                    {return clearOldPoints ? currentTime - pt.time > this->DecayingThreshold
                                           : pt.time > currentTime;});
+    // Remove empty outer voxels
+    if (itVoxelsOut->second.empty())
+      itVoxelsOut = this->Voxels.erase(itVoxelsOut);
+    else
+      ++itVoxelsOut;
   }
 }
 
@@ -383,6 +388,8 @@ void RollingGrid::EmptyAroundPoint(double distThreshold, const Eigen::Array3f& p
           this->Erase(voxIdx,
                       [&](const Point& pt)
                          {return (pt.getVector3fMap() - positionFloat).norm() < distThreshold;});
+          if (this->Voxels[voxIdx].empty())
+            this->Voxels.erase(voxIdx);
         }
       }
     }
@@ -406,8 +413,6 @@ void RollingGrid::Erase(int outVoxIdx, std::function<bool(const Point&)> heurist
     else
       ++itVoxelsIn;
   }
-  if (this->Voxels[outVoxIdx].empty())
-    this->Voxels.erase(outVoxIdx);
 }
 
 //------------------------------------------------------------------------------
