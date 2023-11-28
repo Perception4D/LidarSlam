@@ -983,6 +983,9 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
         break;
       }
       this->ReadPoses(msg.string_arg, true);
+
+      if (this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE))
+        this->LidarSlam.ClearLoopDetections();
       break;
     }
 
@@ -1157,6 +1160,11 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
 
     case lidar_slam::SlamCommand::LOAD_LOOP_INDICES:
     {
+      if (!this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE))
+      {
+        ROS_ERROR_STREAM("Loop closure constraint is disabled: loading loop indices is cancelled");
+        break;
+      }
       // Clear current LoopDetections vector
       this->LidarSlam.ClearLoopDetections();
       if (!msg.string_arg.empty())

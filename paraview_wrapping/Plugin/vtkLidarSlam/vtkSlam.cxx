@@ -1031,6 +1031,9 @@ void vtkSlam::SetTrajectory(const std::string& fileName)
   for (auto const& state: lidarStates)
     this->AddPoseToTrajectory(state);
 
+  // Clear loop detections
+  this->ClearLoopDetections();
+
   // Refresh view
   this->ParametersModificationTime.Modified();
 }
