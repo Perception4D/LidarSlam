@@ -14,6 +14,7 @@
       - [Online configuration](#online-configuration)
         - [Reset state](#reset-state)
         - [Map update modes](#map-update-modes)
+        - [Reset the trajectory](#reset-the-trajectory)
         - [Save the current trajectory](#save-the-current-trajectory)
         - [Save maps](#save-maps)
         - [Set pose](#set-pose)
@@ -181,8 +182,18 @@ Example :
 rostopic pub -1 /slam_command lidar_slam/SlamCommand "command: 9"
 ```
 
+##### Reset the trajectory
+You can reset the slam trajectory with a trajectory CSV file, the map will be updated with the new trajectory.
+This file should contain fields "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2" which represents the time and the transformation of a pose. If there are extra fields in the csv file, they will not make trouble. 
+
+Example:
+```bash
+rostopic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 11, string_arg: path/to/slamTrajectory.csv}"
+```
+
 ##### Save the current trajectory
 At any time, the logged poses can be saved in a trajectory CSV file. This file contains several fields to represent the time and the transformation:
+* Index
 * Time (in seconds)
 * X
 * Y
@@ -311,8 +322,9 @@ Then, trigger pose graph optimization when needed by clicking on `Optimize graph
 rostopic pub -1 /slam_command lidar_slam/SlamCommand "command: 20"  # Trigger PGO
 ```
 
-If loop closure indices are unknown, you can:
+If loop closure indices are unknown, there are two ways to get them:
 * Publish a 3D point ([geometry_msgs::PointStamped](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/PointStamped.html)) on *clicked_point* topic, refering to a pose that forms a loop with the current position. This can be done in rviz, selecting `Publish point` and click on the pose.
+* Save current trajectory and map. Observe them in a visual tool. Then create a csv file of loop indices. In this way, you can added more than one loop.
 
 **NOTE** : You can save your slam trajectory before launch a pose graph optimization so that you can go back to states before PGO by re-setting slam trajectory.
 To save slam trajectory, you can click on `Save trajectory` button in rviz or you can use:
