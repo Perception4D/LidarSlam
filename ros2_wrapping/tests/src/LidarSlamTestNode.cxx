@@ -246,7 +246,7 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::msg::Odometry& poseMsg)
   }
 
   // Save the pose in a file
-  double time = poseMsg.header.stamp.sec + poseMsg.header.stamp.nanosec * 10e-9;
+  double time = poseMsg.header.stamp.sec + poseMsg.header.stamp.nanosec * 1e-9;
   Eigen::Isometry3d transform = Utils::PoseMsgToIsometry(poseMsg.pose.pose);
   Eigen::Vector6d pose = Utils::IsometryToXYZRPY(transform);
 
@@ -343,7 +343,7 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::msg::Odometry& poseMsg)
 void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::msg::Confidence& confidenceMsg)
 {
   // Log the confidence values
-  double time = confidenceMsg.header.stamp.sec + confidenceMsg.header.stamp.nanosec * 10e-9;
+  double time = confidenceMsg.header.stamp.sec + confidenceMsg.header.stamp.nanosec * 1e-9;
   float overlap = confidenceMsg.overlap;
   float nbMatches = confidenceMsg.nb_matches;
   float computationTime = confidenceMsg.computation_time;
