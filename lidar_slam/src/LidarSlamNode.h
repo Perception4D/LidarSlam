@@ -223,6 +223,18 @@ protected:
 
   //----------------------------------------------------------------------------
   /*!
+   * @brief Get and fill a vector of sentences (sentence = vector of strings)
+   *        provided in a csv file.
+   *        The delimiters can be "," ";" " " "/t"
+   *        Check whether or not all fields in fieldsToCheck exist in the file and
+   *        return data in the same order
+   */
+  std::vector<std::vector<std::string>> ReadCSV(const std::string& path,
+                                                const unsigned int nbHeaderLines,
+                                                const std::vector<std::string>& fieldsToCheck);
+
+  //----------------------------------------------------------------------------
+  /*!
    * @brief Helper to get and fill landmarks managers with absolute pose information
    *        provided in a csv file.
    *        The fields of the file must be : idx, x, y, z, roll, pitch, yaw, cov0, ..., cov35
