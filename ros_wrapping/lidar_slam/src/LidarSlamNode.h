@@ -240,10 +240,11 @@ protected:
   void ReadTags(const std::string& path);
   //----------------------------------------------------------------------------
   /*!
-   * @brief Helper to get and store pose measurements
-   *        provided in a csv file.
-   *        The fields of the file must be : time, x, y, z, rot(0,0), rot(1,0), rot(2,0), ..., rot(3, 3)
-   *        /!\ order matters
+   * @brief Helper to get and store pose measurements provided in a csv file.
+   *        The function looks for the required fields in the csv file to read data
+   *        The file must contain the fields : t, x, y, z, x0, y0, z0, ..., z2
+   *        which correspond to the term : time, x, y, z, rot(0,0), rot(1,0), rot(2,0), ..., rot(3, 3)
+   *        /!\ fields names matter since this function looks for these fields to read data
    */
   std::string ReadPoses(const std::string& path, bool resetTraj = false);
   //----------------------------------------------------------------------------

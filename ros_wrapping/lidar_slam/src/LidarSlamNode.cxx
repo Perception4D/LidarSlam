@@ -1005,7 +1005,10 @@ std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& 
 //------------------------------------------------------------------------------
 std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
 {
-  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 2, 13);
+
+  std::vector<std::string> fieldsToCheck{"t","x","y","z","x0","y0","z0",
+                                         "x1","y1","z1","x2","y2","z2"};
+  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 2, fieldsToCheck);
   if (lines.empty())
   {
     ROS_ERROR_STREAM("Cannot read file :" << path << ", poses are not loaded");
