@@ -191,15 +191,32 @@ protected:
 
   //----------------------------------------------------------------------------
   /*!
+   * @brief Helper to parse a line of stream into a vector of string (sentence)
+   *        with a given delimiter
+   */
+  std::vector<std::string> ParseSentence(std::string& currentLine,
+                                         const std::string& delimiter);
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Helper to get and fill a vector of sentences (sentence = vector of strings)
+   *        given csv file path and the delimiter
+   *        startLineIdx indicates from which line the csv data stream is started
+   */
+  std::vector<std::vector<std::string>> ParseCSV(const std::string& path,
+                                                 const unsigned int startLineIdx,
+                                                 const std::string& delimiter);
+
+  //----------------------------------------------------------------------------
+  /*!
    * @brief Get and fill a vector of sentences (sentence = vector of strings)
    *        provided in a csv file.
    *        The delimiters can be "," ";" " " "/t"
    *        /!\ the order of fields matters
-   *        A header line can be added but won't be used to fill each sentence
    */
   std::vector<std::vector<std::string>> ReadCSV(const std::string& path,
-                                                unsigned int nbFields,
-                                                unsigned int nbHeaderLines);
+                                                const unsigned int nbHeaderLines,
+                                                const unsigned int nbFields);
 
   //----------------------------------------------------------------------------
   /*!
