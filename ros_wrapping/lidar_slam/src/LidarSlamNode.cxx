@@ -1057,9 +1057,9 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       ROS_INFO_STREAM("Saving current trajectory of base frame as " << msg.string_arg);
       std::ofstream fout(msg.string_arg);
       fout << this->TrackingFrameId << "\n";
-      fout << "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
+      fout << "index,t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
       for (auto& s : states)
-        fout << s;
+        fout << s.Index << "," << s;
       fout.close();
       break;
     }
