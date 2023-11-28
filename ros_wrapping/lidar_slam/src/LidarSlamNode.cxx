@@ -881,6 +881,128 @@ std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& 
 }
 
 //------------------------------------------------------------------------------
+std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& path,
+                                                             const unsigned int nbHeaderLines,
+                                                             const std::vector<std::string>& fieldsToCheck)
+{
+  if (fieldsToCheck.empty())
+  {
+    ROS_ERROR_STREAM("There is no field to check! Cancel loading csv file!");
+    return {};
+  }
+
+  // Check the file
+  if (path.substr(path.find_last_of(".") + 1) != "csv")
+  {
+    ROS_ERROR_STREAM("The file is not CSV! Cancel loading");
+    return {};
+  }
+  std::ifstream csvFile(path);
+  if (csvFile.fail())
+  {
+    ROS_ERROR_STREAM("The CSV file " << path << " was not found!");
+    return {};
+  }
+
+  // Find the delimiter
+  // In the header line, find the position of a field of vector fieldsToCheck
+  // Examine the left and the right of a field in the fieldToCheck to find the delimiter
+  std::string headerLine;
+  for (int i = 0; i < nbHeaderLines; ++i)
+    std::getline(csvFile, headerLine);
+  csvFile.close();
+  // Find the real position of a field where the field is not included in a word
+  const std::string& field = fieldsToCheck[0];
+  size_t pos = headerLine.find(field);
+  while (pos != std::string::npos &&
+         ((pos > 0 && std::isalnum(headerLine[pos - 1])) ||
+          (pos < headerLine.length() - field.length() && std::isalnum(headerLine[pos + field.length()]))))
+  {
+    pos = headerLine.find(field, pos + field.length());
+  }
+  if (pos == std::string::npos)
+  {
+    ROS_WARN_STREAM("The CSV file is ill formed : " << fieldsToCheck[0] << " field is not found,"
+                    << " the loading is cancelled");
+    return {};
+  }
+
+  // Helper to check delimiter to the left or to the right
+  auto checkSide = [](const std::string &header, size_t newPos, bool isLeftSide) -> std::string
+  {
+    std::string sideStr = header.substr(newPos, 1);
+    if (sideStr == " ")
+    {
+      // If the character is a space, check for consecutive spaces
+      size_t consecutiveSpaces = isLeftSide ?  header.find_last_not_of(" ", newPos)
+                                 : header.find_first_not_of(" ", newPos);
+      if (consecutiveSpaces == std::string::npos || std::isalnum(header[consecutiveSpaces]))
+        return sideStr;
+      else if (consecutiveSpaces != std::string::npos &&
+                std::find(DELIMITERS.begin(), DELIMITERS.end(), header.substr(consecutiveSpaces, 1)) != DELIMITERS.end())
+        return header.substr(consecutiveSpaces, 1);
+    }
+    else if (std::find(DELIMITERS.begin(), DELIMITERS.end(), sideStr) != DELIMITERS.end())
+    {
+      return sideStr;
+    }
+    return "";
+  };
+  // Check the character to the left
+  std::string delimiter = "";
+  if (pos > 0)
+  {
+    std::string leftDelimiter = checkSide(headerLine, pos - 1, true);
+    if (!leftDelimiter.empty())
+      delimiter = leftDelimiter;
+  }
+  // Check the character to the right if the delimiter is not found at the left
+  if (delimiter.empty() && (pos + field.length() < headerLine.length() - field.length()))
+  {
+    std::string rightDelimiter = checkSide(headerLine, pos + field.length(), false);
+    if (!rightDelimiter.empty())
+      delimiter = rightDelimiter;
+  }
+  if (delimiter.empty())
+  {
+    ROS_WARN_STREAM("The CSV file is ill formed :  the delimiter is not found,"
+                    << " the loading is cancelled");
+    return {};
+  }
+
+  // Check fields and store their position indices
+  std::vector<std::string> headerFields = this->ParseSentence(headerLine, delimiter);
+  std::vector<int> fieldsIdx;
+  fieldsIdx.reserve(fieldsToCheck.size());
+  for (const auto& field : fieldsToCheck)
+  {
+    auto itField = std::find(headerFields.begin(), headerFields.end(), field);
+    if (itField == headerFields.end())
+    {
+      ROS_WARN_STREAM("The CSV file is ill formed : " << field << " field is not found,"
+                      << " the loading is cancelled");
+      return {};
+    }
+    fieldsIdx.push_back(itField - headerFields.begin());
+  }
+
+  // Get vector of sentences
+  auto lines = this->ParseCSV(path, nbHeaderLines, delimiter);
+  // Reorder lines
+  for (int col = 0; col < fieldsIdx.size(); col++)
+  {
+    int swapId = std::find(fieldsIdx.begin(), fieldsIdx.end(), col) - fieldsIdx.begin();
+    for (int row = 0; row < lines.size(); row++)
+    {
+      std::swap(lines[row][col], lines[row][fieldsIdx.at(col)]);
+    }
+    std::swap(fieldsIdx[col], fieldsIdx[swapId]);
+  }
+
+  return lines;
+}
+
+//------------------------------------------------------------------------------
 std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
 {
   std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 2, 13);
