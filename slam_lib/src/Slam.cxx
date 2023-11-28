@@ -1949,11 +1949,17 @@ void Slam::ClearLoopDetections()
 //-----------------------------------------------------------------------------
 std::list<LidarState>::iterator Slam::GetKeyStateIterator(const unsigned int& frameIdx)
 {
+  // Edge cases, should be well processed outside of this function
+  if (this->LogStates.empty() || this->LogStates.size() == 1)
+    return this->LogStates.begin();
+
   // Get the first state iterator whose index is greater than frameIdx
   auto itState = std::upper_bound(this->LogStates.begin(),
                                   this->LogStates.end(),
                                   frameIdx,
                                   [&](unsigned int idx, const LidarState& state) {return idx < state.Index;});
+  if (itState == this->LogStates.end() && std::prev(itState)->Index == frameIdx)
+    return std::prev(itState);
   if (itState == this->LogStates.end() || itState == this->LogStates.begin())
   {
     PRINT_ERROR("The frame index #" << frameIdx << " is not in the range of Logstates.");
