@@ -441,6 +441,9 @@ public:
   std::vector<LidarState> GetLastStates(double freq = -1);
   LidarState GetLastState() {return this->GetLastStates().front();};
 
+  // Get the logged state which is the closest to the input position
+  std::list<LidarState>::const_iterator GetClosestState(const Eigen::Vector3d& position) const;
+
   // ---------------------------------------------------------------------------
   //   Graph parameters
   // ---------------------------------------------------------------------------
@@ -1413,7 +1416,7 @@ private:
   // in the trajectory when interpolating
   int GetTrajSection(double time) const;
 
-  // Get the state logged which is the closest to the input time
+  // Get the logged state which is the closest to the input time
   std::list<LidarState>::const_iterator GetClosestState(double time) const;
 
   // Get a window of states around an iterator
