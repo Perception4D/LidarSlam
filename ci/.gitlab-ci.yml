@@ -249,7 +249,8 @@ linux_ros2_wrapping_build:
       res_path:=${PWD}/${PATH_REFERENCE_LOG}"
 
     - echo "$ROS2_COMMAND"
-    - $ROS2_COMMAND 2>&1 | grep "comparison ignored"
+    - $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - grep "comparison ignored" /tmp/test_log.txt
 
 # Perform test
 .ros2_test:
@@ -302,7 +303,8 @@ linux_ros2_wrapping_build:
       res_path:=${PWD}/${PATH_RESULT_LOG}"
 
     - echo "$ROS2_COMMAND"
-    - $ROS2_COMMAND 2>&1 | grep "Test successfully passed"
+    - $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - grep "Test successfully passed" /tmp/test_log.txt
 
 # Create a reference for test1 from feat/ROS2 branch
 ros2_make_reference1:
