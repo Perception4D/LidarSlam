@@ -62,6 +62,9 @@ public:
   GetMacro(PatchSize, int)
   SetMacro(PatchSize, int)
 
+  GetMacro(SamplingDSSKE, LidarSlam::SamplingModeDSSKE)
+  SetMacro(SamplingDSSKE, LidarSlam::SamplingModeDSSKE)
+
   // Extract keypoints from the pointcloud. The key points
   // will be separated in two classes : Edges keypoints which
   // correspond to area with high curvature scan lines and
@@ -114,17 +117,20 @@ private:
   void AddKeypoint(const Keypoint& k, const LidarPoint &pt) override;
 
   // Create square division of the image using 2 dimensions
-  void CreatePatchGrid(std::function<bool(const std::shared_ptr<PtFeat>&)> isPtFeatValid);
+  void Create2DGrid(std::function<bool(const std::shared_ptr<PtFeat>&)> isPtFeatValid);
 
-  // Clear patch grid and reset the number of points in the grid
+  // Create cubic division of the pointcloud using 3 dimensions
+  void Create3DGrid(std::function<bool(const std::shared_ptr<PtFeat>&)> isPtFeatValid);
+
+  // Clear grid and reset the number of points in the grid
   // To be called at each keypoint computation (in ComputeEdges, ComputePlanes, etc.))
-  void ClearPatchGrid();
+  void ClearGrid();
 
   // Add keypoints of type k to a keypoint pointcloud
   // Using patches to have a uniform distribution of keypoints
-  void AddKptsUsingPatchGrid(Keypoint k,
-                             std::function<bool(const std::shared_ptr<PtFeat>&,
-                                                const std::shared_ptr<PtFeat>&)> comparePtFeats);
+  void AddKptsUsingGrid(Keypoint k,
+                        std::function<bool(const std::shared_ptr<PtFeat>&,
+                                           const std::shared_ptr<PtFeat>&)> comparePtFeats);
 
   // ---------------------------------------------------------------------------
   //   Parameters
@@ -136,6 +142,9 @@ private:
 
   // Sharpness threshold to select an edge keypoint
   float EdgeCosAngleThreshold = -0.5; // ~cos(120°) (selected, if cos angle is more than threshold)
+
+  // Downsampling mode
+  SamplingModeDSSKE SamplingDSSKE = SamplingModeDSSKE::PATCH;
 
   // Size of a patch (nb of points in one dimension, a patch is a square)
   // Patches are used for 2D grid construction to downsample the keypoints
@@ -159,8 +168,8 @@ private:
   // Vertex Map of points' indices in the pointcloud
   std::vector<std::vector<std::shared_ptr<PtFeat>>> VertexMap;
 
-  // Patch grid used to downsample the keypoints to reduce global computation time
-  std::unordered_map<int, std::vector<std::shared_ptr<PtFeat>>> PatchGrid;
+  // Grid (voxel or patch grid) used to downsample the keypoints
+  std::unordered_map<int, std::vector<std::shared_ptr<PtFeat>>> Grid;
 
   // Struct to store the number of points in each voxel/patch of the used grid;
   int NbPointsInGrid;

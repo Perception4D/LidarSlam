@@ -1749,6 +1749,25 @@ void LidarSlamNode::SetSlamParameters()
     }
   };
 
+  auto setSamplingMode = [this](auto& dsske,
+                                const std::string& prefix,
+                                const std::string& message = "")
+  {
+    int samplingMode;
+    if (this->PrivNh.getParam(prefix + "downsampling/sampling_mode", samplingMode))
+    {
+      LidarSlam::SamplingModeDSSKE sampling = static_cast<LidarSlam::SamplingModeDSSKE>(samplingMode);
+      if (sampling != LidarSlam::SamplingModeDSSKE::PATCH &&
+          sampling != LidarSlam::SamplingModeDSSKE::VOXEL)
+      {
+        ROS_ERROR_STREAM("Invalid DSSKE sampling mode (" << samplingMode << ")"
+                         << message << ". Setting it to 'PATCH'.");
+        sampling = LidarSlam::SamplingModeDSSKE::PATCH;
+      }
+      dsske->SetSamplingDSSKE(sampling);
+    }
+  };
+
   auto initKeypointsExtractor = [this](auto& ke, const std::string& prefix)
   {
     #define SetKeypointsExtractorParam(type, rosParam, keParam) {type val; if (this->PrivNh.getParam(rosParam, val)) ke->Set##keParam(val);}
@@ -1822,10 +1841,12 @@ void LidarSlamNode::SetSlamParameters()
     else
     {
       auto dsske = std::make_shared<LidarSlam::DenseSpinningSensorKeypointExtractor>();
-      // Set specific parameter for DSSKE
+      // Set specific parameters for DSSKE
       int patchSize;
       if (this->PrivNh.getParam(prefix + "downsampling/patch_size", patchSize))
         dsske->SetPatchSize(patchSize);
+      deviceIds.size() == 1 ? setSamplingMode(dsske, prefix)
+                            : setSamplingMode(dsske, prefix, " for LiDAR device " + deviceId);
       ke = dsske;
     }
 

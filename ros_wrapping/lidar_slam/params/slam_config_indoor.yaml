@@ -403,8 +403,11 @@ slam:
     downsampling:
       max_points: 1000                 # [points] Maximum number of keypoints of each type to extract.
       voxel_grid_resolution: 1.        # [m/voxel] Size of a voxel to downsample the extracted keypoints.
-      # Additional parameter for the dense extractor (DSSKE)
+      # Additional parameters for the dense extractor (DSSKE)
       patch_size: 32                   # [nb] Size of a patch. It will contain at much patch_size*patch_size keypoints candidates.
+      sampling_mode: 0                 # {0, 1} Sampling mode for keypoint extraction :
+                                       # 0) Patch mode --> for a 2D grid built on the vertex map.
+                                       # 1) Voxel mode --> for a 3D grid built on the scan cloud, use voxel_grid_resolution common to SSKE.
 
     # # Multi LiDAR inputs
     # # The multiple devices to use for SLAM.
@@ -444,8 +447,11 @@ slam:
     #   downsampling:
     #     max_points: 1000                 # [points] Maximum number of keypoints of each type to extract.
     #     voxel_grid_resolution: 0.5       # [m/voxel] Size of a voxel to downsample the extracted keypoints.
-    #     # Additional parameter for the dense extractor (DSSKE)
+    #     # Additional parameters for the dense extractor (DSSKE)
     #     patch_size: 32                   # [nb] Size of a patch. It will contain at much patch_size*patch_size keypoints candidates.
+    #     sampling_mode: 0                 # {0, 1} Sampling mode for keypoint extraction :
+    #                                      # 0) Patch mode --> for a 2D grid built on the vertex map.
+    #                                      # 1) Voxel mode --> for a 3D grid built on the scan cloud, use voxel_grid_resolution common to SSKE.
     # device_lidar_frame_1:
     #   # The extractor modes allow to decide which keypoint extractor to choose
     #   # 0) Sparse extractor called SpinningSensorKeypointExtractor. Convenient for all lidars.
@@ -477,5 +483,8 @@ slam:
     #   downsampling:
     #     max_points: 1000                 # [points] Maximum number of keypoints of each type to extract.
     #     voxel_grid_resolution: 0.5       # [m/voxel] Size of a voxel to downsample the extracted keypoints.
-    #     # Additional parameter for the dense extractor (DSSKE)
+    #     # Additional parameters for the dense extractor (DSSKE)
     #     patch_size: 32                   # [nb] Size of a patch. It will contain at much patch_size*patch_size keypoints candidates.
+    #     sampling_mode: 0                 # {0, 1} Sampling mode for keypoint extraction :
+    #                                      # 0) Patch mode --> for a 2D grid built on the vertex map.
+    #                                      # 1) Voxel mode --> for a 3D grid built on the scan cloud, use voxel_grid_resolution common to SSKE.
