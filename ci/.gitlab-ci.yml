@@ -241,23 +241,15 @@ linux_ros2_wrapping_build:
     - cmake -E make_directory "$PATH_REFERENCE_LOG"
     - source install/setup.bash
 
-    - echo "ros2 launch lidar_slam_test slam.py
+    - ROS2_COMMAND="ros2 launch lidar_slam_test slam.py
       test_data:=${data_folder}/${test_name}
       outdoor:=$outdoor
       velodyne_driver:=$velodyne_driver
       wait_init:=$wait_init
-      res_path:=${PWD}/${PATH_REFERENCE_LOG}
-      2>&1
-      | grep comparison ignored"
-    
-    - ros2 launch lidar_slam_test slam.py
-      test_data:="${data_folder}/${test_name}"
-      outdoor:=$outdoor
-      velodyne_driver:=$velodyne_driver
-      wait_init:=$wait_init
-      res_path:=${PWD}/${PATH_REFERENCE_LOG}
-      2>&1
-      | grep "comparison ignored"
+      res_path:=${PWD}/${PATH_REFERENCE_LOG}"
+
+    - echo "$ROS2_COMMAND"
+    - $ROS2_COMMAND 2>&1 | grep "comparison ignored"
 
 # Perform test
 .ros2_test:
@@ -301,25 +293,16 @@ linux_ros2_wrapping_build:
     - cmake -E make_directory "$PATH_RESULT_LOG"
     - source install/setup.bash
 
-    - echo "ros2 launch lidar_slam_test slam.py
+    - ROS2_COMMAND="ros2 launch lidar_slam_test slam.py
       test_data:=${data_folder}/${test_name}
       outdoor:=$outdoor
       velodyne_driver:=$velodyne_driver
       wait_init:=$wait_init
       ref_path:=${PWD}/${PATH_REFERENCE_LOG}
-      res_path:=${PWD}/${PATH_RESULT_LOG}
-      2>&1
-      | grep Test successfully passed"
+      res_path:=${PWD}/${PATH_RESULT_LOG}"
 
-    - ros2 launch lidar_slam_test slam.py
-      test_data:="${data_folder}/${test_name}"
-      outdoor:=$outdoor
-      velodyne_driver:=$velodyne_driver
-      wait_init:=$wait_init
-      ref_path:="${PWD}/${PATH_REFERENCE_LOG}"
-      res_path:="${PWD}/${PATH_RESULT_LOG}"
-      2>&1
-      | grep "Test successfully passed"
+    - echo "$ROS2_COMMAND"
+    - $ROS2_COMMAND 2>&1 | grep "Test successfully passed"
 
 # Create a reference for test1 from feat/ROS2 branch
 ros2_make_reference1:
