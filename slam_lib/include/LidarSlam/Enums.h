@@ -157,6 +157,21 @@ enum class MappingMode
 };
 
 //------------------------------------------------------------------------------
+//! How to downsample for DSSKE
+enum class SamplingModeDSSKE
+{
+  //! Use 2D downsampling to extract keypoints
+  //! The grid is built using the VertexMap (like patches of an image)
+  PATCH = 0,
+
+  //! Use 3D downsampling to extract keypoints
+  //! The grid is built using the original Scan cloud (like voxel grid in SSKE)
+  VOXEL = 1,
+
+  nbSamplingModes = 2
+};
+
+//------------------------------------------------------------------------------
 //! How to downsample the map
 // A voxel grid is used and various downsampling modes
 // are possible to select the remaining point in each voxel
