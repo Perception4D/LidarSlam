@@ -39,7 +39,7 @@ VelodyneToLidarNode::VelodyneToLidarNode(std::string node_name, const rclcpp::No
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
   // Init ROS subscriber
-  this->Listener = this->create_subscription<Pcl2_msg>("velodyne_points", 1,
+  this->Listener = this->create_subscription<Pcl2_msg>("velodyne_points", 2,
                                             std::bind(&VelodyneToLidarNode::Callback, this, std::placeholders::_1));
 
   // Init ROS service

@@ -40,7 +40,7 @@ GenericConversionNode::GenericConversionNode(std::string node_name, const rclcpp
   this->Talker = this->create_publisher<Pcl2_msg>("lidar_points", 1);
 
   // Init ROS subscriber
-  this->Listener = this->create_subscription<Pcl2_msg>("/generic_points", 1,
+  this->Listener = this->create_subscription<Pcl2_msg>("/generic_points", 2,
                                         std::bind(&GenericConversionNode::Callback, this, std::placeholders::_1));
 
   // Init ROS service
