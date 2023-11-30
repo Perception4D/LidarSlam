@@ -36,7 +36,7 @@ LivoxToLidarNode::LivoxToLidarNode(std::string node_name, const rclcpp::NodeOpti
 
   // Init ROS subscriber
   if (this->IsPcl2)
-    this->Pcl2Listener = this->create_subscription<Pcl2_msg>("livox/lidar", 1,
+    this->Pcl2Listener = this->create_subscription<Pcl2_msg>("livox/lidar", 2,
                                               std::bind(&LivoxToLidarNode::PointCloud2Callback, this, std::placeholders::_1));
   else
     this->LivoxMsgListener = this->create_subscription<LivoxCustomMsg>("livox/lidar", 1,
