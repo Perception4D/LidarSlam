@@ -826,7 +826,8 @@ Eigen::Isometry3d PoseManager::GetPose(double time)
 }
 
 // ---------------------------------------------------------------------------
-int PoseManager::ComputeEquivalentTrajectory(const std::list<LidarState>& states, std::vector<PoseMeasurement>& poseMeasurements)
+int PoseManager::ComputeEquivalentTrajectory(const std::list<LidarState>& states,
+                                             std::vector<PoseMeasurement>& poseMeasurements)
 {
   poseMeasurements.resize(states.size());
   int idxPose = 0;
