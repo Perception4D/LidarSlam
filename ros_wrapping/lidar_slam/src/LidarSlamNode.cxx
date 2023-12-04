@@ -484,8 +484,8 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::PoseWithCovarianceStamp
 
   if (this->LidarSlam.GetVerbosity() >= 3)
     ROS_INFO_STREAM("External pose added with time "
-                      << std::fixed << std::setprecision(9)
-                      << poseMeas.Time);
+                    << std::fixed << std::setprecision(9)
+                    << poseMeas.Time);
 }
 
 //------------------------------------------------------------------------------
