@@ -855,7 +855,8 @@ int PoseManager::ComputeEquivalentTrajectory(const std::list<LidarState>& states
 }
 
 // ---------------------------------------------------------------------------
-bool PoseManager::ComputeCalibration(const std::list<LidarState>& states, double leverArm,
+bool PoseManager::ComputeCalibration(const std::list<LidarState>& states,
+                                     int window, double leverArm,
                                      bool reset, bool planarTrajectory)
 {
   if (reset)
@@ -879,10 +880,6 @@ bool PoseManager::ComputeCalibration(const std::list<LidarState>& states, double
   auto itStart = states.begin();
   std::advance(itStart, startIdxPose);
 
-  // Store the reference frames
-  Eigen::Isometry3d refSLAMInv = itStart->Isometry.inverse();
-  Eigen::Isometry3d refPoseManagerInv = poseMeasurements[startIdxPose].Pose.inverse();
-
   // Create solver
   // Note: to use shared pointers the ownership must be let to them
   ceres::Problem::Options options;
@@ -901,9 +898,24 @@ bool PoseManager::ComputeCalibration(const std::list<LidarState>& states, double
   Eigen::Vector7d calibXYZQuat;
   calibXYZQuat << 0, 0, 0, 0, 0, 0, 1;
   int idxPose = startIdxPose;
+
   for (auto it = itStart; it != states.end(); ++it)
   {
+    // Update current external pose
     PoseMeasurement& synchMeas = poseMeasurements[idxPose];
+    // Reset the reference
+    // to get rid of drift in both trajectories
+    // 1. Init ref index/iterator
+    auto itRef = it;
+    int idxPoseRef = idxPose;
+    // 2. Move ref index/iterator
+    while ((idxPose - idxPoseRef) < window && itRef != itStart)
+    {
+      --itRef;
+      --idxPoseRef;
+    }
+
+    // Update external pose index
     ++idxPose;
 
     if (std::abs(synchMeas.Time - it->Time) > 1e-6)
@@ -913,8 +925,8 @@ bool PoseManager::ComputeCalibration(const std::list<LidarState>& states, double
     // 1. Relative poses constraint
     residuals.emplace_back(CeresTools::Residual());
     CeresTools::Residual& resMotion = residuals.back();
-    resMotion.Cost = CeresCostFunctions::CalibPosesResidual::Create(refPoseManagerInv * synchMeas.Pose,
-                                                                    refSLAMInv        * it->Isometry);
+    resMotion.Cost = CeresCostFunctions::CalibPosesResidual::Create(poseMeasurements[idxPoseRef].Pose.inverse() * synchMeas.Pose,
+                                                                    itRef->Isometry.inverse() * it->Isometry);
     auto* robustifier = new ceres::TukeyLoss(this->SaturationDistance);
     #if (CERES_VERSION_MAJOR < 2)
       resMotion.Robustifier.reset(new ceres::ScaledLoss(robustifier, 2.0, ceres::TAKE_OWNERSHIP)); // ownership because of shared pointer use
@@ -966,6 +978,7 @@ bool PoseManager::ComputeCalibration(const std::list<LidarState>& states, double
   // So we remove the translation on this direction to get rid of numerical issues
   if (planarTrajectory)
   {
+    Eigen::Isometry3d refSLAMInv = itStart->Isometry.inverse();
     // Compute direction of less translation variance (eq. normal)
     pcl::PointCloud<pcl::PointXYZ> positions;
     for (auto it = itStart; it != states.end(); ++it)
