@@ -95,14 +95,16 @@
       </IntVectorProperty>
 
       <Property name="Rebuild maps"
-                command="RebuildMaps">
+                command="RebuildMaps"
+                panel_visibility="advanced">
         <Documentation>
           Rebuild maps and refresh the view.
         </Documentation>
       </Property>
 
       <Property name="Clear maps"
-                command="ClearMaps">
+                command="ClearMaps"
+                panel_visibility="advanced">
         <Documentation>
           Clear the actual maps and the logged keypoints
         </Documentation>
@@ -114,8 +116,7 @@
       <IntVectorProperty name="Planar trajectory"
                          command="SetPlanarTrajectory"
                          number_of_elements="1"
-                         default_values="0"
-                         panel_visibility="advanced">
+                         default_values="0">
         <BooleanDomain name="bool" />
         <Hints>
           <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="External sensors data file" value="" />
@@ -137,8 +138,7 @@
       <StringVectorProperty name="External sensors data file"
                             command="SetSensorData"
                             number_of_elements="1"
-                            animateable="0"
-                            panel_visibility="advanced">
+                            animateable="0">
         <FileListDomain name="files"/>
         <Hints>
           <FileChooser extensions="csv" file_description="csv file format" />
@@ -300,7 +300,8 @@
       <IntVectorProperty name="Advanced return mode"
                          command="SetAdvancedReturnMode"
                          number_of_elements="1"
-                         default_values="0">
+                         default_values="0"
+                         panel_visibility="advanced">
         <BooleanDomain name="bool" />
         <Documentation>
           If advanced return mode is enabled, extra arrays are added to the
