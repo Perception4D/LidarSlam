@@ -658,14 +658,14 @@ bool vtkSlam::GetCalibrationMatrix(const std::string& fileName, Eigen::Isometry3
   if (fin.is_open())
   {
     // Parse elements
-    int i = 0;
-    while (fin.good() && i < 16)
+    int idxElement = 0;
+    while (fin.good() && idxElement < 16)
     {
       std::string elementString;
       fin >> elementString;
       try
       {
-        calibration.matrix()(i) = std::stof(elementString);
+        calibration.matrix()(idxElement) = std::stof(elementString);
       }
       catch (...)
       {
@@ -674,7 +674,14 @@ bool vtkSlam::GetCalibrationMatrix(const std::string& fileName, Eigen::Isometry3
         calibration = Eigen::Isometry3d::Identity();
         return false;
       }
-      ++i;
+      ++idxElement;
+    }
+    if (idxElement < 16)
+    {
+        vtkWarningMacro(<< "Calibration file not well formed"
+                        << " -> calibration is set to identity");
+        calibration = Eigen::Isometry3d::Identity();
+        return false;
     }
     calibration.matrix().transposeInPlace();
   }
