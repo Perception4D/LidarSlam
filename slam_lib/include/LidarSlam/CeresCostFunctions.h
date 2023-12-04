@@ -35,7 +35,7 @@
 #define RESIDUAL_FACTORY(Type, ResidualSize, ...) \
   template<typename ...Args> \
   static std::shared_ptr<ceres::CostFunction> Create(Args&& ...args) \
-  { return std::make_shared<ceres::AutoDiffCostFunction<Type, ResidualSize, __VA_ARGS__>>(new Type(args...));}
+  {return std::make_shared<ceres::AutoDiffCostFunction<Type, ResidualSize, __VA_ARGS__>>(new Type(args...));}
 
 
 namespace LidarSlam
@@ -714,8 +714,9 @@ private:
  */
 struct CalibPosesResidual
 {
-  CalibPosesResidual(const Eigen::Isometry3d& pose1, const Eigen::Isometry3d& pose2)
-              : Pose1Isometry(pose1)
+  CalibPosesResidual(const Eigen::Isometry3d& pose1,
+                     const Eigen::Isometry3d& pose2)
+                    : Pose1Isometry(pose1)
   {
     this->Pose2.head<3>() = pose2.translation();
     Eigen::Quaterniond quat(pose2.linear());
