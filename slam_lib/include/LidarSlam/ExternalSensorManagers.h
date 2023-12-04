@@ -219,7 +219,10 @@ public:
     this->ResetResidual();
     std::lock_guard<std::mutex> lock(this->Mtx);
     if (resetMeas)
+    {
       this->Measures.clear();
+      this->Calibration = Eigen::Isometry3d::Identity();
+    }
     this->PreviousIt = this->Measures.begin();
     this->ClosestIt  = this->Measures.begin();
   }

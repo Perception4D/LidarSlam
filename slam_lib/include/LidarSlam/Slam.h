@@ -283,8 +283,10 @@ public:
   // Initialization
   Slam();
   // Reset internal state : maps and trajectory are cleared,
-  // current pose is set back to origin and the external sensor data are emptied.
-  // This keeps parameters unchanged.
+  // current pose is set back to origin
+  // Mind the behavior of the external sensors' Reset
+  // Calibration is notably reset
+  // This keeps all parameters unchanged
   void Reset(bool resetLog = true);
 
   // Init map with default values
