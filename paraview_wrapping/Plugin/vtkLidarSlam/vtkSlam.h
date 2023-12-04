@@ -182,12 +182,16 @@ public:
 
   // Set measurements to Slam algo
   virtual void SetSensorData(const std::string& fileName);
+  virtual void Calibrate();
 
   vtkGetMacro(TrajFrequency, double)
   vtkSetMacro(TrajFrequency, double)
 
   vtkGetMacro(PlanarTrajectory, bool)
-  void SetPlanarTrajectory(bool planarTraj);
+  vtkSetMacro(PlanarTrajectory, bool)
+
+  vtkGetMacro(LeverArm, double)
+  vtkSetMacro(LeverArm, double)
 
   // ---------------------------------------------------------------------------
   //   Graph parameters
@@ -661,17 +665,27 @@ private:
   // Output trajectory require frequency (Hz)
   double TrajFrequency = -1;
 
-  // Boolean used in calibration with external poses
-  // to precise if the the trajectory was planar (one degree of liberty missing)
+  // Boolean used in calibration process with external poses to precise if
+  // the trajectory was planar (one degree of liberty is missing)
   // so we consider there is no lever arm in world z direction
   // This might be the case for vehicle acquisitions
   // If the boolean is set to false and the trajectory is planar
   // A big translation uncertainty might be added, leading to numerical unstability
   bool PlanarTrajectory = false;
 
-  // Boolean to store the fact that a calibration has been supplied
-  // with external sensors info (used in recalibration)
-  bool CalibrationSupplied = false;
+  // When determining the calibration, a hint about the lever arm can be supplied
+  // This allows to restrict the search to 5 variable elements
+  // instead of 6 and allows to use less complex trajectories
+  // The lever arm is the distance between the SLAM tracked
+  // frame position and the external sensor frame position
+  double LeverArm = -1.;
+
+  // Number of poses for which to compute
+  // the relative poses on which the calibration is sought
+  // This window allows to reduce the drift effect on both trajectories
+  // A too tight window can lead to numerical side effects
+  // /!\ No interface has been done for simplicity
+  int CalibrationWindow = 5;
 };
 
 #endif // VTK_SLAM_H
