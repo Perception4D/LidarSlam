@@ -729,7 +729,7 @@ void vtkSlam::SetSensorData(const std::string& fileName)
   // Process wheel odometer data
   if (Utils::CheckTableFields(csvTable, {"odom"}))
   {
-    // this->SlamAlgo->SetWheelOdomCalibration(base2Sensor); // TODO : use calibration in SLAM process
+    this->SlamAlgo->SetWheelOdomCalibration(base2Sensor);
     auto arrayOdom = csvTable->GetRowData()->GetArray("odom");
     for (vtkIdType i = 0; i < arrayTime->GetNumberOfTuples(); ++i)
     {
@@ -789,7 +789,7 @@ void vtkSlam::SetSensorData(const std::string& fileName)
   #else
   if (Utils::CheckTableFields(csvTable, {"acc_x", "acc_y", "acc_z"}))
   {
-    // this->SlamAlgo->SetGravityCalibration(base2Sensor); // TODO : use calibration in SLAM process
+    this->SlamAlgo->SetGravityCalibration(base2Sensor);
   #endif
     auto arrayAccX = csvTable->GetRowData()->GetArray("acc_x");
     auto arrayAccY = csvTable->GetRowData()->GetArray("acc_y");
