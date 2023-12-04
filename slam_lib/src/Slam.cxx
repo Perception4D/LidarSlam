@@ -1982,6 +1982,11 @@ std::list<LidarState>::iterator Slam::GetKeyStateIterator(const unsigned int& fr
 bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, std::list<LidarState>::iterator& itRevisitedState)
 {
   #ifdef USE_TEASERPP
+  if (this->LogStates.size() < 2)
+  {
+    PRINT_WARNING("Cannot detect loop closure: no enough logged states");
+    return false;
+  }
   // Create query submap and get keypoints in BASE coordinates
   Maps querySubMaps;
   this->InitSubMaps(querySubMaps);
