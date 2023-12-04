@@ -696,7 +696,7 @@ public:
 
   // Find the calibration offset between the base frame and the frame tracked by the external poses
   // The two trajectories can be represented in different global frames
-  bool CalibrateWithExtPoses(bool reset = false, bool planarTrajectory = false);
+  bool CalibrateWithExtPoses(double leverArm = -1., bool reset = false, bool planarTrajectory = false);
 
   Eigen::Isometry3d GetPoseCalibration() const;
   void SetPoseCalibration(const Eigen::Isometry3d& calib);

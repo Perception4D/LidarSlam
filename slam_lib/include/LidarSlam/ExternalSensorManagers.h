@@ -716,7 +716,8 @@ public:
                                   std::vector<PoseMeasurement>& poseMeasurements);
 
   // Compute calibration using the poses and the SLAM trajectory
-  bool ComputeCalibration(const std::list<LidarState>& states, bool reset = false, bool planarTrajectory = false);
+  bool ComputeCalibration(const std::list<LidarState>& states, double leverArm = -1.,
+                          bool reset = false, bool planarTrajectory = false);
 
   // Compute offset between the referential
   // of external poses and the referential
