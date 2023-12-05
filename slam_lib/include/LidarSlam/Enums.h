@@ -102,6 +102,19 @@ enum class EgoMotionMode
   EXTERNAL_OR_MOTION_EXTRAPOLATION = 5
 };
 
+enum KeypointExtractorMode
+{
+  //! Extract keypoints using SpinningSensorKeypointExtractor, convenient for all lidars.
+  SPARSE = 0,
+
+  //! Extract keypoints using DenseSpinningSensorKeypointExtractor, better option for lidars with 64 and 128 lasers.
+  DENSE = 1,
+
+  nbKeypointExtractorModes = 2
+};
+
+static const std::map<KeypointExtractorMode, std::string> KeypointExtractorModeNames = { {SPARSE, "sparse"}, {DENSE, "dense"} };
+
 //------------------------------------------------------------------------------
 namespace Interpolation
 {

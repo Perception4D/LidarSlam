@@ -1,9 +1,7 @@
 //==============================================================================
-// Copyright 2018-2020 Kitware, Inc., Kitware SAS
-// Author: Guilbert Pierre (Kitware SAS)
-//         Laurenson Nick (Kitware SAS)
-//         Cadart Nicolas (Kitware SAS)
-// Creation date: 2018-03-27
+// Copyright 2022 Kitware, Inc., Kitware SAS
+// Author: Jeanne Faure (Kitware SAS)
+// Creation date: 2023-10-12
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,29 +18,20 @@
 
 #pragma once
 
-#include "LidarSlam/LidarPoint.h"
-#include "LidarSlam/Enums.h"
-#include "LidarSlam/VoxelGrid.h"
+#include "Utilities.h"
+#include "LidarPoint.h"
+#include "Enums.h"
 #include "KeypointExtractor.h"
-
-#include <pcl/point_cloud.h>
-
 #include <unordered_map>
-#include <map>
-#include <bitset>
-#include <map>
 
 #define SetMacro(name,type) void Set##name (type _arg) { name = _arg; }
 #define GetMacro(name,type) type Get##name () const { return name; }
 
 namespace LidarSlam
 {
-class SpinningSensorKeypointExtractor : public KeypointExtractor
+class DenseSpinningSensorKeypointExtractor : public KeypointExtractor
 {
 public:
-  GetMacro(VoxelResolution, float)
-  SetMacro(VoxelResolution, float)
-
   // Extract keypoints from the pointcloud. The key points
   // will be separated in two classes : Edges keypoints which
   // correspond to area with high curvature scan lines and
@@ -56,18 +45,8 @@ public:
   std::unordered_map<std::string, std::vector<float>> GetDebugArray() const override;
 
 private:
-
-  // Split the whole pointcloud into separate laser ring clouds,
-  // sorted by their vertical angles.
-  // This expects that the lowest/bottom laser ring is 0, and is increasing upward.
-  void ConvertAndSortScanLines();
-
-  // Reset all the features vectors and keypoints clouds
-  void PrepareDataForNextFrame();
-
-  // Compute the curvature and other features within each the scan line.
-  // The curvature is not the one of the surface that intersects the lines but
-  // the 1D curvature within each isolated scan line.
+  // Compute the curvature features within each scan line : depth
+  // space gap, intensity gap and line angle
   void ComputeCurvature() override;
 
   // Labelize points (unvalid, edge, plane)
@@ -77,49 +56,26 @@ private:
   void ComputeEdges() override;
   void ComputeIntensityEdges() override;
 
-  // Add point to the voxel grid
+  // Add point to keypoint structure
   void AddKeypoint(const Keypoint& k, const LidarPoint &pt) override;
 
   // Add all keypoints of the type k that comply with the threshold criteria for these values
   // The threshold can be a minimum or maximum value (threshIsMax)
   // The weight basis allow to weight the keypoint depending on its certainty
-  void AddKptsUsingCriterion (Keypoint k,
-                              const std::vector<std::vector<float>>& values,
-                              float threshold,
-                              bool threshIsMax = true,
-                              double weightBasis = 1.);
-
-  // Helper to get the pointcloud of the scan line of index i
-  // i being a continuous index from 0 to nbScanlines (not equivalent to laser_id)
-  PointCloud::Ptr GetScanlineCloud(unsigned int i);
+  void AddKptsUsingCriterion (Keypoint k);
 
   // ---------------------------------------------------------------------------
   //   Parameters
   // ---------------------------------------------------------------------------
 
-  // Size of a voxel used to downsample the keypoints
-  // It corresponds approx to the mean distance between closest neighbors in the output keypoints cloud.
-  float VoxelResolution = 0.1; // [m]
+  //TODO
 
   // ---------------------------------------------------------------------------
   //   Internal variables
   // ---------------------------------------------------------------------------
 
-  //! Label of a point as a keypoint
-  //! We use binary flags as each point can have different keypoint labels.
-  using KeypointFlags = std::bitset<Keypoint::nKeypointTypes>;
+  //TODO
 
-  // Curvature and other differential operations (scan by scan, point by point)
-  std::vector<std::vector<float>> Angles;
-  std::vector<std::vector<float>> DepthGap;
-  std::vector<std::vector<float>> SpaceGap;
-  std::vector<std::vector<float>> IntensityGap;
-  std::vector<std::vector<KeypointFlags>> Label;
-
-  // Extracted keypoints of current frame
-  std::map<Keypoint, VoxelGrid> Keypoints;
-
-  // Map of the scan lines, sorted by their laser_id.
-  std::unordered_map<int, PointCloud::Ptr> ScanLines;
 };
-} // end of LidarSlam namespace
+
+} // namespace LidarSlam

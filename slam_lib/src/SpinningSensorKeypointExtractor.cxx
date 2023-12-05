@@ -31,64 +31,6 @@
 namespace LidarSlam
 {
 
-namespace
-{
-//-----------------------------------------------------------------------------
-bool LineFitting::FitLineAndCheckConsistency(const SpinningSensorKeypointExtractor::PointCloud& cloud,
-                                             const std::vector<int>& indices)
-{
-  // Check consistency of the line
-  if (indices.size() < 2)
-    return false;
-
-  float sqDistMax = 0.f;
-  float sqDistMin = std::numeric_limits<float>::max();
-  float sqDistCurr;
-  for (int i = 1; i < indices.size(); ++i)
-  {
-    sqDistCurr = (cloud[indices[i]].getVector3fMap() - cloud[indices[i-1]].getVector3fMap()).squaredNorm();
-    sqDistMax = std::max(sqDistMax, sqDistCurr);
-    sqDistMin = std::min(sqDistMin, sqDistCurr);
-  }
-  if (sqDistMax / sqDistMin > this->SquaredRatio)
-    return false;
-
-  Eigen::Vector3f diffVec = cloud[indices.back()].getVector3fMap() - cloud[indices.front()].getVector3fMap();
-  this->Direction = diffVec.normalized();
-  Eigen::Vector4f centroid;
-  pcl::compute3DCentroid(cloud, indices, centroid);
-  this->Position = centroid.head(3);
-
-  // Check line width
-  float lineLength = diffVec.norm();
-  float widthThreshold = lineLength / this->LengthWidthRatio;
-
-  for (auto idx : indices)
-  {
-    float error = (cloud[idx].getVector3fMap() - this->Position).cross(this->Direction).norm();
-    if (error > widthThreshold)
-      return false;
-  }
-
-  return true;
-}
-
-//-----------------------------------------------------------------------------
-inline float LineFitting::DistanceToPoint(Eigen::Vector3f const& point) const
-{
-  return ((point - this->Position).cross(this->Direction)).norm();
-}
-} // end of anonymous namespace
-
-//-----------------------------------------------------------------------------
-void SpinningSensorKeypointExtractor::Enable(const std::vector<Keypoint>& kptTypes)
-{
-  for (auto& en : this->Enabled)
-    en.second = false;
-  for (auto& k : kptTypes)
-    this->Enabled[k] = true;
-}
-
 //-----------------------------------------------------------------------------
 SpinningSensorKeypointExtractor::PointCloud::Ptr SpinningSensorKeypointExtractor::GetKeypoints(Keypoint k)
 {
@@ -103,31 +45,10 @@ SpinningSensorKeypointExtractor::PointCloud::Ptr SpinningSensorKeypointExtractor
   return keypoints;
 }
 
-
 //-----------------------------------------------------------------------------
-void SpinningSensorKeypointExtractor::ComputeKeyPoints(const PointCloud::Ptr& pc)
+void SpinningSensorKeypointExtractor::AddKeypoint(const Keypoint& k, const Point& pt)
 {
-  this->Scan = pc;
-
-  // Split whole pointcloud into separate laser ring clouds
-  this->ConvertAndSortScanLines();
-
-  // Initialize the features vectors and keypoints
-  this->PrepareDataForNextFrame();
-
-  // Compute keypoints scores
-  this->ComputeCurvature();
-
-  // Labelize and extract keypoints
-  // Warning : order matters
-  if (this->Enabled[Keypoint::BLOB])
-    this->ComputeBlobs();
-  if (this->Enabled[Keypoint::PLANE])
-    this->ComputePlanes();
-  if (this->Enabled[Keypoint::EDGE])
-    this->ComputeEdges();
-  if (this->Enabled[Keypoint::INTENSITY_EDGE])
-    this->ComputeIntensityEdges();
+  this->Keypoints[k].AddPoint(pt);
 }
 
 //-----------------------------------------------------------------------------
@@ -159,6 +80,32 @@ void SpinningSensorKeypointExtractor::ConvertAndSortScanLines()
   // (because last scan was badly formed, e.g. lack of points)
   if (this->AzimuthalResolution < 1e-6 || M_PI/4. < this->AzimuthalResolution)
     this->EstimateAzimuthalResolution();
+}
+
+//-----------------------------------------------------------------------------
+void SpinningSensorKeypointExtractor::ComputeKeyPoints(const PointCloud::Ptr& pc)
+{
+  this->Scan = pc;
+
+  // Split whole pointcloud into separate laser ring clouds
+  this->ConvertAndSortScanLines();
+
+  // Initialize the features vectors and keypoints
+  this->PrepareDataForNextFrame();
+
+  // Compute keypoints scores
+  this->ComputeCurvature();
+
+  // Labelize and extract keypoints
+  // Warning : order matters
+  if (this->Enabled[Keypoint::BLOB])
+    this->ComputeBlobs();
+  if (this->Enabled[Keypoint::PLANE])
+    this->ComputePlanes();
+  if (this->Enabled[Keypoint::EDGE])
+    this->ComputeEdges();
+  if (this->Enabled[Keypoint::INTENSITY_EDGE])
+    this->ComputeIntensityEdges();
 }
 
 //-----------------------------------------------------------------------------
@@ -204,14 +151,6 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
   const float cosMinBeamSurfaceAngle = std::cos(Utils::Deg2Rad(this->MinBeamSurfaceAngle));
   const float cosMaxAzimuth = std::cos(1.5 * this->AzimuthalResolution);
   const float cosSpaceGapAngle = std::cos(this->EdgeNbGapPoints * this->AzimuthalResolution);
-  float azimuthMinRad = Utils::Deg2Rad(this->AzimuthMin);
-  float azimuthMaxRad = Utils::Deg2Rad(this->AzimuthMax);
-
-  // Rescale angles in [0, 2pi]
-  while (azimuthMinRad < 0)
-    azimuthMinRad += 2 * M_PI;
-  while (azimuthMaxRad < 0)
-    azimuthMaxRad += 2 * M_PI;
 
   // Init random distribution
   std::mt19937 gen(2023); // Fix seed for deterministic processes
@@ -240,26 +179,11 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
       const Eigen::Vector3f& centralPoint = scanLineCloud[index].getVector3fMap();
       float centralDepth = centralPoint.norm();
 
-      // Check distance to sensor
-      if (centralDepth < this->MinDistanceToSensor || centralDepth > this->MaxDistanceToSensor)
+      if (!this->CheckDistanceToSensor(centralDepth))
         continue;
 
-      // Check azimuth angle
-      if (std::abs(azimuthMaxRad - azimuthMinRad) < 2 * M_PI - 1e-6)
-      {
-        float cosAzimuth = centralPoint.x() / std::sqrt(std::pow(centralPoint.x(), 2) + std::pow(centralPoint.y(), 2));
-        float azimuth = centralPoint.y() > 0? std::acos(cosAzimuth) : 2*M_PI - std::acos(cosAzimuth);
-        if (azimuthMinRad == azimuthMaxRad)
-          continue;
-        if (azimuthMinRad < azimuthMaxRad &&
-            (azimuth < azimuthMinRad ||
-             azimuth > azimuthMaxRad))
-          continue;
-
-        if (azimuthMinRad > azimuthMaxRad &&
-            (azimuth < azimuthMinRad && azimuth > azimuthMaxRad))
-          continue;
-      }
+      if (!this->CheckAzimuthAngle(centralPoint))
+        continue;
 
       // Fill left and right neighbors
       // Those points must be more numerous than MinNeighNb and occupy more space than MinNeighRadius
@@ -297,11 +221,11 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
       const float rightDepth = rightPt.norm();
       const float leftDepth = leftPt.norm();
 
-      const float cosAngleRight = std::abs(rightPt.dot(centralPoint) / (rightDepth * centralDepth));
-      const float cosAngleLeft = std::abs(leftPt.dot(centralPoint) / (leftDepth * centralDepth));
+      const float cosAngleRight = this->ComputeCosAngle(rightPt, centralPoint, rightDepth, centralDepth);
+      const float cosAngleLeft = this->ComputeCosAngle(leftPt, centralPoint, leftDepth, centralDepth);
 
-      const Eigen::Vector3f diffVecRight = rightPt - centralPoint;
-      const Eigen::Vector3f diffVecLeft = leftPt - centralPoint;
+      const Eigen::Vector3f& diffVecRight = rightPt - centralPoint;
+      const Eigen::Vector3f& diffVecLeft = leftPt - centralPoint;
 
       const float diffRightNorm = diffVecRight.norm();
       const float diffLeftNorm = diffVecLeft.norm();
@@ -368,7 +292,8 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
         this->DepthGap[scanLine][index] = std::max(distLeft, distRight);
       }
 
-      if (cosAngleRight < cosMaxAzimuth || cosAngleLeft < cosMaxAzimuth)
+      if (!this->IsAngleValid(cosAngleRight) ||
+          !this->IsAngleValid(cosAngleLeft))
         continue;
 
       // Fit line on the left and right neighborhoods and
@@ -378,12 +303,8 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
           !rightLine.FitLineAndCheckConsistency(scanLineCloud, rightNeighbors))
         continue;
 
-      cosBeamLineAngleLeft = std::abs(leftLine.Direction.dot(centralPoint) / centralDepth);
-      if (cosBeamLineAngleLeft > cosMinBeamSurfaceAngle)
-        continue;
-
-      cosBeamLineAngleRight = std::abs(rightLine.Direction.dot(centralPoint) / centralDepth);
-      if (cosBeamLineAngleRight > cosMinBeamSurfaceAngle)
+      if (!this->IsBeamAngleValid(centralPoint, centralDepth, rightLine) ||
+          !this->IsBeamAngleValid(centralPoint, centralDepth, leftLine))
         continue;
 
       if (this->Enabled[INTENSITY_EDGE])
@@ -527,75 +448,6 @@ void SpinningSensorKeypointExtractor::ComputeEdges()
 void SpinningSensorKeypointExtractor::ComputeIntensityEdges()
 {
   this->AddKptsUsingCriterion(Keypoint::INTENSITY_EDGE, this->IntensityGap, this->EdgeIntensityGapThreshold, false);
-}
-
-//-----------------------------------------------------------------------------
-void SpinningSensorKeypointExtractor::ComputeBlobs()
-{
-  // Init random distribution
-  std::mt19937 gen(2023); // Fix seed for deterministic processes
-  std::uniform_real_distribution<> dis(0.0, 1.0);
-
-  for (unsigned int scanLine = 0; scanLine < this->NbLaserRings; ++scanLine)
-  {
-    const PointCloud& scanlineCloud = *this->GetScanlineCloud(scanLine);
-    for (unsigned int index = 0; index < scanlineCloud.size(); ++index)
-    {
-      // Random sampling to decrease keypoints extraction
-      // computation time
-      if (this->InputSamplingRatio < 1.f && dis(gen) > this->InputSamplingRatio)
-        continue;
-      this->Keypoints[Keypoint::BLOB].AddPoint(scanlineCloud[index]);
-    }
-  }
-}
-
-//-----------------------------------------------------------------------------
-void SpinningSensorKeypointExtractor::EstimateAzimuthalResolution()
-{
-  // Compute horizontal angle values between successive points
-  std::vector<float> angles;
-  angles.reserve(this->Scan->size());
-  for (unsigned int scanLineIdx = 0; scanLineIdx < this->NbLaserRings; ++scanLineIdx)
-  {
-    const auto& scanLineCloud = *this->GetScanlineCloud(scanLineIdx);
-    for (unsigned int index = 1; index < scanLineCloud.size(); ++index)
-    {
-      // Compute horizontal angle between two measurements
-      // WARNING: to be correct, the points need to be in the LIDAR sensor
-      // coordinates system, where the sensor is spinning around Z axis.
-      Eigen::Map<const Eigen::Vector2f> p1(scanLineCloud.at(index - 1).data);
-      Eigen::Map<const Eigen::Vector2f> p2(scanLineCloud.at(index).data);
-      float angle = std::abs(std::acos(p1.dot(p2) / (p1.norm() * p2.norm())));
-
-      // Keep only angles greater than 0 to avoid dual return issues
-      if (angle > 1e-4)
-        angles.push_back(angle);
-    }
-  }
-
-  // A minimum number of angles is needed to get a trustable estimator
-  if (angles.size() < 100)
-  {
-    PRINT_WARNING("Not enough points to estimate azimuthal resolution");
-    return;
-  }
-
-  // Estimate azimuthal resolution from these angles
-  std::sort(angles.begin(), angles.end());
-  unsigned int maxInliersIdx = angles.size();
-  float maxAngle = Utils::Deg2Rad(5.);
-  float medianAngle = 0.;
-  // Iterate until only angles between direct LiDAR beam neighbors remain.
-  // The max resolution angle is decreased at each iteration.
-  while (maxAngle > 1.8 * medianAngle)
-  {
-    maxInliersIdx = std::upper_bound(angles.begin(), angles.begin() + maxInliersIdx, maxAngle) - angles.begin();
-    medianAngle = angles[maxInliersIdx / 2];
-    maxAngle = std::min(medianAngle * 2., maxAngle / 1.8);
-  }
-  this->AzimuthalResolution = medianAngle;
-  std::cout << "LiDAR's azimuthal resolution estimated to " << Utils::Rad2Deg(this->AzimuthalResolution) << "°" << std::endl;
 }
 
 //-----------------------------------------------------------------------------
