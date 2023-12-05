@@ -376,6 +376,10 @@
       # Keypoint extractor for each LiDAR sensor
       ke:
         # Single LiDAR input
+        # The extractor modes allow to decide which keypoint extractor to choose
+        # 0) Sparse extractor called SpinningSensorKeypointExtractor. Convenient for all lidars.
+        # 1) Dense extractor called DenseSpinningSensorKeypointExtractor. Better option for lidars with 64 and 128 lasers.
+        extractor_mode: 0
         enable:
           edge: true
           intensity_edge: true
@@ -406,6 +410,10 @@
         #   - "lidar_frame_1"
         # # Keypoint extractors parameters for each LiDAR sensor "device_<device_id>"
         # device_lidar_frame_0:
+        #   # The extractor modes allow to decide which keypoint extractor to choose
+        #   # 0) Sparse extractor called SpinningSensorKeypointExtractor. Convenient for all lidars.
+        #   # 1) Dense extractor called DenseSpinningSensorKeypointExtractor. Better option for lidars with 64 and 128 lasers.
+        #   extractor_mode: 0
         #   enable:
         #     edge: true
         #     intensity_edge: true
@@ -428,6 +436,10 @@
         #     max_points: 1000                 # [points] Maximum number of keypoints of each type to extract.
         #     voxel_grid_resolution: 1.        # [m/voxel] Size of a voxel to downsample the extracted keypoints.
         # device_lidar_frame_1:
+        #   # The extractor modes allow to decide which keypoint extractor to choose
+        #   # 0) Sparse extractor called SpinningSensorKeypointExtractor. Convenient for all lidars.
+        #   # 1) Dense extractor called DenseSpinningSensorKeypointExtractor. Better option for lidars with 64 and 128 lasers.
+        #   extractor_mode: 0
         #   enable:
         #     edge: true
         #     intensity_edge: true
