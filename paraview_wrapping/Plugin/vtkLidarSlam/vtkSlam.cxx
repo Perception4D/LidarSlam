@@ -837,9 +837,9 @@ void vtkSlam::SetSensorData(const std::string& fileName)
       meas.Time = arrayTime->GetTuple1(i);
       // Derive Isometry
       meas.Pose.linear() = Eigen::Matrix3d(
+                           Eigen::AngleAxisd(arrayYaw->GetTuple1(i),   Eigen::Vector3d::UnitZ()) *
                            Eigen::AngleAxisd(arrayPitch->GetTuple1(i), Eigen::Vector3d::UnitY()) *
-                           Eigen::AngleAxisd(arrayRoll->GetTuple1(i),  Eigen::Vector3d::UnitX()) *
-                           Eigen::AngleAxisd(arrayYaw->GetTuple1(i),   Eigen::Vector3d::UnitZ())
+                           Eigen::AngleAxisd(arrayRoll->GetTuple1(i),  Eigen::Vector3d::UnitX())
                            );
       meas.Pose.translation() = Eigen::Vector3d(arrayX->GetTuple1(i), arrayY->GetTuple1(i), arrayZ->GetTuple1(i));
       meas.Pose.makeAffine();
