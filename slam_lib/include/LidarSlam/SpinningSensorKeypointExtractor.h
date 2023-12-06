@@ -43,6 +43,13 @@ public:
   GetMacro(VoxelResolution, float)
   SetMacro(VoxelResolution, float)
 
+  // Set EdgeSinAngleThreshold and PlaneSinAngleThreshold from angle in degrees
+  void SetEdgeAngleThreshold(float angle) override {this->EdgeSinAngleThreshold = std::abs(std::sin(Utils::Deg2Rad(angle)));};
+  void SetPlaneAngleThreshold(float angle) override {this->PlaneSinAngleThreshold = std::abs(std::sin(Utils::Deg2Rad(angle)));};
+  // Associated getters
+  float GetEdgeAngleThreshold() const override {return this->EdgeSinAngleThreshold;};
+  float GetPlaneAngleThreshold() const override {return this->PlaneSinAngleThreshold;};
+
   // Extract keypoints from the pointcloud. The key points
   // will be separated in two classes : Edges keypoints which
   // correspond to area with high curvature scan lines and
@@ -100,6 +107,12 @@ private:
   // Size of a voxel used to downsample the keypoints
   // It corresponds approx to the mean distance between closest neighbors in the output keypoints cloud.
   float VoxelResolution = 0.1; // [m]
+
+  // Sharpness threshold to select a planar keypoint
+  float PlaneSinAngleThreshold = 0.5;  // sin(30°) (selected if sin angle is less than threshold)
+
+  // Sharpness threshold to select an edge keypoint
+  float EdgeSinAngleThreshold = 0.86; // ~sin(60°) (selected, if sin angle is more than threshold)
 
   // ---------------------------------------------------------------------------
   //   Internal variables

@@ -162,6 +162,10 @@ void DenseSpinningSensorKeypointExtractor::OutputFeatures(std::string path)
   int totalSize = this->WidthVM * this->HeightVM;
   OUTPUT_FEATURE(path + "Index.pgm", Index, totalSize, 0., 0.);
   OUTPUT_FEATURE(path + "Depth.pgm", Depth, 20., 0., 0.);
+  OUTPUT_FEATURE(path + "SpaceGap.pgm", SpaceGap, 1., -1., 0.);
+  OUTPUT_FEATURE(path + "DepthGap.pgm", DepthGap, 10., 0., -15.);
+  OUTPUT_FEATURE(path + "IntensityGap.pgm", IntensityGap, 35., -1., 0.);
+  OUTPUT_FEATURE(path + "Angles.pgm", Angle, 1., 1., -1.);
 }
 
 //-----------------------------------------------------------------------------
@@ -172,12 +176,242 @@ void DenseSpinningSensorKeypointExtractor::ComputeKeyPoints(const PointCloud::Pt
   this->InitInternalParameters();
 
   this->CreateVertexMap();
+
+  this->ComputeCurvature();
 }
 
 //-----------------------------------------------------------------------------
 void DenseSpinningSensorKeypointExtractor::ComputeCurvature()
 {
-  //TODO
+  // Init random distribution
+  std::mt19937 gen(2023); // Fix seed for deterministic processes
+  std::uniform_real_distribution<> dis(0.0, 1.0);
+
+  #pragma omp parallel for num_threads(this->NbThreads) schedule(guided)
+  for (int i = 0; i < this->HeightVM; ++i)
+  {
+    // If the line is almost empty, skip it
+    int nPoints = this->GetScanLineSize(this->VertexMap[i]);
+    if (this->IsScanLineAlmostEmpty(nPoints))
+      continue;
+
+    // Useful index to skip first and last points of the scan line
+    int idxInLine = 0;
+
+    for (unsigned int j = 0; j < this->WidthVM; ++j)
+    {
+      // PtFeat struct associated with current point
+      const auto& currentFeat = this->VertexMap[i][j];
+
+      // Ignore empty pixels
+      if (!currentFeat)
+        continue;
+
+      // Count every valid point in the scan line, to be compared with nPoints later
+      idxInLine++;
+
+      // Random sampling to decrease keypoints extraction
+      // computation time
+      if (this->InputSamplingRatio < 1.f && dis(gen) > this->InputSamplingRatio)
+        continue;
+
+      // Central point
+      const Point& currentPoint = this->Scan->at(currentFeat->Index);
+      const Eigen::Vector3f& centralPoint = currentPoint.getVector3fMap();
+
+      if (!this->CheckDistanceToSensor(currentFeat->Depth))
+        continue;
+
+      if (!this->CheckAzimuthAngle(centralPoint))
+        continue;
+
+      // Fill neighbors (vectors of indices) for each side (left and right)
+      // Those points must be more numerous than MinNeighNb and occupy more space than MinNeighRadius
+      auto getNeighbors = [&](bool right, std::vector<int>& neighbors)
+      {
+        neighbors.reserve(nPoints);
+        neighbors.emplace_back(currentFeat->Index);
+        int rightOrLeft = right ? 1 : -1;
+        int idxNeigh = 1;
+        float lineLength = 0.f;
+        while ((lineLength < this->MinNeighRadius ||
+               int(neighbors.size()) < this->MinNeighNb) &&
+               int(neighbors.size()) < nPoints)
+        {
+          const auto& ptrFeat = this->VertexMap[i][(j + rightOrLeft * idxNeigh + this->WidthVM) % this->WidthVM];
+          if (ptrFeat != nullptr)
+          {
+            neighbors.emplace_back(ptrFeat->Index);
+            if (lineLength < MinNeighRadius)
+              lineLength = (this->Scan->at(neighbors.back()).getVector3fMap() - this->Scan->at(neighbors.front()).getVector3fMap()).norm();
+          }
+          ++idxNeigh;
+        }
+        neighbors.shrink_to_fit();
+      };
+
+      std::vector<int> leftNeighbors, rightNeighbors;
+      getNeighbors(false, leftNeighbors);
+      getNeighbors(true, rightNeighbors);
+
+      if (this->Enabled[EDGE])
+      {
+        // ---- Compute horizontal space gap ----
+
+        // Find the first empty neighbor on the right and on the left
+        auto& idxRightNeigh = this->Pc2VmIndices[rightNeighbors[1]];
+        int nbEmptyRightNeigh = idxRightNeigh.Col - j;
+
+        auto& idxLeftNeigh = this->Pc2VmIndices[leftNeighbors[1]];
+        int nbEmptyLeftNeigh = j - idxLeftNeigh.Col;
+
+        const float cosMinBeamSurfaceAngle = std::cos(Utils::Deg2Rad(this->MinBeamSurfaceAngle));
+
+        float distRight = -1.f;
+        float distLeft = -1.f;
+
+        if (nbEmptyRightNeigh >= this->EdgeNbGapPoints)
+        {
+          const auto& rightPt = this->Scan->at(rightNeighbors[1]).getVector3fMap();
+          float diffRightNorm = (rightPt - centralPoint).norm();
+          float cosBeamLineAngleRight = std::abs((rightPt - centralPoint).dot(centralPoint) / (diffRightNorm * currentFeat->Depth));
+          if (cosBeamLineAngleRight < cosMinBeamSurfaceAngle)
+            distRight = diffRightNorm;
+        }
+        if (nbEmptyLeftNeigh >= this->EdgeNbGapPoints)
+        {
+          const auto& leftPt = this->Scan->at(leftNeighbors[1]).getVector3fMap();
+          float diffLeftNorm = (leftPt - centralPoint).norm();
+          float cosBeamLineAngleLeft = std::abs((leftPt - centralPoint).dot(centralPoint) / (diffLeftNorm * currentFeat->Depth));
+          if (cosBeamLineAngleLeft < cosMinBeamSurfaceAngle)
+            distLeft = diffLeftNorm;
+        }
+        currentFeat->SpaceGap = std::max(distLeft, distRight);
+      }
+
+      // Stop search for first and last points of the scan line
+      // because the discontinuity may alter the other criteria detection
+      if (idxInLine < int(leftNeighbors.size()) || idxInLine >= nPoints - int(rightNeighbors.size()))
+        continue;
+
+      if (this->Enabled[EDGE])
+      {
+        // ---- Compute horizontal depth gap ----
+
+        int idxNext = this->VertexMap[i][j + 1] ? j + 1 : this->VertexMap[i][j + 2] ? j + 2 : -1;
+        int idxPrev = this->VertexMap[i][j - 1] ? j - 1 : this->VertexMap[i][j - 2] ? j - 2 : -1;
+        if (idxNext > 0 && idxPrev > 0)
+        {
+          auto& directRightNeigh = this->VertexMap[i][idxNext];
+          float distRight = directRightNeigh->Depth - currentFeat->Depth;
+          auto& directLeftNeigh = this->VertexMap[i][idxPrev];
+          float distLeft = directLeftNeigh->Depth - currentFeat->Depth;
+
+          auto& postRightNeigh = this->VertexMap[i][idxNext + 1];
+          auto& preLeftNeigh = this->VertexMap[i][idxPrev - 1];
+          if (postRightNeigh != nullptr)
+          {
+            float distPostRight = postRightNeigh->Depth - directRightNeigh->Depth;
+            if (distRight < distPostRight)
+              distRight = 0.0f;
+          }
+          if (preLeftNeigh != nullptr)
+          {
+            float distPreLeft = preLeftNeigh->Depth - directLeftNeigh->Depth;
+            if (distLeft < distPreLeft)
+              distLeft = 0.0f;
+          }
+          currentFeat->DepthGap = std::abs(distLeft) > std::abs(distRight) ? distLeft : distRight;
+        }
+      }
+
+      if (currentFeat->SpaceGap > this->EdgeDepthGapThreshold || currentFeat->DepthGap > this->EdgeDepthGapThreshold)
+        continue;
+
+      // ---- Compute intensity gap ----
+
+      LineFitting leftLine, rightLine;
+      // Fit line on the left and right neighborhoods and
+      // skip point if they are not usable
+      if (!leftLine.FitLineAndCheckConsistency(*this->Scan, leftNeighbors) ||
+          !rightLine.FitLineAndCheckConsistency(*this->Scan, rightNeighbors))
+        continue;
+
+      if (!this->IsBeamAngleValid(centralPoint, currentFeat->Depth, rightLine) ||
+          !this->IsBeamAngleValid(centralPoint, currentFeat->Depth, leftLine))
+        continue;
+
+      if (this->Enabled[INTENSITY_EDGE])
+      {
+        if (std::abs(this->Scan->at(rightNeighbors[1]).intensity - this->Scan->at(leftNeighbors[1]).intensity) > this->EdgeIntensityGapThreshold)
+        {
+          // Compute mean intensity on the left
+          // We sample neighborhoods for computation time concerns
+          float meanIntensityLeft = 0.f;
+          int step = leftNeighbors.size() > this->MinNeighNb ? leftNeighbors.size() / this->MinNeighNb : 1;
+          int cptMean = 0;
+          // The first element of the neighborhood is the central point itself so we skip it
+          for (int i = 1; i < leftNeighbors.size(); i += step)
+          {
+            meanIntensityLeft += this->Scan->at(leftNeighbors[i]).intensity;
+            cptMean++;
+          }
+          meanIntensityLeft /= cptMean;
+          // Compute mean intensity on the right
+          float meanIntensityRight = 0.f;
+          step = rightNeighbors.size() > this->MinNeighNb ? rightNeighbors.size() / this->MinNeighNb : 1;
+          cptMean = 0;
+          for (int i = 1; i < rightNeighbors.size(); i += step)
+          {
+            meanIntensityRight += this->Scan->at(rightNeighbors[i]).intensity;
+            cptMean++;
+          }
+          meanIntensityRight /= cptMean;
+          currentFeat->IntensityGap = std::abs(meanIntensityLeft - meanIntensityRight);
+
+          // Remove neighbor points to get the best intensity discontinuity locally
+          auto neighPtr = this->GetPtFeat(leftNeighbors[1]);
+          if (neighPtr->IntensityGap < currentFeat->IntensityGap)
+            neighPtr->IntensityGap = -1;
+          else
+            currentFeat->IntensityGap = -1;
+        }
+      }
+
+      // ---- Compute angle ----
+
+      if (this->Enabled[PLANE] || this->Enabled[EDGE])
+      {
+        // Compute angles
+        currentFeat->Angle = leftLine.Direction.dot(rightLine.Direction);
+        // Remove angles too small to be edges
+        if (currentFeat->Angle > -this->PlaneCosAngleThreshold)
+        {
+          currentFeat->Angle = 1.f;
+          continue;
+        }
+
+        // Remove previous point from angle inspection if the angle is not maximal locally
+        if (this->Enabled[EDGE] && currentFeat->Angle > this->EdgeCosAngleThreshold)
+        {
+          // Check previously computed angle to keep only the maximal angle keypoint locally
+          for (int idx = 1; idx < leftNeighbors.size(); idx++)
+          {
+            const std::shared_ptr<PtFeat>& neighPtr = this->GetPtFeat(leftNeighbors[idx]);
+            if (neighPtr->Angle > this->EdgeCosAngleThreshold &&
+                neighPtr->Angle < -this->PlaneCosAngleThreshold)
+            {
+              if (neighPtr->Angle > currentFeat->Angle)
+                currentFeat->Angle = 1.f;
+              else
+                neighPtr->Angle = 1.f;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------
