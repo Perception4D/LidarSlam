@@ -95,37 +95,22 @@
       </IntVectorProperty>
 
       <Property name="Rebuild maps"
-                command="RebuildMaps">
+                command="RebuildMaps"
+                panel_visibility="advanced">
         <Documentation>
           Rebuild maps and refresh the view.
         </Documentation>
       </Property>
 
       <Property name="Clear maps"
-                command="ClearMaps">
+                command="ClearMaps"
+                panel_visibility="advanced">
         <Documentation>
           Clear the actual maps and the logged keypoints
         </Documentation>
       </Property>
 
       <!--~~~~~~~~~~~~~~~~~~~~~~~~~ Inputs options ~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-
-      <!--This is placed before external sensor file for update order issue-->
-      <IntVectorProperty name="Planar trajectory"
-                         command="SetPlanarTrajectory"
-                         number_of_elements="1"
-                         default_values="0"
-                         panel_visibility="advanced">
-        <BooleanDomain name="bool" />
-        <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="External sensors data file" value="" />
-        </Hints>
-        <Documentation>
-          If checked, the automatic calibration between external poses and the tracked frame
-          will not take the world z axis into account because of the missing degree of liberty.
-          If the calibration is provided, or if the sensor file does not contain external poses, this option has no effect.
-        </Documentation>
-      </IntVectorProperty>
 
       <!-- Sensor data file must be csv.
            A field time is necessary with same reference as Lidar data or TCP/UDP packets
@@ -137,8 +122,7 @@
       <StringVectorProperty name="External sensors data file"
                             command="SetSensorData"
                             number_of_elements="1"
-                            animateable="0"
-                            panel_visibility="advanced">
+                            animateable="0">
         <FileListDomain name="files"/>
         <Hints>
           <FileChooser extensions="csv" file_description="csv file format" />
@@ -173,10 +157,55 @@
 
              0 0 0 1
 
-          If this file is not found, the calibration is estimated using the current SLAM
-          trajectory and the loaded poses. If it is not possible, the calibration is set to identity.
+          If this file is not found, the calibration is set to identity.
+          It is possible to automatically derive the calibration with a trajectory portion
+          using the Calibrate button.
         </Documentation>
       </StringVectorProperty>
+
+      <IntVectorProperty name="Planar trajectory"
+                         command="SetPlanarTrajectory"
+                         number_of_elements="1"
+                         default_values="0">
+        <BooleanDomain name="bool" />
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="External sensors data file" value="" />
+        </Hints>
+        <Documentation>
+          If checked, the automatic calibration between the external sensor and the tracked frame
+          will not take the world z axis into account because of the missing degree of liberty.
+          This is used when the Calibrate button is clicked.
+        </Documentation>
+      </IntVectorProperty>
+
+      <DoubleVectorProperty name="Lever arm"
+                            command="SetLeverArm"
+                            number_of_elements="1"
+                            default_values="-1.">
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="External sensors data file" value="" />
+        </Hints>
+        <Documentation>
+          Hint to perform the calibration between the external sensor and the tracked frame.
+          It represents the distance between the tracked frame position and the external sensor position in meters.
+          This is used when the Calibrate button is clicked.
+          -1. disabled the feature.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <Property name="Calibrate"
+                command="Calibrate">
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="External sensors data file" value="" />
+        </Hints>
+        <Documentation>
+          Compute the calibration between the external sensor and the tracked frame (base)
+          using the external data and the current SLAM trajectory.
+          At each click, the calibration is reset to identity beforehand.
+          The trajectory used must be trustworthy and must cover the 6 degrees of liberty.
+          Please check lever arm and planar trajectory options for more information.
+        </Documentation>
+      </Property>
 
       <StringVectorProperty name="Reload trajectory"
                             command="SetTrajectory"
@@ -300,7 +329,8 @@
       <IntVectorProperty name="Advanced return mode"
                          command="SetAdvancedReturnMode"
                          number_of_elements="1"
-                         default_values="0">
+                         default_values="0"
+                         panel_visibility="advanced">
         <BooleanDomain name="bool" />
         <Documentation>
           If advanced return mode is enabled, extra arrays are added to the
@@ -409,6 +439,8 @@
         <Property name="Clear maps" />
         <Property name="External sensors data file" />
         <Property name="Planar trajectory" />
+        <Property name="Lever arm" />
+        <Property name="Calibrate" />
         <Property name="Reload trajectory" />
         <Property name="Auto detect input arrays" />
         <Property name="Time array" />

@@ -248,6 +248,11 @@ rostopic pub -1 /slam_command lidar_slam/SlamCommand "{command: 30, string_arg: 
 
 This command allows to estimate the calibration and to send a static TF transform between the base frame and the frame specified in the CSV file.
 
+The calibration has 3 parameters :
+* *planar_trajectory* : if the trajectory you use to calibrate is planar, this leads to a lack of a degree of liberty and some "invented" values can appear in the calibration matrix. Setting this parameter to true allows to remove the part of the calibration that was overfitted on the noise of the planar trajectory. The trajectory does not need to be on x,y plane.
+* *lever_arm* : this is the distance between the center of the frame that is tracked by the SLAM and the center of the frame of the external sensor that supplied the trajectory.
+* *window* : this is the trajectory portion on which to compute the relative motion that will be compared to constrain the calibration during optimization. If the window is large, the drift on each trajectory can impact the result but the local noise will not impact so much the result.
+
 #### Failure detection
 
 Some metrics are available to evaluate the SLAM output. They include:

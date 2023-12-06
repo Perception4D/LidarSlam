@@ -658,14 +658,14 @@ bool vtkSlam::GetCalibrationMatrix(const std::string& fileName, Eigen::Isometry3
   if (fin.is_open())
   {
     // Parse elements
-    int i = 0;
-    while (fin.good() && i < 16)
+    int idxElement = 0;
+    while (fin.good() && idxElement < 16)
     {
       std::string elementString;
       fin >> elementString;
       try
       {
-        calibration.matrix()(i) = std::stof(elementString);
+        calibration.matrix()(idxElement) = std::stof(elementString);
       }
       catch (...)
       {
@@ -674,7 +674,14 @@ bool vtkSlam::GetCalibrationMatrix(const std::string& fileName, Eigen::Isometry3
         calibration = Eigen::Isometry3d::Identity();
         return false;
       }
-      ++i;
+      ++idxElement;
+    }
+    if (idxElement < 16)
+    {
+        vtkWarningMacro(<< "Calibration file not well formed"
+                        << " -> calibration is set to identity");
+        calibration = Eigen::Isometry3d::Identity();
+        return false;
     }
     calibration.matrix().transposeInPlace();
   }
@@ -722,14 +729,20 @@ void vtkSlam::SetSensorData(const std::string& fileName)
   std::string calibFileName = (path.parent_path() / "calibration_external_sensor.mat").string();
   // Set calibration
   Eigen::Isometry3d base2Sensor;
-  this->CalibrationSupplied = this->GetCalibrationMatrix(calibFileName, base2Sensor);
+  if (this->GetCalibrationMatrix(calibFileName, base2Sensor))
+    vtkWarningMacro(<< this->GetClassName() << " (" << this
+                    << "): Calibration loaded : \n"
+                    << base2Sensor.matrix());
+  else
+    vtkWarningMacro(<< this->GetClassName() << " (" << this
+                    << "): Calibration has not been loaded. Make sure to calibrate your sensor before using it.");
 
   bool extSensorFit = false;
 
   // Process wheel odometer data
   if (Utils::CheckTableFields(csvTable, {"odom"}))
   {
-    // this->SlamAlgo->SetWheelOdomCalibration(base2Sensor); // TODO : use calibration in SLAM process
+    this->SlamAlgo->SetWheelOdomCalibration(base2Sensor);
     auto arrayOdom = csvTable->GetRowData()->GetArray("odom");
     for (vtkIdType i = 0; i < arrayTime->GetNumberOfTuples(); ++i)
     {
@@ -789,7 +802,7 @@ void vtkSlam::SetSensorData(const std::string& fileName)
   #else
   if (Utils::CheckTableFields(csvTable, {"acc_x", "acc_y", "acc_z"}))
   {
-    // this->SlamAlgo->SetGravityCalibration(base2Sensor); // TODO : use calibration in SLAM process
+    this->SlamAlgo->SetGravityCalibration(base2Sensor);
   #endif
     auto arrayAccX = csvTable->GetRowData()->GetArray("acc_x");
     auto arrayAccY = csvTable->GetRowData()->GetArray("acc_y");
@@ -807,8 +820,6 @@ void vtkSlam::SetSensorData(const std::string& fileName)
     extSensorFit = true;
   }
 
-  // Process Pose data
-  bool posesLoaded = false;
   // 1_ Format XYZRPY (with PRY convention)
   if (Utils::CheckTableFields(csvTable, {"x", "y", "z", "roll", "pitch", "yaw"}))
   {
@@ -826,16 +837,17 @@ void vtkSlam::SetSensorData(const std::string& fileName)
       meas.Time = arrayTime->GetTuple1(i);
       // Derive Isometry
       meas.Pose.linear() = Eigen::Matrix3d(
+                           Eigen::AngleAxisd(arrayYaw->GetTuple1(i),   Eigen::Vector3d::UnitZ()) *
                            Eigen::AngleAxisd(arrayPitch->GetTuple1(i), Eigen::Vector3d::UnitY()) *
-                           Eigen::AngleAxisd(arrayRoll->GetTuple1(i),  Eigen::Vector3d::UnitX()) *
-                           Eigen::AngleAxisd(arrayYaw->GetTuple1(i),   Eigen::Vector3d::UnitZ())
+                           Eigen::AngleAxisd(arrayRoll->GetTuple1(i),  Eigen::Vector3d::UnitX())
                            );
       meas.Pose.translation() = Eigen::Vector3d(arrayX->GetTuple1(i), arrayY->GetTuple1(i), arrayZ->GetTuple1(i));
       meas.Pose.makeAffine();
       meas.Covariance = LidarSlam::Utils::CreateDefaultCovariance();
       this->SlamAlgo->AddPoseMeasurement(meas);
     }
-    posesLoaded = true;
+    PRINT_INFO("Pose data successfully loaded")
+    extSensorFit = true;
   }
 
   // 2_ Matrix format
@@ -870,25 +882,8 @@ void vtkSlam::SetSensorData(const std::string& fileName)
       meas.Covariance = LidarSlam::Utils::CreateDefaultCovariance();
       this->SlamAlgo->AddPoseMeasurement(meas);
     }
-    posesLoaded = true;
-  }
-
-  if (posesLoaded)
-  {
     PRINT_INFO("Pose data successfully loaded")
     extSensorFit = true;
-
-    bool calibrationEstimated = false;
-    if (!this->CalibrationSupplied)
-      // Reset calibration, do not trust previous one
-      calibrationEstimated = this->SlamAlgo->CalibrateWithExtPoses(true, this->PlanarTrajectory);
-    if (!this->CalibrationSupplied && !calibrationEstimated)
-      vtkWarningMacro(<< this->GetClassName() << " (" << this
-                      << "): Calibration was not supplied for the external poses sensor, "
-                      << "and could not be estimated. It is set to identity.");
-    else if (calibrationEstimated)
-      vtkWarningMacro(<< "Calibration of the external poses sensor has been estimated using the trajectory provided to\n"
-                      << SlamAlgo->GetPoseCalibration().matrix());
   }
 
   if (!extSensorFit)
@@ -896,6 +891,15 @@ void vtkSlam::SetSensorData(const std::string& fileName)
 
   // Refresh view
   this->ParametersModificationTime.Modified();
+}
+
+//-----------------------------------------------------------------------------
+void vtkSlam::Calibrate()
+{
+  if (!this->SlamAlgo->PoseHasData())
+    vtkWarningMacro(<< this->GetClassName() << " (" << this << "): No external poses, cannot determine the calibration");
+
+  this->SlamAlgo->CalibrateWithExtPoses(this->CalibrationWindow, this->LeverArm, true, this->PlanarTrajectory); // true := reset calibration
 }
 
 //-----------------------------------------------------------------------------
@@ -2092,24 +2096,4 @@ void vtkSlam::LoadLoopDetectionIndices(const std::string& fileName)
 
   // Refresh view
   this->ParametersModificationTime.Modified();
-}
-
-//-----------------------------------------------------------------------------
-void vtkSlam::SetPlanarTrajectory(bool planarTraj)
-{
-  if (planarTraj != this->PlanarTrajectory)
-  {
-    this->PlanarTrajectory = planarTraj;
-    vtkDebugMacro(<< "Setting planarTrajectory argument to " << planarTraj);
-    bool calibrationEstimated = false;
-    if (!this->CalibrationSupplied && this->SlamAlgo->PoseHasData())
-    {
-      // Estimate calibration with new planarTraj value
-      // Reset calibration, do not trust previous one
-      if (this->SlamAlgo->CalibrateWithExtPoses(true, this->PlanarTrajectory))
-        vtkWarningMacro(<< "Calibration of the external poses sensor has been estimated using the trajectory provided to\n"
-                        << SlamAlgo->GetPoseCalibration().matrix());
-    }
-    this->ParametersModificationTime.Modified();
-  }
 }

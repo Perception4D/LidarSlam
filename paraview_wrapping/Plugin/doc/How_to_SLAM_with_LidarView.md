@@ -227,8 +227,10 @@ To increase the processing speed, consider also tweaking these parameters:
 
 ## External sensors use
 
+### Data
+
 External sensor information (wheel odometer OR IMU OR external poses) can be used in the SLAM process.
-They must be provided in a CSV file and can come with a calibration matrix file (see below).
+They must be provided in a CSV file and can come with a calibration matrix file (see next section).
 The possible fields of the CSV file are :
 
 - *time*: Posix time, in seconds, synchronized with the Lidar frame timestamps or at least to the packets reception time -> mandatory
@@ -239,11 +241,13 @@ The possible fields of the CSV file are :
 
 - *w_x/w_y/w_z*: Angle velocities from IMU, in radians/second -> optional
 
-- *x/y/z/roll/pitch/yaw*: Absolute pose measurements in meters and radians (YXZ order) -> optional
+- *x/y/z/roll/pitch/yaw*: Absolute pose measurements in meters and radians (Rz * Ry * Rx order) -> optional
+
+### Calibration
+
+#### Loading
 
 The calibration file must lay in the same directory as the CSV file and must be named *calibration_external_sensor.mat*. This calibration file must contain the 4x4 calibration matrix representing the transform from external poses sensor to Base frame (i.e. the tracked frame).
-If the calibration file is not provided, the calibration is estimated using the current SLAM
-trajectory and the loaded poses. If it is not possible (no current trajectory or no loaded poses), the calibration is set to identity, i.e. the information is supposed to be represented in **BASE** frame.
 
 **Example** :
 ```
@@ -253,6 +257,18 @@ trajectory and the loaded poses. If it is not possible (no current trajectory or
 0 0 0 1
 ```
 
+If the calibration file is not provided, it is set to identity (i.e. the information is supposed to be represented in **BASE** frame) and a warning is triggered.
+
+#### Estimation
+
+**For external poses**, the calibration can be estimated using a portion of trustworthy SLAM trajectory. The user just needs to click on the Calibrate button to trigger the calibration process using the available SLAM trajectory and the synchronized external poses. This calibration process has two parameters : *lever arm* and *planar trajectory*.
+
+The lever arm distance is the distance between the center of the external sensor and the center of the tracked frame (i.e, often the Lidar itself). If it has been physically measured, it can be input to the calibration process as a hint.
+
+If the trajectory is planar, the process will lack a degree of liberty and give some really big translation in the calibration. This can be solved checking the "planar trajectory" check box.
+
+### Use
+
 Then, the data can be used to add a constraint to the local SLAM optimization. The user must enter a weight corresponding to the external sensor used. This weight must be set experimentally knowing that it will be the confidence factor of the external sensor constraint relatively to all the keypoint matches. If the weight is null, the constraint is not added to the optimization. The constraints are :
 
 - For the odometer a translation constraint between two successive SLAM poses or an absolute translation constraint which can be used in specific contexts such as mine exploration.
@@ -261,7 +277,7 @@ Then, the data can be used to add a constraint to the local SLAM optimization. T
 
 External poses (obtained by preintegrating the IMU or from another source) can also be used to :
 - Estimate a prior pose : the user must choose the *External* or *External OR motion extrapolation* modes in the Ego-motion selector.
-- De-skew the pointcloud : the user must choose the External mode in the undistortion selector.
+- De-skew the pointcloud : the user must choose the *External* mode in the undistortion selector.
 
 When IMU accelerations **and** IMU angle velocities are provided along with the gravity in the world frame, those data can be preintegrated to get poses. Then, those poses can be used exactly as external poses (see features above). To perform the preintegration, a parallel graph is built between IMU and SLAM poses. This graph allows to update the biases and the integration constants. To limit the graph growth, a threshold is added to reset the graph.
 
