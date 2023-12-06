@@ -401,9 +401,11 @@ void LidarSlamNode::ImageCallback(const sensor_msgs::msg::Image& imageMsg)
     image.Data = cvPtr->image;
     this->LidarSlam.AddCameraImage(image);
 
-    RCLCPP_INFO_STREAM(this->get_logger(), "Camera image added with time "
-                       << std::fixed << std::setprecision(9)
-                       << image.Time);
+    if (this->LidarSlam.GetVerbosity() >= 3)
+      RCLCPP_INFO_STREAM(this->get_logger(),
+                         "Camera image added with time "
+                         << std::fixed << std::setprecision(9)
+                         << image.Time);
   }
   #else
   static_cast<void>(imageMsg);
@@ -451,7 +453,6 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::msg::PoseWithCovariance
   // Set frame ID for optional calibration
   this->ExtPoseFrameId = poseMsg.header.frame_id;
 
-  RCLCPP_INFO_STREAM(this->get_logger(), "Adding external pose info");
   // Get external pose
   LidarSlam::ExternalSensors::PoseMeasurement poseMeas;
   poseMeas.Pose = Utils::PoseMsgToIsometry(poseMsg.pose.pose);
@@ -472,6 +473,12 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::msg::PoseWithCovariance
 
   // Add pose measurement to measurements list
   this->LidarSlam.AddPoseMeasurement(poseMeas);
+
+  if (this->LidarSlam.GetVerbosity() >= 3)
+    RCLCPP_INFO_STREAM(this->get_logger(),
+                       "External pose added with time "
+                       << std::fixed << std::setprecision(9)
+                       << poseMeas.Time);
 }
 
 //------------------------------------------------------------------------------
@@ -516,10 +523,11 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
       this->GpsLastTime = rclcpp::Time(this->LastGpsMeas.Time * 1e9);
       this->GpsFrameId = gpsMsg.header.frame_id;
 
-      RCLCPP_INFO_STREAM(this->get_logger(),
-                         "GPS position added with time "
-                         << std::fixed << std::setprecision(9)
-                         << this->LastGpsMeas.Time);
+      if (this->LidarSlam.GetVerbosity() >= 3)
+        RCLCPP_INFO_STREAM(this->get_logger(),
+                           "GPS position added with time "
+                           << std::fixed << std::setprecision(9)
+                           << this->LastGpsMeas.Time);
     }
     else
       RCLCPP_WARN(this->get_logger(), "The transform between the GPS and the tracking frame was not found -> GPS info ignored");
@@ -550,10 +558,11 @@ void LidarSlamNode::WheelOdomCallback(const std_msgs::msg::Float64& odomMsg)
     measure.Distance = odomMsg.data;
     this->LidarSlam.AddWheelOdomMeasurement(measure);
 
-    RCLCPP_INFO_STREAM(this->get_logger(),
-                       "Wheel encoder measure added with time "
-                        << std::fixed << std::setprecision(9)
-                        << measure.Time);
+    if (this->LidarSlam.GetVerbosity() >= 3)
+      RCLCPP_INFO_STREAM(this->get_logger(),
+                         "Wheel encoder measure added with time "
+                         << std::fixed << std::setprecision(9)
+                         << measure.Time);
   }
 }
 
@@ -628,10 +637,11 @@ void LidarSlamNode::TagCallback(const apriltag_ros::msg::AprilTagDetectionArray&
         this->PublishTransformTF(TagTimeSec, this->TrackingFrameId, "tag_" + std::to_string(id), lm.TransfoRelative);
       }
 
-      RCLCPP_INFO_STREAM(this->get_logger(),
-                         "Tag pose added with time "
-                         << std::fixed << std::setprecision(9)
-                         << lm.Time);
+      if (this->LidarSlam.GetVerbosity() >= 3)
+        RCLCPP_INFO_STREAM(this->get_logger(),
+                           "Tag pose added with time "
+                           << std::fixed << std::setprecision(9)
+                           << lm.Time);
     }
     else
       RCLCPP_WARN(this->get_logger(), "The transform between the landmark detector and the tracking frame was not found -> landmarks info ignored");
@@ -667,9 +677,11 @@ void LidarSlamNode::ImuCallback(const sensor_msgs::msg::Imu& imuMsg)
     gravityMeasurement.Acceleration.z() = imuMsg.linear_acceleration.z;
     this->LidarSlam.AddGravityMeasurement(gravityMeasurement);
 
-    RCLCPP_INFO_STREAM(this->get_logger(), "Imu acceleration added with time "
-                       << std::fixed << std::setprecision(9)
-                       << gravityMeasurement.Time);
+    if (this->LidarSlam.GetVerbosity() >= 3)
+      RCLCPP_INFO_STREAM(this->get_logger(),
+                         "Imu acceleration added with time "
+                         << std::fixed << std::setprecision(9)
+                         << gravityMeasurement.Time);
   }
   else
     RCLCPP_WARN_STREAM(this->get_logger(), "The transform between the IMU and the tracking frame was not found -> IMU info ignored");
