@@ -320,12 +320,28 @@ protected:
   float SensorTimeOffset = 0.;
 
   // Failure detector
-  // In case of failure, duration (in seconds) to come back in time to previous state
-  float RecoveryTime = 1.f;
+  // In case of failure, duration to come back in time to previous state
+  float RecoveryTime = 1.f; // seconds
+
+  // Calibration
 
   // Boolean to signal the trajectory was planar and a
-  // degree of liberty is missing when looking for a calibration
+  // degree of liberty is missing when estimating the calibration
   bool PlanarTrajectory = false;
+
+  // When determining the calibration, a hint about the lever arm can be supplied
+  // This allows to restrict the search to 5 variable elements
+  // instead of 6 and allows to use less complex trajectories
+  // The lever arm is the distance between the SLAM tracked
+  // frame position and the external sensor frame position
+  // -1 disables the feature
+  double LeverArm = -1.; // meters
+
+  // Number of poses for which to compute
+  // the relative poses on which the calibration is sought
+  // This window allows to reduce the drift effect on both trajectories
+  // A too tight window can lead to numerical side effects
+  int CalibrationWindow = 5;
 
   // Landmarks
   rclcpp::Subscription<apriltag_ros::msg::AprilTagDetectionArray>::SharedPtr LandmarkSub;

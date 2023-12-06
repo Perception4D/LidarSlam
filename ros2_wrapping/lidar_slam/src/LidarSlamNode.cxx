@@ -1204,8 +1204,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
         break;
       }
       // Calibrate the external poses with current SLAM trajectory
-      this->LidarSlam.CalibrateWithExtPoses(this->PlanarTrajectory);
-      // Get the calibration
+      this->LidarSlam.CalibrateWithExtPoses(this->CalibrationWindow, this->LeverArm, false, this->PlanarTrajectory);      // Get the calibration
       Eigen::Isometry3d calibration = this->LidarSlam.GetPoseCalibration();
 
       //Publish new static TF
@@ -1556,6 +1555,8 @@ void LidarSlamNode::SetSlamParameters()
   SetSlamParam(float,   "external_sensors.time_offset", SensorTimeOffset)
   this->SensorTimeOffset = this->LidarSlam.GetSensorTimeOffset();
   this->get_parameter<bool>("external_sensors.calibration.planar_trajectory", this->PlanarTrajectory);
+  this->get_parameter<double>("external_sensors.calibration.lever_arm", this->LeverArm);
+  this->get_parameter<int>("external_sensors.calibration.window", this->CalibrationWindow);
 
   // Use GPS data for GPS/SLAM calibration or Pose Graph Optimization.
   this->get_parameter_or<bool>("external_sensors.gps.enable", this->UseExtSensor[LidarSlam::ExternalSensor::GPS], false);
