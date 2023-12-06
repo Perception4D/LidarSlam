@@ -40,7 +40,7 @@ struct PtFeat
   float Angle;
   std::bitset<Keypoint::nKeypointTypes> KptTypes;
 
-  PtFeat() : Index(0), Depth(0.0f), SpaceGap(-1.0f), DepthGap(-1.0f), IntensityGap(-1.0f), Angle(-1.0f), KptTypes({}) {}
+  PtFeat() : Index(0), Depth(0.0f), SpaceGap(-1.0f), DepthGap(0.0f), IntensityGap(-1.0f), Angle(1.0f), KptTypes({}) {}
 };
 
 struct IdxVM
@@ -52,6 +52,20 @@ struct IdxVM
 class DenseSpinningSensorKeypointExtractor : public KeypointExtractor
 {
 public:
+
+  GetMacro(PlaneCosAngleThreshold, float)
+  SetMacro(PlaneCosAngleThreshold, float)
+
+  GetMacro(EdgeCosAngleThreshold, float)
+  SetMacro(EdgeCosAngleThreshold, float)
+
+  // Set EdgeCosAngleThreshold and PlaneCosAngleThreshold from angle in degrees
+  void SetEdgeAngleThreshold(float angle) override {this->EdgeCosAngleThreshold = std::cos(Utils::Deg2Rad(angle));};
+  void SetPlaneAngleThreshold(float angle) override {this->PlaneCosAngleThreshold = std::cos(Utils::Deg2Rad(angle));};
+  // Associated getters
+  float GetEdgeAngleThreshold() const override {return this->EdgeCosAngleThreshold;};
+  float GetPlaneAngleThreshold() const override {return this->PlaneCosAngleThreshold;};
+
   // Extract keypoints from the pointcloud. The key points
   // will be separated in two classes : Edges keypoints which
   // correspond to area with high curvature scan lines and
@@ -105,7 +119,12 @@ private:
   //   Parameters
   // ---------------------------------------------------------------------------
 
-  //TODO
+  // Sharpness threshold to select a planar keypoint
+  // Also used, with its opposite value, to filter too sharp edges
+  float PlaneCosAngleThreshold = -0.86;  // ~cos(150°) (selected if cos angle is less than threshold)
+
+  // Sharpness threshold to select an edge keypoint
+  float EdgeCosAngleThreshold = -0.5; // ~cos(120°) (selected, if cos angle is more than threshold)
 
   // ---------------------------------------------------------------------------
   //   Internal variables

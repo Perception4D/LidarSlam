@@ -391,8 +391,13 @@ slam:
     min_beam_surface_angle: 10.        # [°] Minimal angle between the point surface and the laser beam to consider a point as valid.
     neighbors_side_nb: 5               # [>1] Minimum number of neighbors used on each side to estimate curvature and detect edges and planes.
     neighbors_radius: 0.10             # [m] Minimum radius to define a neighborhood on each side of the studied point.
-    plane_sin_angle_threshold: 0.5     # [0-1] Sharpness threshold to select a planar keypoint (selected if sin angle is less than threshold).
-    edge_sin_angle_threshold: 0.86     # [0-1] Sharpness threshold to select an edge keypoint (selected if sin angle is more than threshold).
+    plane_angle_threshold: 150.        # [°] Threshold upon angle between left and right lines to consider a point as plane.
+                                       # It is used with its absolute sine value in SSKE for planes,
+                                       # with its cosine value in DSSKE for planes and
+                                       # with its opposite cosine value in DSSKE to filter too sharp edges.
+    edge_angle_threshold: 120.         # [°] Threshold upon angle between left and right lines to consider a point as edge.
+                                       # It is used with its absolute sine value in SSKE for edges and
+                                       # with its cosine value in DSSKE for edges.
     edge_depth_gap_threshold: 1.       # [m] Threshold upon depth gap in neighborhood to select an edge keypoint.
     edge_nb_gap_points: 10             # [points] Minimum number of successive missing points to consider a space gap.
     edge_intensity_gap_threshold: 50.  # [0-255] Threshold upon intensity gap to select an edge keypoint.
@@ -425,8 +430,13 @@ slam:
     #   min_beam_surface_angle: 10.        # [°] Minimal angle between the point surface and the laser beam to consider a point as valid.
     #   neighbors_side_nb: 5               # [>1] Minimum number of neighbors used on each side to estimate curvature and detect edges and planes.
     #   neighbors_radius: 0.10             # [m] Minimum radius to define a neighborhood on each side of the studied point.
-    #   plane_sin_angle_threshold: 0.5     # [0-1] Sharpness threshold to select a planar keypoint (selected if sin angle is less than threshold).
-    #   edge_sin_angle_threshold: 0.86     # [0-1] Sharpness threshold to select an edge keypoint (selected if sin angle is more than threshold).
+    #   plane_angle_threshold: 150.        # [°] Threshold upon angle between left and right lines to consider a point as plane.
+    #                                      # It is used with its absolute sine value in SSKE for planes,
+    #                                      # with its cosine value in DSSKE for planes and
+    #                                      # with its opposite cosine value in DSSKE to filter too sharp edges.
+    #   edge_angle_threshold: 120.         # [°] Threshold upon angle between left and right lines to consider a point as edge.
+    #                                      # It is used with its absolute sine value in SSKE for edges and
+    #                                      # with its cosine value in DSSKE for edges.
     #   edge_depth_gap_threshold: 1.5      # [m] Threshold upon depth gap in neighborhood to select an edge keypoint.
     #   edge_nb_gap_points: 10             # [points] Minimum number of successive missing points to consider a space gap.
     #   edge_intensity_gap_threshold: 30.  # [0-255] Threshold upon intensity gap to select an edge keypoint.
@@ -451,8 +461,13 @@ slam:
     #   min_beam_surface_angle: 10.        # [°] Minimal angle between the point surface and the laser beam to consider a point as valid.
     #   neighbors_side_nb: 5               # [>1] Minimum number of neighbors used on each side to estimate curvature and detect edges and planes.
     #   neighbors_radius: 0.10             # [m] Minimum radius to define a neighborhood on each side of the studied point.
-    #   plane_sin_angle_threshold: 0.5     # [0-1] Sharpness threshold to select a planar keypoint (selected if sin angle is less than threshold).
-    #   edge_sin_angle_threshold: 0.86     # [0-1] Sharpness threshold to select an edge keypoint (selected if sin angle is more than threshold).
+    #   plane_angle_threshold: 150.        # [°] Threshold upon angle between left and right lines to consider a point as plane.
+    #                                      # It is used with its absolute sine value in SSKE for planes,
+    #                                      # with its cosine value in DSSKE for planes and
+    #                                      # with its opposite cosine value in DSSKE to filter too sharp edges.
+    #   edge_angle_threshold: 120.         # [°] Threshold upon angle between left and right lines to consider a point as edge.
+    #                                      # It is used with its absolute sine value in SSKE for edges and
+    #                                      # with its cosine value in DSSKE for edges.
     #   edge_depth_gap_threshold: 1.5      # [m] Threshold upon depth gap in neighborhood to select an edge keypoint.
     #   edge_nb_gap_points: 10             # [points] Minimum number of successive missing points to consider a space gap.
     #   edge_intensity_gap_threshold: 200. # [0-255] Threshold upon intensity gap to select an edge keypoint.

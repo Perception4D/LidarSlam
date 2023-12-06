@@ -87,12 +87,6 @@ public:
   GetMacro(MaxDistanceToSensor, float)
   SetMacro(MaxDistanceToSensor, float)
 
-  GetMacro(PlaneSinAngleThreshold, float)
-  SetMacro(PlaneSinAngleThreshold, float)
-
-  GetMacro(EdgeSinAngleThreshold, float)
-  SetMacro(EdgeSinAngleThreshold, float)
-
   GetMacro(EdgeDepthGapThreshold, float)
   SetMacro(EdgeDepthGapThreshold, float)
 
@@ -138,6 +132,13 @@ public:
     this->MinBeamSurfaceAngle = std::cos(Utils::Deg2Rad(angle));
   };
   GetMacro(MinBeamSurfaceAngle, float)
+
+  // Methods to set sin or cos threshold, depending on the extractor
+  virtual void SetEdgeAngleThreshold(float angle) = 0;
+  virtual void SetPlaneAngleThreshold(float angle) = 0;
+  // Associated getters
+  virtual float GetEdgeAngleThreshold() const = 0;
+  virtual float GetPlaneAngleThreshold() const = 0;
 
   // Select the keypoint types to extract
   // This function resets the member map "Enabled"
@@ -232,12 +233,6 @@ protected:
 
   float AzimuthMin = 0.f;        // [rad]
   float AzimuthMax = 2.f * M_PI; // [rad]
-
-  // Sharpness threshold to select a planar keypoint
-  float PlaneSinAngleThreshold = 0.5;  // sin(30°) (selected if sin angle is less than threshold)
-
-  // Sharpness threshold to select an edge keypoint
-  float EdgeSinAngleThreshold = 0.86;  // ~sin(60°) (selected, if sin angle is more than threshold)
 
   // Threshold upon depth gap in neighborhood to select an edge keypoint
   float EdgeDepthGapThreshold = 0.5;  // [m]
