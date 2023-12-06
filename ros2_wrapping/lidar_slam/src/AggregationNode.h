@@ -109,6 +109,9 @@ private:
   double AlphaShapeRadius = 0.1; // 10 cm
   // Bin range for the circular histogram
   double AngleStep = 3. * M_PI / 180.; // 3°
+
+  // Minimal distance around trajectory to remove points from the map
+  double MinDistAroundTrajectory = 1.;
 };
 
 #endif // AGGREGATION_NODE_H
