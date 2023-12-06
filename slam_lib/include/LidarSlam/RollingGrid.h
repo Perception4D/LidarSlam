@@ -138,17 +138,26 @@ public:
   //   Sub map use
   //============================================================================
 
-  //! Build a KD-tree from all points in the map
-  //! This KD-tree can then be used for fast NN queries in the whole map.
-  void BuildSubMapKdTree();
+  //! Extract the submaps rejecting moving object using the MinFramesPerVoxel criterion
+  //! Build the submap using all the points
+  void BuildSubMap();
+
+  //! Extract the submap as the map points laying in the bounding box formed by minPoint and maxPoint.
+  //! minNbPoints allows to not reject moving objects if the extracted submap is not dense enough
+  //! if minNbPoints is negative, all points are taken (no moving objects rejection)
+  void BuildSubMap(const Eigen::Array3f& minPoint, const Eigen::Array3f& maxPoint, int minNbPoints = -1);
+
+  //! Extract the submap as the map points laying in the same voxels as the one containing pc points.
+  //! minNbPoints allows to not reject moving objects if the extracted submap is not dense enough
+  //! if minNbPoints is negative, all points are taken (no moving objects rejection)
+  void BuildSubMap(const PointCloud& pc, int minNbPoints = -1);
+
   //! Build a KD-tree from the points laying in the input bounding box
   //! This KD-tree can then be used for fast NN queries.
-  //! Keypoints laying on moving objects are rejected using the MinFramesPerVoxel criterion
-  //! minNbPoints allows to not take this threshold into account if the extracted submap is not dense enough
-  //! if minNbPoints is negative, all points are taken (no moving objects rejection)
-  void BuildSubMapKdTree(const Eigen::Array3f& minPoint, const Eigen::Array3f& maxPoint, int minNbPoints = -1);
-
-  void BuildSubMapKdTree(const PointCloud& pc, int minNbPoints = -1);
+  //! if allPoints is true, the kd tree is built over all the points in the grid
+  //! In this case, the submap contains all of the points
+  //! if not, the kd tree is built over the submap that must have been extracted beforehands
+  void BuildKdTree(bool allPoints = false);
 
   //! Check if the KD-tree built on top of the submap is valid or if it needs to be updated.
   //! The KD-tree is cleared every time the map is modified.
@@ -158,17 +167,25 @@ public:
   const KDTree& GetSubMapKdTree() const {return this->KdTree;}
 
   //! Get the sub map lastly computed
-   const PointCloud::Ptr GetSubMap() const {return this->SubMap;}
+  const PointCloud::Ptr GetSubMap() const {return this->SubMap;}
 
   //! Remove the oldest voxels from the map relatively to the current time using the decaying time threshold member
   //! If clearOldPoints is false, remove voxels newer than the currentTime
   void ClearPoints(double currentTime, bool clearOldPoints = true);
+
+  //! Remove the points around position
+  //! useful to remove the points around a specific point of view
+  void EmptyAroundPoint(double distThreshold, const Eigen::Array3f& position = Eigen::Array3f::Zero());
 
   //============================================================================
   //   Attributes and helper methods
   //============================================================================
 
 private:
+  // Helpers
+  // Erase the points in the outer voxel referenced
+  // by the index outVoxIdx and complying with the heuristic
+  void Erase(int outVoxIdx, std::function<bool(const Point&)> heuristic);
 
   //! [voxels] Max size of the outer voxel grid: n*n*n voxels
   int GridSize = 50;

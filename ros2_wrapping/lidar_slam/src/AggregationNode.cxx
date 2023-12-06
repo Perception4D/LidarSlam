@@ -53,8 +53,7 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
   this->FrameSubscriber = this->create_subscription<Pcl2_msg>(
             "slam_registered_points", 1, std::bind(&AggregationNode::Callback, this, std::placeholders::_1));
   // Optional lidar SLAM pose
-  if (this->DoExtractSlice)
-    this->PoseSubscriber = this->create_subscription<nav_msgs::msg::Odometry>(
+  this->PoseSubscriber = this->create_subscription<nav_msgs::msg::Odometry>(
             "slam_odom", 1, std::bind(&AggregationNode::PoseCallback, this, std::placeholders::_1));
 
   // Init service
@@ -100,6 +99,9 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
   int minNbPointsPerVoxel;
   this->get_parameter_or<int>("min_points_per_voxel", minNbPointsPerVoxel, 2);
   this->DenseMap->SetMinFramesPerVoxel(minNbPointsPerVoxel);
+  // Set Minimal distance of the points to the trajectory
+  // Allows to remove traces from the map
+  this->get_parameter_or<double>("min_dist_around_trajectory", this->MinDistAroundTrajectory, 1.);
 
   RCLCPP_INFO_STREAM(this->get_logger(), "Aggregation node is ready !");
 }
@@ -162,12 +164,17 @@ void AggregationNode::ResetService(const std::shared_ptr<lidar_slam::srv::Reset:
 //------------------------------------------------------------------------------
 void AggregationNode::PoseCallback(const nav_msgs::msg::Odometry& poseMsg)
 {
+  Eigen::Vector3d currPosition = Utils::PoseMsgToIsometry(poseMsg.pose.pose).translation();
+
+  if (this->MinDistAroundTrajectory > 0.)
+    this->DenseMap->EmptyAroundPoint(this->MinDistAroundTrajectory, currPosition.cast<float>().array());
+
   if (!this->DoExtractSlice)
     return;
 
   // Store pose
-  this->Positions.push_back(Utils::PoseMsgToIsometry(poseMsg.pose.pose).translation());
-  while ((this->Positions.back() - this->Positions.front()).norm() > this->TrajectoryMaxLength)
+  this->Positions.push_back(currPosition);
+  while ((currPosition - this->Positions.front()).norm() > this->TrajectoryMaxLength)
     this->Positions.pop_front();
 
   if (this->Positions.size() < 2)
@@ -201,7 +208,7 @@ double AggregationNode::ExtractSlice(double sliceWidth, double sliceMaxDist, dou
   CloudS tmpCloud;
   tmpCloud.resize(1);
   tmpCloud[0].getVector3fMap() = currPosition.cast<float>();
-  this->DenseMap->BuildSubMapKdTree(tmpCloud, this->MinSlicePtsWithoutMovObjects);
+  this->DenseMap->BuildSubMap(tmpCloud, this->MinSlicePtsWithoutMovObjects);
   CloudS::Ptr submap = this->DenseMap->GetSubMap();
 
   // Initialize the slice pointcloud
