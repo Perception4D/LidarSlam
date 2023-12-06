@@ -83,6 +83,11 @@
       calibration:
         planar_trajectory: false # [bool] Notify that the trajectory to use to calibrate
                                  # is planar so a degree of liberty is missing
+        lever_arm: -1.           # [meters] Distance between the SLAM tracked frame position
+                                 # and the external sensor frame position
+                                 # -1 disables the feature
+        window: 5                # [nb] Number of frames to define a window to build a constraint
+                                 # of relative motion when creating the relative pose contraint
       # Optional GPS position use (if 'gps/enable'=true), subscribing to Odometry msg on 'gps_odom' topic.
       # It allows to estimate calibration between GPS and SLAM trajectories,
       # or post-optimize SLAM trajectory with pose graph optimization (PGO).
