@@ -307,8 +307,6 @@ void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
       if (currentOffset < 1e-6 || std::abs(potentialOffset) < currentOffset)
         this->LidarSlam.SetSensorTimeOffset(potentialOffset);
     }
-    else
-      this->LidarSlam.SetSensorTimeOffset(this->SensorTimeOffset);
   }
 
   // Run SLAM when:
@@ -821,6 +819,10 @@ std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
     }
   }
 
+  // Reset time offset if used by another sensor
+  double timeOffsetTmp = this->LidarSlam.GetSensorTimeOffset();
+  this->LidarSlam.SetSensorTimeOffset(0.);
+
   LidarSlam::ExternalSensors::PoseManager trajectoryManager("new trajectory");
   trajectoryManager.SetVerbose(true);
   trajectoryManager.SetDistanceThreshold(std::max(2., 2 * this->LidarSlam.GetKfDistanceThreshold()));
@@ -850,6 +852,9 @@ std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
     this->LidarSlam.ResetStatePoses(trajectoryManager);
     RCLCPP_INFO_STREAM(this->get_logger(), "Trajectory successfully loaded!");
   }
+
+  // Reset time offset as before
+  this->LidarSlam.SetSensorTimeOffset(timeOffsetTmp);
 
   return frameID;
 }
