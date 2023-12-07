@@ -893,7 +893,7 @@ bool PoseManager::ComputeCalibration(const std::list<LidarState>& states,
   // Create residual storing structure
   std::vector<CeresTools::Residual> residuals;
   // Reserve max size
-  if (leverArm > 0.)
+  if (leverArm >= 0.)
     residuals.reserve(2 * states.size()); // 1 res for poses and 1 res for lever arm
   else
     residuals.reserve(states.size());
@@ -942,7 +942,7 @@ bool PoseManager::ComputeCalibration(const std::list<LidarState>& states,
     problem.AddResidualBlock(resMotion.Cost.get(), resMotion.Robustifier.get(), calibXYZQuat.data());
 
     // 2. Translation norm constraint
-    if (leverArm > 0.)
+    if (leverArm >= 0.)
     {
       residuals.emplace_back(CeresTools::Residual());
       CeresTools::Residual& resLeverArm = residuals.back();
