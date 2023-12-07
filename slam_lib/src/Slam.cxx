@@ -3635,6 +3635,23 @@ void Slam::SetPoseWeight(double weight)
   this->PoseManager->SetWeight(weight);
 }
 
+//-----------------------------------------------------------------------------
+float Slam::GetPoseSaturationDistance() const
+{
+  if (this->PoseManager)
+    return this->PoseManager->GetSaturationDistance();
+  PRINT_ERROR("Pose sensor has not been set : can't get saturation distance")
+  return -1.;
+}
+
+//-----------------------------------------------------------------------------
+void Slam::SetPoseSaturationDistance(float dist)
+{
+  if (!this->PoseManager)
+    this->InitPoseSensor();
+  this->PoseManager->SetSaturationDistance(dist);
+}
+
 // RGB camera
 //-----------------------------------------------------------------------------
 double Slam::GetCameraWeight() const
