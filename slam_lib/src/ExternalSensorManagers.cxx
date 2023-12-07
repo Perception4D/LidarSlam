@@ -637,6 +637,23 @@ bool GpsManager::ComputeCalibration(const std::list<LidarState>& states)
 // 3D POSE
 // ---------------------------------------------------------------------------
 
+PoseManager::PoseManager(const PoseManager& other)
+: PoseManager(other.TimeOffset,
+              other.TimeThreshold,
+              other.MaxMeasures,
+              other.Interpolator.GetModel(),
+              other.Verbose,
+              other.SensorName)
+{
+  this->Weight = other.Weight;
+  this->CovarianceRotation = other.CovarianceRotation;
+  this->DistanceThreshold = other.DistanceThreshold;
+  this->Offset = other.Offset;
+  this->SaturationDistance = other.SaturationDistance;
+  this->Measures = other.Measures;
+}
+
+// ---------------------------------------------------------------------------
 void PoseManager::Reset(bool resetMeas)
 {
   this->SensorManager::Reset(resetMeas);

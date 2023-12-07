@@ -3339,7 +3339,7 @@ void Slam::ResetSensors(bool emptyMeasurements)
   this->ImuHasBeenUpdated = 0;
   if (emptyMeasurements && this->PoseManager)
     // Break link between IMU and Pose managers
-    this->InitPoseSensor();
+    this->PoseManager = std::make_shared<ExternalSensors::PoseManager>(*this->PoseManager);
 }
 
 //-----------------------------------------------------------------------------
@@ -3367,11 +3367,14 @@ void Slam::ResetSensor(bool emptyMeasurements, ExternalSensor sensor)
     }
     case ExternalSensor::POSE:
     {
-      if (this->PoseManager)
-        this->PoseManager->Reset(emptyMeasurements);
-      if (emptyMeasurements && this->PoseManager)
+      if (!this->PoseManager)
+        break;
+
+      this->PoseManager->Reset(emptyMeasurements);
+
+      if (emptyMeasurements)
         // Break link between IMU and Pose managers
-        this->InitPoseSensor();
+        this->PoseManager = std::make_shared<ExternalSensors::PoseManager>(*this->PoseManager);
       break;
     }
     case ExternalSensor::CAMERA:

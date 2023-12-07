@@ -676,6 +676,8 @@ public:
   : SensorManager(timeOffset, timeThresh, maxMeas, verbose, name)
   {this->Interpolator.SetModel(model);}
 
+  PoseManager(const PoseManager& other);
+
   void Reset(bool resetMeas = false);
 
   // Setters/Getters
