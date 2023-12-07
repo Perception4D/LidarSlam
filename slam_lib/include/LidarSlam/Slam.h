@@ -684,6 +684,9 @@ public:
   double GetPoseWeight() const;
   void SetPoseWeight(double weight);
 
+  float GetPoseSaturationDistance() const;
+  void SetPoseSaturationDistance(float dist);
+
   void AddPoseMeasurement(const ExternalSensors::PoseMeasurement& pm);
   // Check if pose manager has been filled with poses
   // and if it has been filled by the IMU manager, check that it has been updated
