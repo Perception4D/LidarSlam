@@ -1576,6 +1576,7 @@ void LidarSlamNode::SetSlamParameters()
   // Use external poses in local optimization or in graph optimization
   this->get_parameter_or<bool>("external_sensors.external_poses.enable", this->UseExtSensor[LidarSlam::ExternalSensor::POSE], false);
   SetSlamParam(double, "external_sensors.external_poses.weight", PoseWeight)
+  SetSlamParam(float,  "external_sensors.external_poses.saturation_distance", PoseSaturationDistance)
 
   // Use wheel encoder in local optimization
   this->get_parameter_or<bool>("external_sensors.wheel_encoder.enable", this->UseExtSensor[LidarSlam::ExternalSensor::WHEEL_ODOM], false);

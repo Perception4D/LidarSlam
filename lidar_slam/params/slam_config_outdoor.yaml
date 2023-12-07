@@ -130,6 +130,8 @@
       external_poses:
         enable: false            # [bool] To receive and use the external poses in SLAM (local opt or pose graph opt)
         weight: 0.               # [float] Weight to apply to the constraint built on external poses
+        saturation_distance: 10. # [meters] Saturation distance to take the external pose into account
+                                 # in SLAM optimization, pose graph optimization or calibration
 
       # Wheel encoder appliable for ground wheels for translation
       # only motion or if relative mode is ON or with cable for any transformation
