@@ -27,6 +27,7 @@
 #include <pcl_ros/point_cloud.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <geometry_msgs/PointStamped.h>
 #include <lidar_slam/SlamCommand.h>
 #include <lidar_slam/Confidence.h>
 #include <apriltag_ros/AprilTagDetection.h>
@@ -127,6 +128,14 @@ public:
    * @param[in] msg IMU acceleration
    */
   void ImuCallback(const sensor_msgs::Imu& imuMsg);
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief     Rviz clicked point callback, adding loop closure revisited frame indice
+   * @param[in] msg clicked point coordinates
+   */
+  void ClickedPointCallback(const geometry_msgs::PointStamped& pointMsg);
+
   //----------------------------------------------------------------------------
   /*!
    * @brief     Set SLAM pose from external guess.
@@ -346,6 +355,9 @@ protected:
 
   // IMU
   ros::Subscriber ImuSub;
+
+  // Clicked point in rviz
+  ros::Subscriber ClickedPtSub;
 };
 
 #endif // LIDAR_SLAM_NODE_H

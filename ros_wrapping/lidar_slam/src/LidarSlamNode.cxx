@@ -172,6 +172,9 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   if (this->UseExtSensor[LidarSlam::ExternalSensor::GPS])
     this->GpsOdomSub = nh.subscribe("gps_odom", 1, &LidarSlamNode::GpsCallback, this);
 
+  if (this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE))
+    this->ClickedPtSub = nh.subscribe("clicked_point", 1, &LidarSlamNode::ClickedPointCallback, this);
+
   // Init logging of landmark data, Camera data, external pose data, wheel encoder data and/or IMU data
   if (this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] ||
       this->UseExtSensor[LidarSlam::ExternalSensor::CAMERA] ||
@@ -484,8 +487,8 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::PoseWithCovarianceStamp
 
   if (this->LidarSlam.GetVerbosity() >= 3)
     ROS_INFO_STREAM("External pose added with time "
-                      << std::fixed << std::setprecision(9)
-                      << poseMeas.Time);
+                    << std::fixed << std::setprecision(9)
+                    << poseMeas.Time);
 }
 
 //------------------------------------------------------------------------------
@@ -693,6 +696,33 @@ void LidarSlamNode::ImuCallback(const sensor_msgs::Imu& imuMsg)
   else
     ROS_WARN_STREAM("The transform between the IMU and the tracking frame was not found -> IMU info ignored");
 
+}
+
+//------------------------------------------------------------------------------
+void LidarSlamNode::ClickedPointCallback(const geometry_msgs::PointStamped& pointMsg)
+{
+  if (!this->SlamEnabled)
+    return;
+
+  if (!this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE))
+    return;
+
+  // Get the clicked point in rviz
+  Eigen::Vector3d clickedPoint = Eigen::Vector3d(pointMsg.point.x, pointMsg.point.y, pointMsg.point.z);
+  double time = pointMsg.header.stamp.sec + pointMsg.header.stamp.nsec * 1e-9;
+  auto itState = this->LidarSlam.GetClosestState(clickedPoint);
+  if ((itState->Isometry.translation() - clickedPoint).squaredNorm() > 1.0)
+  {
+    ROS_WARN_STREAM("The clicked point is too far from the trajectory! Please pick another point.");
+    return;
+  }
+  // Add clicked point as revisited frame of the loop which is formed with current frame
+  LidarSlam::LoopClosure::LoopIndices loop(this->LidarSlam.GetLastState().Index, itState->Index, time);
+  this->LidarSlam.AddLoopClosureIndices(loop);
+  if (this->LidarSlam.GetVerbosity() >= 3)
+    ROS_INFO_STREAM("Loop closure point added with time "
+                    << std::fixed << std::setprecision(14)
+                    << time);
 }
 
 //------------------------------------------------------------------------------
@@ -983,6 +1013,9 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
         break;
       }
       this->ReadPoses(msg.string_arg, true);
+
+      if (this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE))
+        this->LidarSlam.ClearLoopDetections();
       break;
     }
 
@@ -1157,6 +1190,11 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
 
     case lidar_slam::SlamCommand::LOAD_LOOP_INDICES:
     {
+      if (!this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE))
+      {
+        ROS_ERROR_STREAM("Loop closure constraint is disabled: loading loop indices is cancelled");
+        break;
+      }
       // Clear current LoopDetections vector
       this->LidarSlam.ClearLoopDetections();
       if (!msg.string_arg.empty())

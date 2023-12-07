@@ -310,6 +310,10 @@ Then, trigger pose graph optimization when needed by clicking on `Optimize graph
 ```bash
 rostopic pub -1 /slam_command lidar_slam/SlamCommand "command: 20"  # Trigger PGO
 ```
+
+If loop closure indices are unknown, you can:
+* Publish a 3D point ([geometry_msgs::PointStamped](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/PointStamped.html)) on *clicked_point* topic, refering to a pose that forms a loop with the current position. This can be done in rviz, selecting `Publish point` and click on the pose.
+
 **NOTE** : You can save your slam trajectory before launch a pose graph optimization so that you can go back to states before PGO by re-setting slam trajectory.
 To save slam trajectory, you can click on `Save trajectory` button in rviz or you can use:
 ```bash
