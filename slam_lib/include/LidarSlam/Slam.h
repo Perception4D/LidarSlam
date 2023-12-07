@@ -283,8 +283,10 @@ public:
   // Initialization
   Slam();
   // Reset internal state : maps and trajectory are cleared,
-  // current pose is set back to origin and the external sensor data are emptied.
-  // This keeps parameters unchanged.
+  // current pose is set back to origin
+  // Mind the behavior of the external sensors' Reset
+  // Calibration is notably reset
+  // This keeps all parameters unchanged
   void Reset(bool resetLog = true);
 
   // Init map with default values
@@ -694,7 +696,7 @@ public:
 
   // Find the calibration offset between the base frame and the frame tracked by the external poses
   // The two trajectories can be represented in different global frames
-  bool CalibrateWithExtPoses(bool reset = false, bool planarTrajectory = false);
+  bool CalibrateWithExtPoses(int window = 5, double leverArm = -1., bool reset = false, bool planarTrajectory = false);
 
   Eigen::Isometry3d GetPoseCalibration() const;
   void SetPoseCalibration(const Eigen::Isometry3d& calib);

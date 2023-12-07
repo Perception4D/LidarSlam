@@ -35,7 +35,7 @@
 #define RESIDUAL_FACTORY(Type, ResidualSize, ...) \
   template<typename ...Args> \
   static std::shared_ptr<ceres::CostFunction> Create(Args&& ...args) \
-  { return std::make_shared<ceres::AutoDiffCostFunction<Type, ResidualSize, __VA_ARGS__>>(new Type(args...));}
+  {return std::make_shared<ceres::AutoDiffCostFunction<Type, ResidualSize, __VA_ARGS__>>(new Type(args...));}
 
 
 namespace LidarSlam
@@ -714,8 +714,9 @@ private:
  */
 struct CalibPosesResidual
 {
-  CalibPosesResidual(const Eigen::Isometry3d& pose1, const Eigen::Isometry3d& pose2)
-              : Pose1Isometry(pose1)
+  CalibPosesResidual(const Eigen::Isometry3d& pose1,
+                     const Eigen::Isometry3d& pose2)
+                    : Pose1Isometry(pose1)
   {
     this->Pose2.head<3>() = pose2.translation();
     Eigen::Quaterniond quat(pose2.linear());
@@ -747,6 +748,44 @@ private:
   // linked frames that move together in a global frame
   const Eigen::Isometry3d Pose1Isometry;
   Eigen::Matrix<double, 7, 1> Pose2;
+};
+
+//------------------------------------------------------------------------------
+/**
+ * \class CalibTransResidual
+ * \brief Residual corresponding to the translation norm constraint
+ * This function takes one 7D parameters block :
+ *   - 3 first parameters to encode translation : X, Y, Z
+ *   - 4 last parameters to encode rotation with quaternions : qX, qY, qZ, qW
+ *
+ * It outputs a 1D residual block.
+ */
+struct CalibTransResidual
+{
+  CalibTransResidual(double norm)
+                    : TransNorm(norm)
+  {}
+
+  template <typename T>
+  bool operator()(const T* const w, T* residual) const
+  {
+    T sqNorm = w[0] * w[0] + w[1] * w[1] + w[2] * w[2];
+
+    // Compute residual
+    if (sqNorm > T(1e-8))
+      *residual = ceres::sqrt(sqNorm) - T(this->TransNorm);
+    else
+      *residual = sqNorm - T(this->TransNorm * this->TransNorm);
+
+    return true;
+  }
+
+  // Factory to ease the construction of the auto-diff residual object
+  RESIDUAL_FACTORY(CalibTransResidual, 1, 7)
+
+private:
+  // Squared norm of the translation (lever arm)
+  double TransNorm = -1.;
 };
 
 //------------------------------------------------------------------------------

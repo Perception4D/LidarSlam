@@ -219,7 +219,10 @@ public:
     this->ResetResidual();
     std::lock_guard<std::mutex> lock(this->Mtx);
     if (resetMeas)
+    {
       this->Measures.clear();
+      this->Calibration = Eigen::Isometry3d::Identity();
+    }
     this->PreviousIt = this->Measures.begin();
     this->ClosestIt  = this->Measures.begin();
   }
@@ -713,7 +716,9 @@ public:
                                   std::vector<PoseMeasurement>& poseMeasurements);
 
   // Compute calibration using the poses and the SLAM trajectory
-  bool ComputeCalibration(const std::list<LidarState>& states, bool reset = false, bool planarTrajectory = false);
+  bool ComputeCalibration(const std::list<LidarState>& states,
+                          int window, double leverArm = -1.,
+                          bool reset = false, bool planarTrajectory = false);
 
   // Compute offset between the referential
   // of external poses and the referential
