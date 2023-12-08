@@ -485,7 +485,9 @@ Camera constraint added
 If wheel encoder use is enabled, *LidarSlamNode* subscribes to odometer messages (std::msgs::Float64) in the topic called "wheel_odom".
 The wheel encoder measurement can be used in the slam front end optimization to solve some degree of liberty (e.g. in corridors). The calibration (i.e. the transform between the frame **wheel** and the tracking frame which is **base_link** by default) must be sent to the TF tree to be able to receive any data.
 
-***WARNING***: Remember to set *max_measures*, *use_header_time* and *time_threshold* to convenient values to be able to receive the measurements.
+***WARNING***: As the message does not contain time, the message reception time is used to synchronize with LiDAR data. Therefore, *use_header_time* must be turned to false.
+
+***WARNING***: Remember to set *max_measures*, *time_threshold* to convenient values to be able to receive the measurements.
 
 Two types of constraint are allowed : relative/from reference. The relative constraint ensures the distance provided by the wheel encoder between two successive frames is the norm of the translation between those frames. For now, no direction information is used. This means that in a corridor, if the distances are small, the translation might be applied in one direction or the other.
 
