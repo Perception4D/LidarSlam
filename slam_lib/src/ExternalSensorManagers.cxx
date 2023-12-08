@@ -280,25 +280,11 @@ void LandmarkManager::Reset(bool resetMeas)
 }
 
 // ---------------------------------------------------------------------------
-LandmarkManager::LandmarkManager(double w, double timeOffset, double timeThresh, unsigned int maxMeas,
-                                 Interpolation::Model model, bool positionOnly,
-                                 bool verbose, const std::string& name)
-                : SensorManager(timeOffset, timeThresh, maxMeas, verbose, name),
-                  PositionOnly(positionOnly),
-                  CovarianceRotation(false)
-{
-  this->Weight = w;
-  this->Interpolator.SetModel(model);
-}
-
-// ---------------------------------------------------------------------------
 LandmarkManager::LandmarkManager(const LandmarkManager& lmManager)
-                : LandmarkManager(lmManager.GetWeight(),
-                                  lmManager.GetTimeOffset(),
+                : LandmarkManager(lmManager.GetTimeOffset(),
                                   lmManager.GetTimeThreshold(),
                                   lmManager.GetMaxMeasures(),
                                   lmManager.GetInterpolationModel(),
-                                  lmManager.GetPositionOnly(),
                                   lmManager.GetVerbose(),
                                   lmManager.GetSensorName())
 {

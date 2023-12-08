@@ -3004,8 +3004,7 @@ Slam::PointCloud::Ptr Slam::AggregateFrames(const std::vector<PointCloud::Ptr>& 
 //-----------------------------------------------------------------------------
 void Slam::InitWheelOdom()
 {
-  this->WheelOdomManager = std::make_shared<ExternalSensors::WheelOdometryManager>(0.,
-                                                                                   this->SensorTimeOffset,
+  this->WheelOdomManager = std::make_shared<ExternalSensors::WheelOdometryManager>(this->SensorTimeOffset,
                                                                                    this->SensorTimeThreshold,
                                                                                    this->SensorMaxMeasures,
                                                                                    this->Verbosity >= 3);
@@ -3014,8 +3013,7 @@ void Slam::InitWheelOdom()
 //-----------------------------------------------------------------------------
 void Slam::InitGravity()
 {
-  this->GravityManager = std::make_shared<ExternalSensors::ImuGravityManager>(0.,
-                                                                              this->SensorTimeOffset,
+  this->GravityManager = std::make_shared<ExternalSensors::ImuGravityManager>(this->SensorTimeOffset,
                                                                               this->SensorTimeThreshold,
                                                                               this->SensorMaxMeasures,
                                                                               this->Verbosity >= 3);
@@ -3024,8 +3022,7 @@ void Slam::InitGravity()
 //-----------------------------------------------------------------------------
 void Slam::InitImu()
 {
-  this->ImuManager = std::make_shared<ExternalSensors::ImuManager>(0.,
-                                                                   this->SensorTimeOffset,
+  this->ImuManager = std::make_shared<ExternalSensors::ImuManager>(this->SensorTimeOffset,
                                                                    this->SensorTimeThreshold,
                                                                    this->SensorMaxMeasures,
                                                                    this->Interpolation,
@@ -3036,16 +3033,15 @@ void Slam::InitImu()
 //-----------------------------------------------------------------------------
 void Slam::InitLandmarkManager(int id)
 {
-  this->LandmarksManagers[id] = ExternalSensors::LandmarkManager(this->LandmarkWeight,
-                                                                 this->SensorTimeOffset,
+  this->LandmarksManagers[id] = ExternalSensors::LandmarkManager(this->SensorTimeOffset,
                                                                  this->SensorTimeThreshold,
                                                                  this->SensorMaxMeasures,
                                                                  this->Interpolation,
-                                                                 this->LandmarkPositionOnly,
                                                                  this->Verbosity >= 3);
 
+  this->LandmarksManagers[id].SetWeight(this->LandmarkWeight);
+  this->LandmarksManagers[id].SetPositionOnly(this->LandmarkPositionOnly);
   this->LandmarksManagers[id].SetSaturationDistance(this->LandmarkSaturationDistance);
-  // The calibration can be modified afterwards
   this->LandmarksManagers[id].SetCalibration(this->LmDetectorCalibration);
 }
 
@@ -3061,8 +3057,7 @@ void Slam::InitGps()
 //-----------------------------------------------------------------------------
 void Slam::InitPoseSensor()
 {
-  this->PoseManager = std::make_shared<ExternalSensors::PoseManager>(this->PoseWeight,
-                                                                     this->SensorTimeOffset,
+  this->PoseManager = std::make_shared<ExternalSensors::PoseManager>(this->SensorTimeOffset,
                                                                      this->SensorTimeThreshold,
                                                                      this->SensorMaxMeasures,
                                                                      this->Interpolation,
@@ -3072,8 +3067,7 @@ void Slam::InitPoseSensor()
 //-----------------------------------------------------------------------------
 void Slam::InitCamera()
 {
-  this->CameraManager = std::make_shared<ExternalSensors::CameraManager>(0.,
-                                                                         this->SensorTimeOffset,
+  this->CameraManager = std::make_shared<ExternalSensors::CameraManager>(this->SensorTimeOffset,
                                                                          this->SensorTimeThreshold,
                                                                          this->SensorMaxMeasures,
                                                                          this->Verbosity >= 3);
@@ -3606,7 +3600,6 @@ void Slam::SetPoseWeight(double weight)
 {
   if (!this->PoseManager)
     this->InitPoseSensor();
-  this->PoseWeight = weight;
   this->PoseManager->SetWeight(weight);
 }
 
