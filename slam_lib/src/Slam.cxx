@@ -3707,6 +3707,8 @@ Eigen::Isometry3d Slam::GetBaseToLidarOffset(const std::string& deviceId) const
          this->BaseToLidarOffsets.at(deviceId) :
          Eigen::UnalignedIsometry3d::Identity();
 }
+
+//-----------------------------------------------------------------------------
 void Slam::SetBaseToLidarOffset(const Eigen::Isometry3d& transform, const std::string& deviceId)
 {
   this->BaseToLidarOffsets[deviceId] = transform;
