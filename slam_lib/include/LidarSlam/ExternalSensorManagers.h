@@ -457,9 +457,9 @@ class WheelOdometryManager : public SensorManager<WheelOdomMeasurement>
 {
 public:
   WheelOdometryManager(const std::string& name = "Wheel odometer"): SensorManager(name){}
-  WheelOdometryManager(double w, double timeOffset, double timeThresh, unsigned int maxMeas,
+  WheelOdometryManager(double timeOffset, double timeThresh, unsigned int maxMeas,
                        bool verbose = false, const std::string& name = "Wheel odometer")
-  : SensorManager(timeOffset, timeThresh, maxMeas, verbose, name) {this->Weight = w;}
+  : SensorManager(timeOffset, timeThresh, maxMeas, verbose, name) {}
 
   void Reset(bool resetMeas = false);
 
@@ -511,9 +511,9 @@ class ImuGravityManager : public SensorManager<GravityMeasurement>
 {
 public:
   ImuGravityManager(const std::string& name = "IMU"): SensorManager(name){}
-  ImuGravityManager(double w, double timeOffset, double timeThresh, unsigned int maxMeas,
+  ImuGravityManager(double timeOffset, double timeThresh, unsigned int maxMeas,
                     bool verbose = false, const std::string& name = "IMU")
-  : SensorManager(timeOffset, timeThresh, maxMeas, verbose, name) {this->Weight = w;}
+  : SensorManager(timeOffset, timeThresh, maxMeas, verbose, name) {}
 
   void Reset(bool resetMeas = false);
 
@@ -545,9 +545,12 @@ class LandmarkManager: public SensorManager<LandmarkMeasurement>
 public:
   LandmarkManager(const std::string& name = "Tag detector") : SensorManager(name){}
   LandmarkManager(const LandmarkManager& lmManager);
-  LandmarkManager(double w, double timeOffset, double timeThresh, unsigned int maxMeas,
-                  Interpolation::Model model = Interpolation::Model::LINEAR, bool positionOnly = true,
-                  bool verbose = false, const std::string& name = "Tag detector");
+  LandmarkManager(double timeOffset, double timeThresh, unsigned int maxMeas,
+                  Interpolation::Model model = Interpolation::Model::LINEAR,
+                  bool verbose = false, const std::string& name = "Tag detector")
+                  : SensorManager(timeOffset, timeThresh, maxMeas, verbose, name),
+                    CovarianceRotation(false)
+  {this->Interpolator.SetModel(model);}
 
   void operator=(const LandmarkManager& lmManager);
 
@@ -667,11 +670,13 @@ class PoseManager: public SensorManager<PoseMeasurement>
 public:
   PoseManager(const std::string& name = "Pose sensor") : SensorManager(name){}
 
-  PoseManager(double w, double timeOffset, double timeThresh, unsigned int maxMeas,
+  PoseManager(double timeOffset, double timeThresh, unsigned int maxMeas,
               Interpolation::Model model = Interpolation::Model::LINEAR,
               bool verbose = false, const std::string& name = "Pose sensor")
   : SensorManager(timeOffset, timeThresh, maxMeas, verbose, name)
-  {this->Weight = w; this->Interpolator.SetModel(model);}
+  {this->Interpolator.SetModel(model);}
+
+  PoseManager(const PoseManager& other);
 
   void Reset(bool resetMeas = false);
 
@@ -757,11 +762,11 @@ public:
   ImuManager(const std::string& name = "IMU")
   : PoseManager(name){this->Reset();}
 
-  ImuManager(double w, double timeOffset, double timeThresh, unsigned int maxMeas,
+  ImuManager(double timeOffset, double timeThresh, unsigned int maxMeas,
              Interpolation::Model model = Interpolation::Model::LINEAR,
              Eigen::Isometry3d initBasePose = Eigen::Isometry3d::Identity(),
              bool verbose = false, const std::string& name = "IMU")
-  : PoseManager(w, timeOffset, timeThresh, maxMeas, model, verbose, name)
+  : PoseManager(timeOffset, timeThresh, maxMeas, model, verbose, name)
   {
     this->InitBasePose = initBasePose;
     this->Reset();
@@ -1317,9 +1322,9 @@ class CameraManager: public SensorManager<Image>
 public:
   CameraManager(const std::string& name = "Camera") : SensorManager(name){}
   CameraManager(const CameraManager& cameraManager);
-  CameraManager(double w, double timeOffset, double timeThresh, unsigned int maxMeas,
+  CameraManager(double timeOffset, double timeThresh, unsigned int maxMeas,
                 bool verbose = false, const std::string& name = "Camera")
-  : SensorManager(timeOffset, timeThresh, maxMeas, verbose, name){this->Weight = w;}
+  : SensorManager(timeOffset, timeThresh, maxMeas, verbose, name){}
 
   // Setters/Getters
   GetSensorMacro(PrevLidarTime, double)

@@ -1376,6 +1376,7 @@ bool vtkSlam::PolyDataToPointCloud(vtkPolyData* poly,
   // Loop over points data
   pc->reserve(nbPoints);
   pc->header.stamp = this->FrameTime * (this->TimeToSecondsFactor * 1e6); // max time in microseconds
+  pc->header.frame_id = "mainLidar";
   bool allPointsAreValid = true;
   for (vtkIdType i = 0; i < nbPoints; i++)
   {
