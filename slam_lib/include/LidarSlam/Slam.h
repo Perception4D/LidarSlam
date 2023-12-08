@@ -684,6 +684,9 @@ public:
   double GetPoseWeight() const;
   void SetPoseWeight(double weight);
 
+  float GetPoseSaturationDistance() const;
+  void SetPoseSaturationDistance(float dist);
+
   void AddPoseMeasurement(const ExternalSensors::PoseMeasurement& pm);
   // Check if pose manager has been filled with poses
   // and if it has been filled by the IMU manager, check that it has been updated
@@ -1164,11 +1167,6 @@ private:
   // The Pose measurements must be filled from outside this lib
   // using External Sensors interface
   std::shared_ptr<ExternalSensors::PoseManager> PoseManager;
-
-  // Weight for pose when integrating it to the SLAM optimization
-  // This needs a specific variable storage to be able to switch between
-  // IMU data and Poses data as they share the same pointer
-  double PoseWeight = 0.;
 
   // Time difference between Lidar's measurements and external sensors'
   // not null if they are not expressed relatively to the same time reference

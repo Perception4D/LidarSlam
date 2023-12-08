@@ -280,25 +280,11 @@ void LandmarkManager::Reset(bool resetMeas)
 }
 
 // ---------------------------------------------------------------------------
-LandmarkManager::LandmarkManager(double w, double timeOffset, double timeThresh, unsigned int maxMeas,
-                                 Interpolation::Model model, bool positionOnly,
-                                 bool verbose, const std::string& name)
-                : SensorManager(timeOffset, timeThresh, maxMeas, verbose, name),
-                  PositionOnly(positionOnly),
-                  CovarianceRotation(false)
-{
-  this->Weight = w;
-  this->Interpolator.SetModel(model);
-}
-
-// ---------------------------------------------------------------------------
 LandmarkManager::LandmarkManager(const LandmarkManager& lmManager)
-                : LandmarkManager(lmManager.GetWeight(),
-                                  lmManager.GetTimeOffset(),
+                : LandmarkManager(lmManager.GetTimeOffset(),
                                   lmManager.GetTimeThreshold(),
                                   lmManager.GetMaxMeasures(),
                                   lmManager.GetInterpolationModel(),
-                                  lmManager.GetPositionOnly(),
                                   lmManager.GetVerbose(),
                                   lmManager.GetSensorName())
 {
@@ -651,6 +637,23 @@ bool GpsManager::ComputeCalibration(const std::list<LidarState>& states)
 // 3D POSE
 // ---------------------------------------------------------------------------
 
+PoseManager::PoseManager(const PoseManager& other)
+: PoseManager(other.TimeOffset,
+              other.TimeThreshold,
+              other.MaxMeasures,
+              other.Interpolator.GetModel(),
+              other.Verbose,
+              other.SensorName)
+{
+  this->Weight = other.Weight;
+  this->CovarianceRotation = other.CovarianceRotation;
+  this->DistanceThreshold = other.DistanceThreshold;
+  this->Offset = other.Offset;
+  this->SaturationDistance = other.SaturationDistance;
+  this->Measures = other.Measures;
+}
+
+// ---------------------------------------------------------------------------
 void PoseManager::Reset(bool resetMeas)
 {
   this->SensorManager::Reset(resetMeas);
@@ -890,7 +893,7 @@ bool PoseManager::ComputeCalibration(const std::list<LidarState>& states,
   // Create residual storing structure
   std::vector<CeresTools::Residual> residuals;
   // Reserve max size
-  if (leverArm > 0.)
+  if (leverArm >= 0.)
     residuals.reserve(2 * states.size()); // 1 res for poses and 1 res for lever arm
   else
     residuals.reserve(states.size());
@@ -939,7 +942,7 @@ bool PoseManager::ComputeCalibration(const std::list<LidarState>& states,
     problem.AddResidualBlock(resMotion.Cost.get(), resMotion.Robustifier.get(), calibXYZQuat.data());
 
     // 2. Translation norm constraint
-    if (leverArm > 0.)
+    if (leverArm >= 0.)
     {
       residuals.emplace_back(CeresTools::Residual());
       CeresTools::Residual& resLeverArm = residuals.back();
