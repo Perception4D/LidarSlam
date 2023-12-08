@@ -1168,11 +1168,6 @@ private:
   // using External Sensors interface
   std::shared_ptr<ExternalSensors::PoseManager> PoseManager;
 
-  // Weight for pose when integrating it to the SLAM optimization
-  // This needs a specific variable storage to be able to switch between
-  // IMU data and Poses data as they share the same pointer
-  double PoseWeight = 0.;
-
   // Time difference between Lidar's measurements and external sensors'
   // not null if they are not expressed relatively to the same time reference
   double SensorTimeOffset = 0.;
