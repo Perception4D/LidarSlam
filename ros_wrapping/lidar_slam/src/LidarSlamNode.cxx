@@ -1658,7 +1658,9 @@ void LidarSlamNode::SetSlamParameters()
     if (egoMotion != LidarSlam::EgoMotionMode::NONE &&
         egoMotion != LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION &&
         egoMotion != LidarSlam::EgoMotionMode::REGISTRATION &&
-        egoMotion != LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION_AND_REGISTRATION)
+        egoMotion != LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION_AND_REGISTRATION &&
+        egoMotion != LidarSlam::EgoMotionMode::EXTERNAL &&
+        egoMotion != LidarSlam::EgoMotionMode::EXTERNAL_OR_MOTION_EXTRAPOLATION)
     {
       ROS_ERROR_STREAM("Invalid ego-motion mode (" << egoMotionMode << "). Setting it to 'MOTION_EXTRAPOLATION'.");
       egoMotion = LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION;
@@ -1671,7 +1673,8 @@ void LidarSlamNode::SetSlamParameters()
     LidarSlam::UndistortionMode undistortion = static_cast<LidarSlam::UndistortionMode>(undistortionMode);
     if (undistortion != LidarSlam::UndistortionMode::NONE &&
         undistortion != LidarSlam::UndistortionMode::ONCE &&
-        undistortion != LidarSlam::UndistortionMode::REFINED)
+        undistortion != LidarSlam::UndistortionMode::REFINED &&
+        undistortion != LidarSlam::UndistortionMode::EXTERNAL)
     {
       ROS_ERROR_STREAM("Invalid undistortion mode (" << undistortion << "). Setting it to 'REFINED'.");
       undistortion = LidarSlam::UndistortionMode::REFINED;
