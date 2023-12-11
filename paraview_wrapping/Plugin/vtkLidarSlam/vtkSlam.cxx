@@ -1033,6 +1033,7 @@ void vtkSlam::SetTrajectory(const std::string& fileName)
 
   // Clear loop detections
   this->ClearLoopDetections();
+  PRINT_INFO("Loop indices are cleared!");
 
   // Refresh view
   this->ParametersModificationTime.Modified();

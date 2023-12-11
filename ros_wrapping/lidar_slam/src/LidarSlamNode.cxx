@@ -1190,8 +1190,8 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       }
       this->ReadPoses(msg.string_arg, true);
 
-      if (this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE))
-        this->LidarSlam.ClearLoopDetections();
+      this->LidarSlam.ClearLoopDetections();
+      ROS_INFO_STREAM("Loop indices are cleared!");
       break;
     }
 
