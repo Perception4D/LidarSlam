@@ -726,87 +726,64 @@ void LidarSlamNode::ClickedPointCallback(const geometry_msgs::PointStamped& poin
 }
 
 //------------------------------------------------------------------------------
-std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& path,
-                                                             unsigned int nbFields,
-                                                             unsigned int nbHeaderLines)
+std::vector<std::string> LidarSlamNode::ParseSentence(std::string& currentLine,
+                                                      const std::string& delimiter)
 {
-  // Check the file
-  if (path.substr(path.find_last_of(".") + 1) != "csv")
-  {
-    ROS_ERROR_STREAM("The file is not CSV! Cancel loading");
+  if (currentLine.empty())
     return {};
-  }
 
-  std::ifstream lmFile(path);
-  if (lmFile.fail())
+  // Remove the last character if the last character is not an alphabet or a number
+  if (!std::isalnum(currentLine.back()))
+    currentLine.pop_back();
+
+  // Remove potential extra spaces before and after the delimiter
+  // Change comma decimal separator to point.
+  auto extractWord = [&delimiter](const std::string& currentLine, unsigned int pos)
   {
-    ROS_ERROR_STREAM("The CSV file " << path << " was not found!");
-    return {};
-  }
+    unsigned int beginIdx = 0;
+    unsigned int endIdx = pos;
+    while (beginIdx < endIdx && currentLine[beginIdx] == ' ')
+      ++beginIdx;
+    while (endIdx - 1 > beginIdx && currentLine[endIdx - 1] == ' ')
+      --endIdx;
+    std::string word = currentLine.substr(beginIdx, endIdx - beginIdx);
+    size_t commaPos = 0;
+    if (delimiter != "," && (commaPos = word.find(",")) != std::string::npos)
+      word[commaPos] = '.';
+    return word;
+  };
 
-  // Check which delimiter is used
-  std::string lmStr;
-  std::string delimiter;
-  std::vector<std::string> fields;
-
-  // Get the first data line (after header)
-  for (int i = 0; i <= nbHeaderLines; ++i)
-    std::getline(lmFile, lmStr);
-
-  for (const auto& del : DELIMITERS)
+  size_t pos = 0;
+  std::vector<std::string> sentence;
+  while ((pos = currentLine.find(delimiter)) != std::string::npos)
   {
-    fields.clear();
-    size_t pos = 0;
-    std::string firstLine = lmStr;
-    pos = firstLine.find(del);
-    while (pos != std::string::npos)
-    {
-      fields.push_back(firstLine.substr(0, pos));
-      firstLine.erase(0, pos + del.length());
-      pos = firstLine.find(del);
-    }
-    // If there is some element after the last delimiter, add it
-    if (!firstLine.substr(0, pos).empty())
-      fields.push_back(firstLine.substr(0, pos));
-    // Check that the number of fields is correct
-    if (fields.size() == nbFields)
-    {
-      delimiter = del;
-      break;
-    }
+    sentence.emplace_back(extractWord(currentLine, pos));
+    currentLine.erase(0, pos + delimiter.length());
   }
-  if (fields.size() != nbFields)
-  {
-    ROS_WARN_STREAM("The CSV file is ill formed : " << fields.size() << " fields were found (" << nbFields
-                    << " expected), the loading is cancelled");
-    return {};
-  }
+  sentence.emplace_back(extractWord(currentLine, currentLine.length()));
+  return sentence;
+}
 
+//------------------------------------------------------------------------------
+std::vector<std::vector<std::string>> LidarSlamNode::ParseCSV(const std::string& path,
+                                                              const unsigned int startLineIdx,
+                                                              const std::string& delimiter)
+{
+  // The check of csv file path should be done out of this function
+  // Get the first data line
+  std::ifstream csvFile(path);
+  std::string currentLine;
+  for (int i = 0; i <= startLineIdx; ++i)
+    std::getline(csvFile, currentLine);
+
+  int lineIdx = startLineIdx;
   std::vector<std::vector<std::string>> lines;
-
-  int lineIdx = nbHeaderLines;
   do
   {
-    size_t pos = 0;
-    std::vector<std::string> sentence;
-    while ((pos = lmStr.find(delimiter)) != std::string::npos)
-    {
-      // Remove potential extra spaces after the delimiter
-      unsigned int charIdx = 0;
-      while (charIdx < lmStr.size() && lmStr[charIdx] == ' ')
-        ++charIdx;
-      sentence.push_back(lmStr.substr(charIdx, pos));
-      lmStr.erase(0, pos + delimiter.length());
-    }
-    sentence.push_back(lmStr.substr(0, pos));
-    if (sentence.size() != nbFields)
-    {
-      ROS_WARN_STREAM("data on line " + std::to_string(lineIdx) + " of the CSV file is not correct -> Skip");
-      ++lineIdx;
-      continue;
-    }
+    std::vector<std::string> sentence = this->ParseSentence(currentLine, delimiter);
 
     // Check numerical values in the studied line
+    // If the studied line contains non numerical value, skip it
     bool numericalIssue = false;
     for (std::string field : sentence)
     {
@@ -822,24 +799,220 @@ std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& 
     }
     if (numericalIssue)
     {
-      ROS_WARN_STREAM("Data on line " + std::to_string(lineIdx) + " contains a not numerical value -> Skip");
+      ROS_WARN_STREAM("Data on line " << lineIdx << " contains a not numerical value -> Skip");
       ++lineIdx;
       continue;
     }
 
-    lines.push_back(sentence);
+    lines.emplace_back(sentence);
     ++lineIdx;
   }
-  while (std::getline(lmFile, lmStr));
+  while (std::getline(csvFile, currentLine));
 
-  lmFile.close();
+  return lines;
+}
+
+//------------------------------------------------------------------------------
+std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& path,
+                                                             const unsigned int nbHeaderLines,
+                                                             const unsigned int nbFields)
+{
+  // Check the file
+  if (path.substr(path.find_last_of(".") + 1) != "csv")
+  {
+    ROS_ERROR_STREAM("The file is not CSV! Cancel loading");
+    return {};
+  }
+
+  std::ifstream csvFile(path);
+  if (csvFile.fail())
+  {
+    ROS_ERROR_STREAM("The CSV file " << path << " was not found!");
+    return {};
+  }
+
+  // Get the first data line (after header)
+  std::string firstLine;
+  for (int i = 0; i <= nbHeaderLines; ++i)
+    std::getline(csvFile, firstLine);
+  csvFile.close();
+
+  // Check which delimiter is used
+  std::string delimiter;
+  std::vector<std::string> fields;
+  for (const auto& del : DELIMITERS)
+  {
+    fields.clear();
+    size_t pos = 0;
+    pos = firstLine.find(del);
+    while (pos != std::string::npos)
+    {
+      fields.emplace_back(firstLine.substr(0, pos));
+      firstLine.erase(0, pos + del.length());
+      pos = firstLine.find(del);
+    }
+    // If there is some element after the last delimiter, add it
+    if (!firstLine.substr(0, pos).empty())
+      fields.emplace_back(firstLine.substr(0, pos));
+    // Check that the number of fields is correct
+    if (fields.size() == nbFields)
+    {
+      delimiter = del;
+      break;
+    }
+  }
+  if (fields.size() != nbFields)
+  {
+    ROS_WARN_STREAM("The CSV file is ill formed : " << fields.size() << " fields were found (" << nbFields
+                    << " expected), the loading is cancelled");
+    return {};
+  }
+
+  // Get vector of numerical sentences from the csv file
+  auto lines = this->ParseCSV(path, nbHeaderLines, delimiter);
+
+  // Check field number for each sentence
+  auto itLine = lines.begin();
+  while (itLine != lines.end())
+  {
+    if (itLine->size() != nbFields)
+      lines.erase(itLine);
+    else
+      ++itLine;
+  }
+
+  return lines;
+}
+
+//------------------------------------------------------------------------------
+std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& path,
+                                                             const unsigned int nbHeaderLines,
+                                                             const std::vector<std::string>& fieldsToCheck)
+{
+  if (fieldsToCheck.empty())
+  {
+    ROS_ERROR_STREAM("There is no field to check! Cancel loading csv file!");
+    return {};
+  }
+
+  // Check the file
+  if (path.substr(path.find_last_of(".") + 1) != "csv")
+  {
+    ROS_ERROR_STREAM("The file is not CSV! Cancel loading");
+    return {};
+  }
+  std::ifstream csvFile(path);
+  if (csvFile.fail())
+  {
+    ROS_ERROR_STREAM("The CSV file " << path << " was not found!");
+    return {};
+  }
+
+  // Find the delimiter
+  // In the header line, find the position of a field of vector fieldsToCheck
+  // Examine the left and the right of a field in the fieldToCheck to find the delimiter
+  std::string headerLine;
+  for (int i = 0; i < nbHeaderLines; ++i)
+    std::getline(csvFile, headerLine);
+  csvFile.close();
+  // Find the real position of a field where the field is not included in a word
+  const std::string& field = fieldsToCheck[0];
+  size_t pos = headerLine.find(field);
+  while (pos != std::string::npos &&
+         ((pos > 0 && std::isalnum(headerLine[pos - 1])) ||
+          (pos < headerLine.length() - field.length() && std::isalnum(headerLine[pos + field.length()]))))
+  {
+    pos = headerLine.find(field, pos + field.length());
+  }
+  if (pos == std::string::npos)
+  {
+    ROS_WARN_STREAM("The CSV file is ill formed : " << fieldsToCheck[0] << " field is not found,"
+                    << " the loading is cancelled");
+    return {};
+  }
+
+  // Helper to check delimiter to the left or to the right
+  auto checkSide = [](const std::string &header, size_t newPos, bool isLeftSide) -> std::string
+  {
+    std::string sideStr = header.substr(newPos, 1);
+    if (sideStr == " ")
+    {
+      // If the character is a space, check for consecutive spaces
+      size_t consecutiveSpaces = isLeftSide ?  header.find_last_not_of(" ", newPos)
+                                 : header.find_first_not_of(" ", newPos);
+      if (consecutiveSpaces == std::string::npos || std::isalnum(header[consecutiveSpaces]))
+        return sideStr;
+      else if (consecutiveSpaces != std::string::npos &&
+                std::find(DELIMITERS.begin(), DELIMITERS.end(), header.substr(consecutiveSpaces, 1)) != DELIMITERS.end())
+        return header.substr(consecutiveSpaces, 1);
+    }
+    else if (std::find(DELIMITERS.begin(), DELIMITERS.end(), sideStr) != DELIMITERS.end())
+    {
+      return sideStr;
+    }
+    return "";
+  };
+  // Check the character to the left
+  std::string delimiter = "";
+  if (pos > 0)
+  {
+    std::string leftDelimiter = checkSide(headerLine, pos - 1, true);
+    if (!leftDelimiter.empty())
+      delimiter = leftDelimiter;
+  }
+  // Check the character to the right if the delimiter is not found at the left
+  if (delimiter.empty() && (pos + field.length() < headerLine.length() - field.length()))
+  {
+    std::string rightDelimiter = checkSide(headerLine, pos + field.length(), false);
+    if (!rightDelimiter.empty())
+      delimiter = rightDelimiter;
+  }
+  if (delimiter.empty())
+  {
+    ROS_WARN_STREAM("The CSV file is ill formed :  the delimiter is not found,"
+                    << " the loading is cancelled");
+    return {};
+  }
+
+  // Check fields and store their position indices
+  std::vector<std::string> headerFields = this->ParseSentence(headerLine, delimiter);
+  std::vector<int> fieldsIdx;
+  fieldsIdx.reserve(fieldsToCheck.size());
+  for (const auto& field : fieldsToCheck)
+  {
+    auto itField = std::find(headerFields.begin(), headerFields.end(), field);
+    if (itField == headerFields.end())
+    {
+      ROS_WARN_STREAM("The CSV file is ill formed : " << field << " field is not found,"
+                      << " the loading is cancelled");
+      return {};
+    }
+    fieldsIdx.push_back(itField - headerFields.begin());
+  }
+
+  // Get vector of sentences
+  auto lines = this->ParseCSV(path, nbHeaderLines, delimiter);
+  // Reorder lines
+  for (int col = 0; col < fieldsIdx.size(); col++)
+  {
+    int swapId = std::find(fieldsIdx.begin(), fieldsIdx.end(), col) - fieldsIdx.begin();
+    for (int row = 0; row < lines.size(); row++)
+    {
+      std::swap(lines[row][col], lines[row][fieldsIdx.at(col)]);
+    }
+    std::swap(fieldsIdx[col], fieldsIdx[swapId]);
+  }
+
   return lines;
 }
 
 //------------------------------------------------------------------------------
 std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
 {
-  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 13, 2);
+
+  std::vector<std::string> fieldsToCheck{"t","x","y","z","x0","y0","z0",
+                                         "x1","y1","z1","x2","y2","z2"};
+  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 2, fieldsToCheck);
   if (lines.empty())
   {
     ROS_ERROR_STREAM("Cannot read file :" << path << ", poses are not loaded");
@@ -847,9 +1020,9 @@ std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
   }
 
   // Get frame ID
-  std::ifstream lmFile(path);
+  std::ifstream poseFile(path);
   std::string frameID;
-  std::getline(lmFile, frameID);
+  std::getline(poseFile, frameID);
   for (const auto& del : DELIMITERS)
   {
     if (frameID.find(del) != std::string::npos)
@@ -858,6 +1031,9 @@ std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
       return "";
     }
   }
+    // Remove the new line character in frameID string
+  if (!std::isalnum(frameID.back()))
+    frameID.pop_back();
 
   // Reset time offset if used by another sensor
   double timeOffsetTmp = this->LidarSlam.GetSensorTimeOffset();
@@ -902,7 +1078,7 @@ std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
 //------------------------------------------------------------------------------
 void LidarSlamNode::ReadTags(const std::string& path)
 {
-  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 43, 1);
+  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 1, 43);
   for (auto& l : lines)
   {
     // Build measurement
@@ -927,7 +1103,7 @@ void LidarSlamNode::ReadTags(const std::string& path)
 //------------------------------------------------------------------------------
 void LidarSlamNode::ReadLoopIndices(const std::string& path)
 {
-  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 2, 1);
+  std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 1, 2);
   if (lines.empty())
   {
     std::list<LidarSlam::LidarState> lidarStates = this->LidarSlam.GetLogStates();
@@ -1057,9 +1233,9 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       ROS_INFO_STREAM("Saving current trajectory of base frame as " << msg.string_arg);
       std::ofstream fout(msg.string_arg);
       fout << this->TrackingFrameId << "\n";
-      fout << "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
+      fout << "index,t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
       for (auto& s : states)
-        fout << s;
+        fout << s.Index << "," << s;
       fout.close();
       break;
     }
