@@ -1786,6 +1786,7 @@ void vtkSlam::SetKeyPointsExtractor(vtkSpinningSensorKeypointExtractor* _arg)
 {
   vtkSetObjectBodyMacro(KeyPointsExtractor, vtkSpinningSensorKeypointExtractor, _arg);
   this->SlamAlgo->SetKeyPointsExtractor(this->KeyPointsExtractor->GetExtractor());
+  this->SlamAlgo->GetKeyPointsExtractor()->SetNbThreads(this->SlamAlgo->GetNbThreads());
   this->ParametersModificationTime.Modified();
 }
 
