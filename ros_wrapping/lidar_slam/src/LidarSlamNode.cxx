@@ -732,6 +732,10 @@ std::vector<std::string> LidarSlamNode::ParseSentence(std::string& currentLine,
   if (currentLine.empty())
     return {};
 
+  // Remove the last character if the last character is not an alphabet or a number
+  if (!std::isalnum(currentLine.back()))
+    currentLine.pop_back();
+
   // Remove potential extra spaces before and after the delimiter
   // Change comma decimal separator to point.
   auto extractWord = [&delimiter](const std::string& currentLine, unsigned int pos)
@@ -1027,6 +1031,9 @@ std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
       return "";
     }
   }
+    // Remove the new line character in frameID string
+  if (!std::isalnum(frameID.back()))
+    frameID.pop_back();
 
   // Reset time offset if used by another sensor
   double timeOffsetTmp = this->LidarSlam.GetSensorTimeOffset();
