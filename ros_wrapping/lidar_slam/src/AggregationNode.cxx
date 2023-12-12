@@ -93,6 +93,7 @@ AggregationNode::AggregationNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   // Set Minimal distance of the points to the trajectory
   // Allows to remove traces from the map
   this->MinDistAroundTrajectory = this->PrivNh.param("min_dist_around_trajectory", 1.);
+  this->MaxDistAroundTrajectory = this->PrivNh.param("max_dist_around_trajectory", -1.);
 
   ROS_INFO_STREAM("Aggregation node is ready !");
 }
@@ -100,11 +101,27 @@ AggregationNode::AggregationNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
 //------------------------------------------------------------------------------
 void AggregationNode::Callback(const CloudS::Ptr registeredCloud)
 {
-  // Aggregated points from all frames
-  this->DenseMap->Add(registeredCloud, false, false);
+  // Remove the farthest points if required
+  CloudS::Ptr closest;
+  if (this->MaxDistAroundTrajectory > 0)
+  {
+    closest.reset(new CloudS);
+    closest->reserve(registeredCloud->size());
+    for (const auto& pt : *registeredCloud)
+    {
+      if ((pt.getVector3fMap() - this->CurrentPosition.cast<float>()).norm() < this->MaxDistAroundTrajectory)
+        closest->emplace_back(pt);
+    }
+  }
+  else
+    closest = registeredCloud;
+
+  // Add the points to the map
+  this->DenseMap->Add(closest, false, false);
+
+  // Publish the map
   this->Pointcloud = this->DenseMap->Get(true);
   this->Pointcloud->header = registeredCloud->header;
-  // Publish them
   this->PointsPublisher.publish(this->Pointcloud);
 }
 
@@ -142,17 +159,17 @@ bool AggregationNode::ResetService(lidar_slam::resetRequest& req, lidar_slam::re
 //------------------------------------------------------------------------------
 void AggregationNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
 {
-  Eigen::Vector3d currPosition = Utils::PoseMsgToIsometry(poseMsg.pose.pose).translation();
+  this->CurrentPosition = Utils::PoseMsgToIsometry(poseMsg.pose.pose).translation();
 
   if (this->MinDistAroundTrajectory > 0.)
-    this->DenseMap->EmptyAroundPoint(this->MinDistAroundTrajectory, currPosition.cast<float>().array());
+    this->DenseMap->EmptyAroundPoint(this->MinDistAroundTrajectory, this->CurrentPosition.cast<float>().array());
 
   if (!this->DoExtractSlice)
     return;
 
   // Store pose
-  this->Positions.push_back(currPosition);
-  while ((currPosition - this->Positions.front()).norm() > this->TrajectoryMaxLength)
+  this->Positions.push_back(this->CurrentPosition);
+  while ((this->CurrentPosition - this->Positions.front()).norm() > this->TrajectoryMaxLength)
     this->Positions.pop_front();
 
   if (this->Positions.size() < 2)
