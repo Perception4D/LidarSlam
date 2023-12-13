@@ -226,7 +226,7 @@ ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 9"
 
 ##### Reset the trajectory
 You can reset the slam trajectory with a trajectory CSV file, the map will be updated with the new trajectory.
-This file should contain fields "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2" which represents the time and the transformation of a pose.
+This file should contain fields "time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2" which represents the time and the transformation of a pose.
 
 Example:
 ```bash
@@ -603,7 +603,7 @@ In replay mode, it is possible to load external poses from a CSV file using the 
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 40, string_arg: path/to/trajectory.csv}"
 ```
 
-This CSV file must have a header of 2 lines : the first line contains the frame ID and the second line the field names "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2". xi corresponds to the first element of the ith colum of the rotation matrix.
+This CSV file must have a header of 2 lines : the first line contains the frame ID and the second line the field names "time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2". xi corresponds to the first element of the ith colum of the rotation matrix.
 The calibration between the tracked frame and the frame defined in the header of the message must be sent to the TF tree. If it is not found, the calibration is set to identity.
 
 ***WARNING***: Remember to set *max_measures*, and *time_threshold* to convenient values to be able to use the measurements.
