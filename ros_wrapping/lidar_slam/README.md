@@ -184,7 +184,7 @@ rostopic pub -1 /slam_command lidar_slam/SlamCommand "command: 9"
 
 ##### Reset the trajectory
 You can reset the slam trajectory with a trajectory CSV file, the map will be updated with the new trajectory.
-This file should contain fields "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2" which represents the time and the transformation of a pose. If there are extra fields in the csv file, they will not make trouble. 
+This file should contain fields "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2" which represents the time and the transformation of a pose. If there are extra fields in the csv file, they will not make trouble.
 
 Example:
 ```bash

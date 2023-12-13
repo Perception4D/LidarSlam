@@ -1031,7 +1031,7 @@ std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
       return "";
     }
   }
-    // Remove the new line character in frameID string
+  // Remove the new line character in frameID string
   if (!std::isalnum(frameID.back()))
     frameID.pop_back();
 
