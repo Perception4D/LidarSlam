@@ -72,6 +72,10 @@ include_directories(
 add_executable(velodyne_conversion_node src/VelodyneToLidarNode.cxx)
 target_link_libraries(velodyne_conversion_node ${catkin_LIBRARIES})
 
+# Hesai Lidar
+add_executable(hesai_conversion_node src/HesaiToLidarNode.cxx)
+target_link_libraries(hesai_conversion_node ${catkin_LIBRARIES})
+
 # Ouster Lidar
 add_executable(ouster_conversion_node src/OusterToLidarNode.cxx)
 target_link_libraries(ouster_conversion_node ${catkin_LIBRARIES})
@@ -98,6 +102,7 @@ add_dependencies(generic_conversion_node lidar_conversions_generate_messages_cpp
 
 install(TARGETS
   velodyne_conversion_node
+  hesai_conversion_node
   robosense_conversion_node
   ouster_conversion_node
   livox_conversion_node

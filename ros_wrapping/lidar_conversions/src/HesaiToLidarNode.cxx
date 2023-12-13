@@ -1,7 +1,7 @@
 //==============================================================================
-// Copyright 2021-2022 Kitware, Inc., Kitware SAS
+// Copyright 2019-2020 Kitware, Inc., Kitware SAS
 // Author: Sanchez Julia (Kitware SAS)
-// Creation date: 2022-05-10
+// Creation date: 2023-12-12
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 // limitations under the License.
 //==============================================================================
 
-#include "OusterToLidarNode.h"
+#include "HesaiToLidarNode.h"
 #include "Utilities.h"
 #include <pcl_conversions/pcl_conversions.h>
 
@@ -25,7 +25,7 @@
 namespace lidar_conversions
 {
 
-OusterToLidarNode::OusterToLidarNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
+HesaiToLidarNode::HesaiToLidarNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   : Nh(nh)
   , PrivNh(priv_nh)
 {
@@ -40,56 +40,72 @@ OusterToLidarNode::OusterToLidarNode(ros::NodeHandle& nh, ros::NodeHandle& priv_
   this->Talker = nh.advertise<CloudS>("lidar_points", 1);
 
   // Init ROS subscriber
-  this->Listener = nh.subscribe("ouster/points", 1, &OusterToLidarNode::Callback, this);
+  this->Listener = nh.subscribe("/hesai/pandar", 1, &HesaiToLidarNode::Callback, this);
 
-  ROS_INFO_STREAM(BOLD_GREEN("Ouster data converter is ready !"));
+  ROS_INFO_STREAM(BOLD_GREEN("Hesai data converter is ready !"));
 }
 
 //------------------------------------------------------------------------------
-void OusterToLidarNode::Callback(const CloudV& cloudO)
+void HesaiToLidarNode::Callback(const CloudH& cloudH)
 {
   // If input cloud is empty, ignore it
-  if (cloudO.empty())
+  if (cloudH.empty())
   {
-    ROS_ERROR_STREAM("Input Velodyne pointcloud is empty : frame ignored.");
+    ROS_ERROR_STREAM("Input Hesai pointcloud is empty : frame ignored.");
     return;
   }
 
   // Init SLAM pointcloud
   CloudS cloudS;
-  cloudS.reserve(cloudO.size());
+  cloudS.reserve(cloudH.size());
 
   // Copy pointcloud metadata
-  Utils::CopyPointCloudMetadata(cloudO, cloudS);
+  Utils::CopyPointCloudMetadata(cloudH, cloudS);
 
   // Check wether to use custom laser ID mapping or leave it untouched
   bool useLaserIdMapping = !this->LaserIdMapping.empty();
 
+  // Check if time field looks properly set
+  // If first and last points have same timestamps, this is not normal
+  bool isTimeValid = cloudH.back().timestamp - cloudH.front().timestamp > 1e-8;
+  if (!isTimeValid)
+    ROS_WARN_STREAM("Invalid 'time' field, it will be built from azimuth advancement.");
+
   // Helper to estimate frameAdvancement in case time field is invalid
   Utils::SpinningFrameAdvancementEstimator frameAdvancementEstimator;
 
+  double frameTime = cloudH.header.stamp * 1e-6;
+
   // Build SLAM pointcloud
-  for (const PointO& ousterPoint : cloudO)
+  for (const PointH& hesaiPoint : cloudH)
   {
     // Remove no return points by checking unvalid values (NaNs or zeros)
-    if (!Utils::IsPointValid(ousterPoint))
+    if (!Utils::IsPointValid(hesaiPoint))
       continue;
 
     PointS slamPoint;
-    slamPoint.x = ousterPoint.x;
-    slamPoint.y = ousterPoint.y;
-    slamPoint.z = ousterPoint.z;
-    slamPoint.intensity = ousterPoint.reflectivity;
-    slamPoint.laser_id = useLaserIdMapping ? this->LaserIdMapping[ousterPoint.ring] : ousterPoint.ring;
+    slamPoint.x = hesaiPoint.x;
+    slamPoint.y = hesaiPoint.y;
+    slamPoint.z = hesaiPoint.z;
+    slamPoint.intensity = hesaiPoint.intensity;
+    slamPoint.laser_id = useLaserIdMapping ? this->LaserIdMapping[hesaiPoint.ring] : hesaiPoint.ring;
+
+    // Use time field if available
+    // time is the offset to add to header.stamp to get point-wise timestamp
+    if (isTimeValid)
+      slamPoint.time = hesaiPoint.timestamp - frameTime;
 
     // Build approximate point-wise timestamp from azimuth angle
     // 'frameAdvancement' is 0 for first point, and should match 1 for last point
     // for a 360 degrees scan at ideal spinning frequency.
     // 'time' is the offset to add to 'header.stamp' to get approximate point-wise timestamp.
-    // By default, 'header.stamp' is the timestamp of the last Ouster packet,
+    // By default, 'header.stamp' is the timestamp of the last Hesai packet,
     // but user can choose the first packet timestamp using parameter 'timestamp_first_packet'.
-    double frameAdvancement = frameAdvancementEstimator(slamPoint);
-    slamPoint.time = (this->TimestampFirstPacket ? frameAdvancement : frameAdvancement - 1) / this->Rpm * 60.;
+    else
+    {
+      double frameAdvancement = frameAdvancementEstimator(slamPoint);
+      slamPoint.time = (this->TimestampFirstPacket ? frameAdvancement : frameAdvancement - 1) / this->Rpm * 60.;
+    }
 
     if (!Utils::HasNanField(slamPoint))
       cloudS.push_back(slamPoint);
@@ -106,11 +122,11 @@ void OusterToLidarNode::Callback(const CloudV& cloudO)
  */
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "ouster_conversion");
+  ros::init(argc, argv, "hesai_conversion");
   ros::NodeHandle n;
   ros::NodeHandle priv_nh("~");
 
-  lidar_conversions::OusterToLidarNode v2s(n, priv_nh);
+  lidar_conversions::HesaiToLidarNode v2s(n, priv_nh);
 
   ros::spin();
 
