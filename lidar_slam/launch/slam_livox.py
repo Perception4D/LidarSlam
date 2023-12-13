@@ -115,6 +115,17 @@ def generate_launch_description():
                "--frame-id", "base_link", "--child-frame-id", "wheel"]
   )
 
+  # Static TF base to ext sensor
+  tf_base_to_ext_sensor = Node(
+    package="tf2_ros",
+    executable="static_transform_publisher",
+    name="tf_base_to_ext_sensor",
+    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
+    arguments=["--x", "0", "--y", "0", "--z", "0",
+               "--roll", "0", "--pitch", "0", "--yaw", "0",
+               "--frame-id", "base_link", "--child-frame-id", "ext_sensor"]
+  )
+
   ld.add_action(rviz_node)
   ld.add_action(livox_conversion_node)
   ld.add_action(slam_outdoor_node)
@@ -123,5 +134,6 @@ def generate_launch_description():
   # TF
   ld.add_action(tf_base_to_livox)
   ld.add_action(tf_base_to_wheel)
+  ld.add_action(tf_base_to_ext_sensor)
 
   return (ld)

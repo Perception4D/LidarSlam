@@ -132,6 +132,7 @@ void SlamControlPanel::CreateLayout()
   calibrateButton->setToolTip("Estimate the calibration between\n"
                               "the frame tracked by the SLAM and\n"
                               "the frame tracked in the input file.\n"
+                              "This frame ID must be written in the first line of the input file.\n"
                               "The file must contain the fields\n"
                               "<t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2>\n"
                               "t being the time, x,y,z being the position and \n"
@@ -139,6 +140,23 @@ void SlamControlPanel::CreateLayout()
                               "of the trajectory pose (ith column\n"
                               "of the rotation matrix).");
   connect(calibrateButton, &QPushButton::clicked, this, &SlamControlPanel::Calibrate);
+
+  // Load external poses
+  auto loadExtTrajButton = new QPushButton;
+  loadExtTrajButton->setText("Load ext trajectory");
+  loadExtTrajButton->setToolTip("Load an external trajectory\n"
+                                "These poses can be used to de-skew the input scan,\n"
+                                "to supply a prior pose to the registration algorithm,\n"
+                                "or to add a constraint in the SLAM optimization.\n"
+                                "The first line must contain the frame ID of the sensor.\n"
+                                "The file must contain the fields\n"
+                                "<t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2>\n"
+                                "t being the time, x,y,z being the position and \n"
+                                "xi,yi,zi being an axis of the 3D frame \n"
+                                "of the trajectory pose (ith column\n"
+                                "of the rotation matrix).\n"
+                                "The frame ID must be written in the first line of the file.\n");
+  connect(loadExtTrajButton, &QPushButton::clicked, this, &SlamControlPanel::LoadExtTrajectory);
 
  // Add loop closure indices from external file
   auto loadLoopIndicesButton = new QPushButton;
@@ -169,6 +187,7 @@ void SlamControlPanel::CreateLayout()
   commandLayout->addWidget(saveTrajButton);
   commandLayout->addWidget(saveMapsButton);
   commandLayout->addWidget(calibrateButton);
+  commandLayout->addWidget(loadExtTrajButton);
   commandLayout->addWidget(loadLoopIndicesButton);
   commandLayout->addWidget(optimizeGraphButton);
 
@@ -299,6 +318,13 @@ void SlamControlPanel::Calibrate()
 {
   QString filePath = QFileDialog::getOpenFileName(this, tr("Open File"), "/home", tr("Trajectory files (*.csv)"));
   this->SendCommand(lidar_slam::msg::SlamCommand::CALIBRATE_WITH_POSES, filePath.toStdString());
+}
+
+//----------------------------------------------------------------------------
+void SlamControlPanel::LoadExtTrajectory()
+{
+  QString filePath = QFileDialog::getOpenFileName(this, tr("Open File"), "/home", tr("Trajectory files (*.csv)"));
+  this->SendCommand(lidar_slam::msg::SlamCommand::LOAD_POSES, filePath.toStdString());
 }
 
 //----------------------------------------------------------------------------

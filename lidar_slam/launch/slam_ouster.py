@@ -214,6 +214,17 @@ def generate_launch_description():
                "--frame-id", "base_link", "--child-frame-id", "wheel"]
   )
 
+  # Static TF base to ext sensor
+  tf_base_to_ext_sensor = Node(
+    package="tf2_ros",
+    executable="static_transform_publisher",
+    name="tf_base_to_ext_sensor",
+    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
+    arguments=["--x", "0", "--y", "0", "--z", "0",
+               "--roll", "0", "--pitch", "0", "--yaw", "0",
+               "--frame-id", "base_link", "--child-frame-id", "ext_sensor"]
+  )
+
   ld.add_action(rviz_node)
   ld.add_action(ouster_conversion_node)
   if os.name != 'nt':
@@ -228,4 +239,5 @@ def generate_launch_description():
     ld.add_action(tf_laser_to_os_lidar)
     ld.add_action(tf_laser_to_imu)
   ld.add_action(tf_base_to_wheel)
+  ld.add_action(tf_base_to_ext_sensor)
   return (ld)

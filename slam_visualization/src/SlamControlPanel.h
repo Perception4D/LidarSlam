@@ -120,6 +120,12 @@ public Q_SLOTS:
 
   //----------------------------------------------------------------------------
   /*!
+   * @brief Send a LOAD_POSES command to the slam node.
+   */
+  void LoadExtTrajectory();
+
+  //----------------------------------------------------------------------------
+  /*!
    * @brief Send a LOAD_LOOP_INDICES command to the slam node.
    */
   void LoadLoopIndices();
