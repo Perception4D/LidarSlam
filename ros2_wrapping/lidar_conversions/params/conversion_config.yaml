@@ -15,9 +15,12 @@
     possible_frequencies: [5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20.]
 
   # For ouster:
-    # possible_frequencies: TODO
+    # possible_frequencies: [10., 20.]
 
   # For robosense :
+    # possible_frequencies: [5., 10., 20.]
+
+  # For hesai
     # possible_frequencies: [5., 10., 20.]
 
   # If the user knows exactly the frequency of the lidar, he can set it as :
