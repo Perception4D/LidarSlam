@@ -1010,7 +1010,7 @@ std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& 
 std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
 {
 
-  std::vector<std::string> fieldsToCheck{"t","x","y","z","x0","y0","z0",
+  std::vector<std::string> fieldsToCheck{"time","x","y","z","x0","y0","z0",
                                          "x1","y1","z1","x2","y2","z2"};
   std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 2, fieldsToCheck);
   if (lines.empty())
@@ -1233,7 +1233,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       ROS_INFO_STREAM("Saving current trajectory of base frame as " << msg.string_arg);
       std::ofstream fout(msg.string_arg);
       fout << this->TrackingFrameId << "\n";
-      fout << "index,t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
+      fout << "index,time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
       for (auto& s : states)
         fout << s.Index << "," << s;
       fout.close();
@@ -1263,7 +1263,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       ROS_INFO_STREAM("Saving current trajectory of the Lidar sensor as " << msg.string_arg);
       std::ofstream fout(msg.string_arg);
       fout << this->MainLidarId << "\n";
-      fout << "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
+      fout << "time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
       for (auto& s : states)
       {
         s.Isometry = s.Isometry * baseToLidar;

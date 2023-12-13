@@ -56,7 +56,7 @@ void SlamControlPanel::CreateLayout()
   resetTrajButton->setText("Reset trajectory");
   resetTrajButton->setToolTip("Reset the trajectory from a CSV file with header:\n"
                               "frame_id\n"
-                              "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n"
+                              "time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n"
                               "t being the time,\n"
                               "x,y,z being the position and\n"
                               "xi,yi,zi being an axis of the 3D frame\n"
@@ -93,7 +93,7 @@ void SlamControlPanel::CreateLayout()
   auto saveTrajButton = new QPushButton;
   saveTrajButton->setText("Save trajectory");
   saveTrajButton->setToolTip("This will save the trajectory as a CSV type file\n"
-                             "with header <index,t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2>\n"
+                             "with header <index,time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2>\n"
                              "x,y,z being the position and \n"
                              "xi,yi,zi being an axis of the 3D frame \n"
                              "of the trajectory pose (ith column of the rotation).");
@@ -120,7 +120,7 @@ void SlamControlPanel::CreateLayout()
                               "This frame ID must be written in the first line of the input file.\n"
                               "The first line must contain the frame ID of the sensor.\n"
                               "The file must contain the fields\n"
-                              "<t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2>\n"
+                              "<time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2>\n"
                               "t being the time, x,y,z being the position and \n"
                               "xi,yi,zi being an axis of the 3D frame \n"
                               "of the trajectory pose (ith column\n"
@@ -136,7 +136,7 @@ void SlamControlPanel::CreateLayout()
                                 "or to add a constraint in the SLAM optimization.\n"
                                 "The first line must contain the frame ID of the sensor.\n"
                                 "The file must contain the fields\n"
-                                "<t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2>\n"
+                                "<time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2>\n"
                                 "t being the time, x,y,z being the position and \n"
                                 "xi,yi,zi being an axis of the 3D frame \n"
                                 "of the trajectory pose (ith column\n"
