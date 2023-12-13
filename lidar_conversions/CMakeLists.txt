@@ -108,6 +108,18 @@ ament_target_dependencies(livox_conversion_node
   livox_ros_driver
 )
 
+# Hesai Lidar
+add_executable(hesai_conversion_node src/HesaiToLidarNode.cxx)
+
+#link dependencies to target
+ament_target_dependencies(hesai_conversion_node
+  ${conversion_dependencies}
+)
+
+target_link_libraries(hesai_conversion_node
+  "${cpp_typesupport_target}"
+)
+
 # Generic converter
 add_executable(generic_conversion_node src/GenericConversionNode.cxx)
 
@@ -129,6 +141,7 @@ install(TARGETS
     ouster_conversion_node
     robosense_conversion_node
     livox_conversion_node
+    hesai_conversion_node
     generic_conversion_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
