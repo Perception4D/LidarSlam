@@ -1454,6 +1454,42 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       break;
     }
 
+    case lidar_slam::msg::SlamCommand::LOAD_POSES:
+    {
+      // Clear current pose manager
+      this->LidarSlam.ResetSensor(true, LidarSlam::ExternalSensor::POSE);
+
+      // If an input file is provided, load the poses
+      if (msg.string_arg.empty())
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "No file provided, cannot load poses");
+        break;
+      }
+
+      // Fill external pose manager with poses from a CSV file
+      this->ExtPoseFrameId = this->ReadPoses(msg.string_arg);
+      if (this->ExtPoseFrameId.empty())
+      {
+        RCLCPP_WARN_STREAM(this->get_logger(), "External file does not contain a "
+                                                << "frame ID in its header, external "
+                                                << "poses are not loaded.");
+        break;
+      }
+
+      Eigen::Isometry3d baseToExtPoseSensor = Eigen::Isometry3d::Identity();
+      if (!Utils::Tf2LookupTransform(baseToExtPoseSensor, *this->TfBuffer, this->TrackingFrameId, this->ExtPoseFrameId))
+      {
+        RCLCPP_WARN_STREAM(this->get_logger(), "No calibration found in TF between " << this->TrackingFrameId << " and " << this->ExtPoseFrameId
+                                               << "\n\tCalibration set to identity.");
+      }
+      RCLCPP_INFO_STREAM(this->get_logger(), "Calibration for ext poses set to :\n" << baseToExtPoseSensor.matrix());
+      this->LidarSlam.SetPoseCalibration(baseToExtPoseSensor);
+
+      RCLCPP_INFO_STREAM(this->get_logger(), "External poses loaded!");
+
+      break;
+    }
+
     // Unknown command
     default:
       RCLCPP_ERROR_STREAM(this->get_logger(), "Unknown SLAM command : " << (unsigned int) msg.command);
