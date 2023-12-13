@@ -260,6 +260,7 @@ void Slam::Reset(bool resetLog)
 
   // Reset LoopDetections
   this->ClearLoopDetections();
+  PRINT_INFO("Loop indices are cleared!")
 }
 
 //-----------------------------------------------------------------------------
@@ -1943,17 +1944,22 @@ void Slam::AddLoopClosureIndices(LoopClosure::LoopIndices& loop)
 void Slam::ClearLoopDetections()
 {
   this->LoopDetections.clear();
-  PRINT_WARNING("The LoopDetections vector is cleared!");
 }
 
 //-----------------------------------------------------------------------------
 std::list<LidarState>::iterator Slam::GetKeyStateIterator(const unsigned int& frameIdx)
 {
+  // Edge cases, should be well processed outside of this function
+  if (this->LogStates.empty() || this->LogStates.size() == 1)
+    return this->LogStates.begin();
+
   // Get the first state iterator whose index is greater than frameIdx
   auto itState = std::upper_bound(this->LogStates.begin(),
                                   this->LogStates.end(),
                                   frameIdx,
                                   [&](unsigned int idx, const LidarState& state) {return idx < state.Index;});
+  if (itState == this->LogStates.end() && std::prev(itState)->Index == frameIdx)
+    return std::prev(itState);
   if (itState == this->LogStates.end() || itState == this->LogStates.begin())
   {
     PRINT_ERROR("The frame index #" << frameIdx << " is not in the range of Logstates.");
@@ -1973,9 +1979,35 @@ std::list<LidarState>::iterator Slam::GetKeyStateIterator(const unsigned int& fr
 }
 
 //-----------------------------------------------------------------------------
+std::list<LidarState>::const_iterator Slam::GetClosestState(const Eigen::Vector3d& position) const
+{
+  // Edge cases, should be well processed outside of this function
+  if (this->LogStates.empty() || this->LogStates.size() == 1)
+    return this->LogStates.begin();
+
+  auto closestIt = this->LogStates.begin();
+  float minSqDist = FLT_MAX;
+  for (auto it = this->LogStates.begin(); it != this->LogStates.end(); ++it)
+  {
+    float sqDist = (it->Isometry.translation() - position).squaredNorm();
+    if (sqDist < minSqDist)
+    {
+      minSqDist = sqDist;
+      closestIt = it;
+    }
+  }
+  return closestIt;
+}
+
+//-----------------------------------------------------------------------------
 bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, std::list<LidarState>::iterator& itRevisitedState)
 {
   #ifdef USE_TEASERPP
+  if (this->LogStates.size() < 2)
+  {
+    PRINT_WARNING("Cannot detect loop closure: no enough logged states");
+    return false;
+  }
   // Create query submap and get keypoints in BASE coordinates
   Maps querySubMaps;
   this->InitSubMaps(querySubMaps);

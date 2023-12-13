@@ -28,6 +28,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <nav_msgs/msg/odometry.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/point_stamped.hpp>
 #include <lidar_slam/msg/confidence.hpp>
 #include <lidar_slam/msg/slam_command.hpp>
 #include <apriltag_ros/msg/april_tag_detection.hpp>
@@ -133,6 +134,13 @@ public:
 
   //----------------------------------------------------------------------------
   /*!
+   * @brief     Rviz clicked point callback, adding loop closure revisited frame indice
+   * @param[in] msg clicked point coordinates
+   */
+  void ClickedPointCallback(const geometry_msgs::msg::PointStamped& pointMsg);
+
+  //----------------------------------------------------------------------------
+  /*!
    * @brief     Set SLAM pose from external guess.
    * @param[in] msg The pose to use.
    *
@@ -184,17 +192,46 @@ protected:
    */
   void SetSlamInitialState();
 
+//----------------------------------------------------------------------------
+  /*!
+   * @brief Helper to parse a line of stream into a vector of string (sentence)
+   *        with a given delimiter
+   */
+  std::vector<std::string> ParseSentence(std::string& currentLine,
+                                         const std::string& delimiter);
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Helper to get and fill a vector of sentences (sentence = vector of strings)
+   *        given csv file path and the delimiter
+   *        startLineIdx indicates from which line the csv data stream is started
+   */
+  std::vector<std::vector<std::string>> ParseCSV(const std::string& path,
+                                                 const unsigned int startLineIdx,
+                                                 const std::string& delimiter);
+
   //----------------------------------------------------------------------------
   /*!
    * @brief Get and fill a vector of sentences (sentence = vector of strings)
    *        provided in a csv file.
    *        The delimiters can be "," ";" " " "/t"
    *        /!\ the order of fields matters
-   *        A header line can be added but won't be used to fill each sentence
    */
   std::vector<std::vector<std::string>> ReadCSV(const std::string& path,
-                                                unsigned int nbFields,
-                                                unsigned int nbHeaderLines);
+                                                const unsigned int nbHeaderLines,
+                                                const unsigned int nbFields);
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Get and fill a vector of sentences (sentence = vector of strings)
+   *        provided in a csv file.
+   *        The delimiters can be "," ";" " " "/t"
+   *        Check whether or not all fields in fieldsToCheck exist in the file and
+   *        return data in the same order
+   */
+  std::vector<std::vector<std::string>> ReadCSV(const std::string& path,
+                                                const unsigned int nbHeaderLines,
+                                                const std::vector<std::string>& fieldsToCheck);
 
   //----------------------------------------------------------------------------
   /*!
@@ -206,10 +243,11 @@ protected:
   void ReadTags(const std::string& path);
   //----------------------------------------------------------------------------
   /*!
-   * @brief Helper to get and store pose measurements
-   *        provided in a csv file.
-   *        The fields of the file must be : time, x, y, z, rot(0,0), rot(1,0), rot(2,0), ..., rot(3, 3)
-   *        /!\ order matters
+   * @brief Helper to get and store pose measurements provided in a csv file.
+   *        The function looks for the required fields in the csv file to read data
+   *        The file must contain the fields : t, x, y, z, x0, y0, z0, ..., z2
+   *        which correspond to terms : time, x, y, z, rot(0,0), rot(1,0), rot(2,0), ..., rot(3, 3)
+   *        /!\ fields names matter
    */
   std::string ReadPoses(const std::string& path, bool resetTraj = false);
   //----------------------------------------------------------------------------
@@ -365,6 +403,9 @@ protected:
 
   // IMU
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr ImuSub;
+
+  // Clicked point in rviz
+  rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr ClickedPtSub;
 };
 
 #endif // LIDAR_SLAM_NODE_H

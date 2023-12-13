@@ -441,6 +441,9 @@ public:
   std::vector<LidarState> GetLastStates(double freq = -1);
   LidarState GetLastState() {return this->GetLastStates().front();};
 
+  // Get the logged state which is the closest to the input position
+  std::list<LidarState>::const_iterator GetClosestState(const Eigen::Vector3d& position) const;
+
   // ---------------------------------------------------------------------------
   //   Graph parameters
   // ---------------------------------------------------------------------------
@@ -753,7 +756,7 @@ public:
   void SetVoxelGridMinFramesPerVoxel(unsigned int minFrames);
 
   // ---------------------------------------------------------------------------
-  //   Loop Closure parameters
+  //   Loop Closure
   // ---------------------------------------------------------------------------
 
   // Detect a loop for the current frame
@@ -765,9 +768,20 @@ public:
   // Reset LoopDetections vector
   void ClearLoopDetections();
 
+  // Loop closure detection parameters
   GetStructParamsMacro(Loop, Detector, LoopClosureDetector)
   SetStructParamsMacro(Loop, Detector, LoopClosureDetector)
 
+  GetStructParamsMacro(Loop, GapLength, double)
+  SetStructParamsMacro(Loop, GapLength, double)
+
+  GetStructParamsMacro(Loop, SampleStep, double)
+  SetStructParamsMacro(Loop, SampleStep, double)
+
+  GetStructParamsMacro(Loop, EvaluationThreshold, double)
+  SetStructParamsMacro(Loop, EvaluationThreshold, double)
+
+  // Loop closure registration parameters
   GetStructParamsMacro(Loop, QueryMapStartRange, double)
   SetStructParamsMacro(Loop, QueryMapStartRange, double)
 
@@ -780,17 +794,6 @@ public:
   GetStructParamsMacro(Loop, RevisitedMapEndRange, double)
   SetStructParamsMacro(Loop, RevisitedMapEndRange, double)
 
-  // Parameters for automatic detection
-  GetStructParamsMacro(Loop, GapLength, double)
-  SetStructParamsMacro(Loop, GapLength, double)
-
-  GetStructParamsMacro(Loop, SampleStep, double)
-  SetStructParamsMacro(Loop, SampleStep, double)
-
-  GetStructParamsMacro(Loop, EvaluationThreshold, double)
-  SetStructParamsMacro(Loop, EvaluationThreshold, double)
-
-  // Get/Set Loop Closure registration parameters
   GetStructParamsMacro(Loop, EnableOffset, bool)
   SetStructParamsMacro(Loop, EnableOffset, bool)
 
@@ -1065,7 +1068,7 @@ private:
   Maps LocalMaps;
 
   // ---------------------------------------------------------------------------
-  //   Loop closure
+  //   Loop closure parameters
   // ---------------------------------------------------------------------------
 
   // Loop closure parameters for the detection and the registration
@@ -1333,7 +1336,7 @@ private:
   void LogCurrentFrameState();
 
   // ---------------------------------------------------------------------------
-  //   Loop Closure usage
+  //   Loop Closure helpers
   // ---------------------------------------------------------------------------
 
   // Get the iterator of LogStates for an input frame index
@@ -1411,7 +1414,7 @@ private:
   // in the trajectory when interpolating
   int GetTrajSection(double time) const;
 
-  // Get the state logged which is the closest to the input time
+  // Get the logged state which is the closest to the input time
   std::list<LidarState>::const_iterator GetClosestState(double time) const;
 
   // Get a window of states around an iterator
