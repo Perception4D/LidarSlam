@@ -63,10 +63,25 @@ uint8 SWITCH_SENSOR = 25
 
 # Launch a calibration process using the current SLAM trajectory
 # and a file containing an external trajectory captured at the same time
-# The file should be a csv file with fields time,x,y,z,rot(0,0),rot(1,0), ... , rot(2,2)
+# The file should be a csv file with fields time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2
+# xi being the first element of the ith column of the rotation matrix
 # and the first line should contain the ID of the frame tracked in the file's trajectory
 # It publishes a static TF between the base frame and the
 # frame tracked by the external trajectory
 # Only an overlapping part of trajectories is necessary to compute
 # the calibration
 uint8 CALIBRATE_WITH_POSES = 30
+
+# Load poses from an external file when using the
+# package in replay (post-process)
+# This command takes an argument as a file path to a file.
+# The file should be CSV with fields : time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2
+# xi being the first element of the ith column of the rotation matrix
+# These poses can be used for de-skewing the input points,
+# to supply a prior motion to the registration algorithm
+# and as a contraint in the SLAM optimization.
+# It can also be used to optimize a pose graph.
+# The calibration between "ext_pose_sensor" and the
+# SLAM tracked pose should be in the TF tree
+# It can also be estimated using the calibrate command
+uint8 LOAD_POSES = 40

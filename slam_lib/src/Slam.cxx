@@ -260,6 +260,7 @@ void Slam::Reset(bool resetLog)
 
   // Reset LoopDetections
   this->ClearLoopDetections();
+  PRINT_INFO("Loop indices are cleared!")
 }
 
 //-----------------------------------------------------------------------------
@@ -1943,7 +1944,6 @@ void Slam::AddLoopClosureIndices(LoopClosure::LoopIndices& loop)
 void Slam::ClearLoopDetections()
 {
   this->LoopDetections.clear();
-  PRINT_WARNING("The LoopDetections vector is cleared!");
 }
 
 //-----------------------------------------------------------------------------

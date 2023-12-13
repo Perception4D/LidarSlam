@@ -861,13 +861,13 @@ void vtkSlam::SetSensorData(const std::string& fileName)
     auto arrayY   = csvTable->GetRowData()->GetArray("y");
     auto arrayZ   = csvTable->GetRowData()->GetArray("z");
     auto arrayX0  = csvTable->GetRowData()->GetArray("x0" );
-    auto arrayX1  = csvTable->GetRowData()->GetArray("x1" );
-    auto arrayX2  = csvTable->GetRowData()->GetArray("x2" );
     auto arrayY0  = csvTable->GetRowData()->GetArray("y0" );
-    auto arrayY1  = csvTable->GetRowData()->GetArray("y1" );
-    auto arrayY2  = csvTable->GetRowData()->GetArray("y2" );
     auto arrayZ0  = csvTable->GetRowData()->GetArray("z0" );
+    auto arrayX1  = csvTable->GetRowData()->GetArray("x1" );
+    auto arrayY1  = csvTable->GetRowData()->GetArray("y1" );
     auto arrayZ1  = csvTable->GetRowData()->GetArray("z1" );
+    auto arrayX2  = csvTable->GetRowData()->GetArray("x2" );
+    auto arrayY2  = csvTable->GetRowData()->GetArray("y2" );
     auto arrayZ2  = csvTable->GetRowData()->GetArray("z2" );
 
     for (vtkIdType i = 0; i < arrayTime->GetNumberOfTuples(); ++i)
@@ -875,9 +875,9 @@ void vtkSlam::SetSensorData(const std::string& fileName)
       LidarSlam::ExternalSensors::PoseMeasurement meas;
       meas.Time = arrayTime->GetTuple1(i);
       // Derive Isometry
-      meas.Pose.matrix() << arrayX0->GetTuple1(i), arrayY0->GetTuple1(i), arrayZ0->GetTuple1(i), arrayX->GetTuple1(i),
-                            arrayX1->GetTuple1(i), arrayY1->GetTuple1(i), arrayZ1->GetTuple1(i), arrayY->GetTuple1(i),
-                            arrayX2->GetTuple1(i), arrayY2->GetTuple1(i), arrayZ2->GetTuple1(i), arrayZ->GetTuple1(i),
+      meas.Pose.matrix() << arrayX0->GetTuple1(i), arrayX1->GetTuple1(i), arrayX2->GetTuple1(i), arrayX->GetTuple1(i),
+                            arrayY0->GetTuple1(i), arrayY1->GetTuple1(i), arrayY2->GetTuple1(i), arrayY->GetTuple1(i),
+                            arrayZ0->GetTuple1(i), arrayZ1->GetTuple1(i), arrayZ2->GetTuple1(i), arrayZ->GetTuple1(i),
                             0, 0, 0, 1;
       meas.Covariance = LidarSlam::Utils::CreateDefaultCovariance();
       this->SlamAlgo->AddPoseMeasurement(meas);
@@ -1033,6 +1033,7 @@ void vtkSlam::SetTrajectory(const std::string& fileName)
 
   // Clear loop detections
   this->ClearLoopDetections();
+  PRINT_INFO("Loop indices are cleared!");
 
   // Refresh view
   this->ParametersModificationTime.Modified();

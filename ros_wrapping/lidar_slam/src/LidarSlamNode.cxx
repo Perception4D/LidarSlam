@@ -1010,7 +1010,7 @@ std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& 
 std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
 {
 
-  std::vector<std::string> fieldsToCheck{"t","x","y","z","x0","y0","z0",
+  std::vector<std::string> fieldsToCheck{"time","x","y","z","x0","y0","z0",
                                          "x1","y1","z1","x2","y2","z2"};
   std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 2, fieldsToCheck);
   if (lines.empty())
@@ -1031,7 +1031,7 @@ std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
       return "";
     }
   }
-    // Remove the new line character in frameID string
+  // Remove the new line character in frameID string
   if (!std::isalnum(frameID.back()))
     frameID.pop_back();
 
@@ -1190,8 +1190,8 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       }
       this->ReadPoses(msg.string_arg, true);
 
-      if (this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE))
-        this->LidarSlam.ClearLoopDetections();
+      this->LidarSlam.ClearLoopDetections();
+      ROS_INFO_STREAM("Loop indices are cleared!");
       break;
     }
 
@@ -1233,7 +1233,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       ROS_INFO_STREAM("Saving current trajectory of base frame as " << msg.string_arg);
       std::ofstream fout(msg.string_arg);
       fout << this->TrackingFrameId << "\n";
-      fout << "index,t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
+      fout << "index,time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
       for (auto& s : states)
         fout << s.Index << "," << s;
       fout.close();
@@ -1263,7 +1263,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       ROS_INFO_STREAM("Saving current trajectory of the Lidar sensor as " << msg.string_arg);
       std::ofstream fout(msg.string_arg);
       fout << this->MainLidarId << "\n";
-      fout << "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
+      fout << "time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
       for (auto& s : states)
       {
         s.Isometry = s.Isometry * baseToLidar;
@@ -1454,6 +1454,40 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       break;
     }
 
+    case lidar_slam::SlamCommand::LOAD_POSES:
+    {
+      // Clear current pose manager
+      this->LidarSlam.ResetSensor(true, LidarSlam::ExternalSensor::POSE);
+
+      // If an input file is provided, load the poses
+      if (msg.string_arg.empty())
+      {
+        ROS_ERROR_STREAM("No file provided, cannot load poses");
+        break;
+      }
+
+      // Fill external pose manager with poses from a CSV file
+      this->ExtPoseFrameId = this->ReadPoses(msg.string_arg);
+      if (this->ExtPoseFrameId.empty())
+      {
+        ROS_WARN_STREAM("External file does not contain a frame ID in its header, external poses are not loaded.");
+        break;
+      }
+
+      Eigen::Isometry3d baseToExtPoseSensor = Eigen::Isometry3d::Identity();
+      if (!Utils::Tf2LookupTransform(baseToExtPoseSensor, this->TfBuffer, this->TrackingFrameId, this->ExtPoseFrameId))
+      {
+        ROS_WARN_STREAM("No calibration found in TF between " << this->TrackingFrameId << " and " << this->ExtPoseFrameId
+                        << "\n\tCalibration set to identity.");
+      }
+      ROS_INFO_STREAM("Calibration for ext poses set to :\n" << baseToExtPoseSensor.matrix());
+      this->LidarSlam.SetPoseCalibration(baseToExtPoseSensor);
+
+      ROS_INFO_STREAM("External poses loaded!");
+
+      break;
+    }
+
     // Unknown command
     default:
     {
@@ -1624,7 +1658,9 @@ void LidarSlamNode::SetSlamParameters()
     if (egoMotion != LidarSlam::EgoMotionMode::NONE &&
         egoMotion != LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION &&
         egoMotion != LidarSlam::EgoMotionMode::REGISTRATION &&
-        egoMotion != LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION_AND_REGISTRATION)
+        egoMotion != LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION_AND_REGISTRATION &&
+        egoMotion != LidarSlam::EgoMotionMode::EXTERNAL &&
+        egoMotion != LidarSlam::EgoMotionMode::EXTERNAL_OR_MOTION_EXTRAPOLATION)
     {
       ROS_ERROR_STREAM("Invalid ego-motion mode (" << egoMotionMode << "). Setting it to 'MOTION_EXTRAPOLATION'.");
       egoMotion = LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION;
@@ -1637,7 +1673,8 @@ void LidarSlamNode::SetSlamParameters()
     LidarSlam::UndistortionMode undistortion = static_cast<LidarSlam::UndistortionMode>(undistortionMode);
     if (undistortion != LidarSlam::UndistortionMode::NONE &&
         undistortion != LidarSlam::UndistortionMode::ONCE &&
-        undistortion != LidarSlam::UndistortionMode::REFINED)
+        undistortion != LidarSlam::UndistortionMode::REFINED &&
+        undistortion != LidarSlam::UndistortionMode::EXTERNAL)
     {
       ROS_ERROR_STREAM("Invalid undistortion mode (" << undistortion << "). Setting it to 'REFINED'.");
       undistortion = LidarSlam::UndistortionMode::REFINED;
