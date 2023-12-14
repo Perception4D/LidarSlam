@@ -226,7 +226,7 @@ ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 9"
 
 ##### Reset the trajectory
 You can reset the slam trajectory with a trajectory CSV file, the map will be updated with the new trajectory.
-This file should contain fields "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2" which represents the time and the transformation of a pose.
+This file should contain fields "time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2" which represents the time and the transformation of a pose.
 
 Example:
 ```bash
@@ -559,7 +559,7 @@ Wheel odometry constraint added
 
 ### Optional external pose use
 
-External poses can be used. They can come from a INS/GNSS pair or another SLAM source for example. The slam node subscribes to a topic named *ext_poses*. The calibration must be sent to the TF tree to be able to receive the measurements.
+External poses can be used. They can come from a INS/GNSS pair or another SLAM source for example.
 
 These poses can be used for different purposes:
 1. Undistort the input pointcloud
@@ -571,16 +571,44 @@ To use it to undistort the pointcloud, the undistortion mode must be set to 3. F
 To use them as prior pose, the egomotion mode must be set to 4 or 5. This can make the SLAM more robust for not smooth motion.
 To use them as an optimization constraint, the weight must be greater than 0. This can be useful in unconstrained environment.
 
-***WARNING***: Remember to set *max_measures*, *use_header_time* and *time_threshold* to convenient values to be able to receive the measurements.
-
 If the data are well added and synchronized, a log output should be visible with verbosity to 3 (default).
 This output should say :
 
+1.
+```bash
+Undistortion performed using external poses interpolation
+```
+
+2.
+```bash
+Prior pose computed using external poses supplied
+```
+
+3.
 ```bash
 External pose constraint added
 ```
 
-To use them as pose graph constraints, the command OPTIMIZE_GRAPH must be sent at the end of the recording.
+#### Online
+
+One can supply the external poses through a message `geometry_msgs::msg::PoseWithCovarianceStamped` in the topic *ext_poses*. The calibration between the tracked frame and the frame defined in the header of the message must be sent to the TF tree to be able to receive the measurements.
+
+***WARNING***: Remember to set *max_measures*, *use_header_time* and *time_threshold* to convenient values to be able to receive the measurements.
+
+#### Offline
+
+In replay mode, it is possible to load external poses from a CSV file using the command LOAD_POSES:
+
+```bash
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 40, string_arg: path/to/trajectory.csv}"
+```
+
+This CSV file must have a header of 2 lines : the first line contains the frame ID and the second line the field names "time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2". xi corresponds to the first element of the ith colum of the rotation matrix.
+The calibration between the tracked frame and the frame defined in the header of the message must be sent to the TF tree. If it is not found, the calibration is set to identity.
+
+***WARNING***: Remember to set *max_measures*, and *time_threshold* to convenient values to be able to use the measurements.
+
+To use the external poses as pose graph constraints, the command OPTIMIZE_GRAPH must be sent at the end of the recording.
 Remember to save the maps and the trajectory to be sure to be able to come back if something goes wrong with the optimization.
 
 ***WARNING***: Remember to set *logging/timeout* and *logging/only_keyframes* to convenient values to be able to use this feature after the SLAM.

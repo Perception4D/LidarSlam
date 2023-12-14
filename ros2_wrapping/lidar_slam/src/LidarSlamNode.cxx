@@ -1005,7 +1005,7 @@ std::vector<std::vector<std::string>> LidarSlamNode::ReadCSV(const std::string& 
 //------------------------------------------------------------------------------
 std::string LidarSlamNode::ReadPoses(const std::string& path, bool resetTraj)
 {
-  std::vector<std::string> fieldsToCheck{"t","x","y","z","x0","y0","z0",
+  std::vector<std::string> fieldsToCheck{"time","x","y","z","x0","y0","z0",
                                          "x1","y1","z1","x2","y2","z2"};
   std::vector<std::vector<std::string>> lines = this->ReadCSV(path, 2, fieldsToCheck);
   if (lines.empty())
@@ -1229,7 +1229,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       RCLCPP_INFO_STREAM(this->get_logger(), "Saving current trajectory of base frame as " << msg.string_arg);
       std::ofstream fout(msg.string_arg);
       fout << this->TrackingFrameId << "\n";
-      fout << "index,t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
+      fout << "index,time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
       for (auto& s : states)
         fout << s.Index << "," << s;
       fout.close();
@@ -1259,7 +1259,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       RCLCPP_INFO_STREAM(this->get_logger(), "Saving current trajectory of the Lidar sensor as " << msg.string_arg);
       std::ofstream fout(msg.string_arg);
       fout << this->MainLidarId << "\n";
-      fout << "t,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
+      fout << "time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
       for (auto& s : states)
       {
         s.Isometry = s.Isometry * baseToLidar;
@@ -1454,6 +1454,42 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       break;
     }
 
+    case lidar_slam::msg::SlamCommand::LOAD_POSES:
+    {
+      // Clear current pose manager
+      this->LidarSlam.ResetSensor(true, LidarSlam::ExternalSensor::POSE);
+
+      // If an input file is provided, load the poses
+      if (msg.string_arg.empty())
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "No file provided, cannot load poses");
+        break;
+      }
+
+      // Fill external pose manager with poses from a CSV file
+      this->ExtPoseFrameId = this->ReadPoses(msg.string_arg);
+      if (this->ExtPoseFrameId.empty())
+      {
+        RCLCPP_WARN_STREAM(this->get_logger(), "External file does not contain a "
+                                                << "frame ID in its header, external "
+                                                << "poses are not loaded.");
+        break;
+      }
+
+      Eigen::Isometry3d baseToExtPoseSensor = Eigen::Isometry3d::Identity();
+      if (!Utils::Tf2LookupTransform(baseToExtPoseSensor, *this->TfBuffer, this->TrackingFrameId, this->ExtPoseFrameId))
+      {
+        RCLCPP_WARN_STREAM(this->get_logger(), "No calibration found in TF between " << this->TrackingFrameId << " and " << this->ExtPoseFrameId
+                                               << "\n\tCalibration set to identity.");
+      }
+      RCLCPP_INFO_STREAM(this->get_logger(), "Calibration for ext poses set to :\n" << baseToExtPoseSensor.matrix());
+      this->LidarSlam.SetPoseCalibration(baseToExtPoseSensor);
+
+      RCLCPP_INFO_STREAM(this->get_logger(), "External poses loaded!");
+
+      break;
+    }
+
     // Unknown command
     default:
       RCLCPP_ERROR_STREAM(this->get_logger(), "Unknown SLAM command : " << (unsigned int) msg.command);
@@ -1617,7 +1653,9 @@ void LidarSlamNode::SetSlamParameters()
     if (egoMotion != LidarSlam::EgoMotionMode::NONE &&
         egoMotion != LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION &&
         egoMotion != LidarSlam::EgoMotionMode::REGISTRATION &&
-        egoMotion != LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION_AND_REGISTRATION)
+        egoMotion != LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION_AND_REGISTRATION &&
+        egoMotion != LidarSlam::EgoMotionMode::EXTERNAL &&
+        egoMotion != LidarSlam::EgoMotionMode::EXTERNAL_OR_MOTION_EXTRAPOLATION)
     {
       RCLCPP_ERROR_STREAM(this->get_logger(), "Invalid ego-motion mode (" << egoMotionMode << "). Setting it to 'MOTION_EXTRAPOLATION'.");
       egoMotion = LidarSlam::EgoMotionMode::MOTION_EXTRAPOLATION;
@@ -1631,7 +1669,8 @@ void LidarSlamNode::SetSlamParameters()
     LidarSlam::UndistortionMode undistortion = static_cast<LidarSlam::UndistortionMode>(undistortionMode);
     if (undistortion != LidarSlam::UndistortionMode::NONE &&
         undistortion != LidarSlam::UndistortionMode::ONCE &&
-        undistortion != LidarSlam::UndistortionMode::REFINED)
+        undistortion != LidarSlam::UndistortionMode::REFINED &&
+        undistortion != LidarSlam::UndistortionMode::EXTERNAL)
     {
       RCLCPP_ERROR_STREAM(this->get_logger(), "Invalid undistortion mode (" << undistortion << "). Setting it to 'REFINED'.");
       undistortion = LidarSlam::UndistortionMode::REFINED;
