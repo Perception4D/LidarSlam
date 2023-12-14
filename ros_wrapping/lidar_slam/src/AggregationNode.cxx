@@ -93,6 +93,7 @@ AggregationNode::AggregationNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   // Set Minimal distance of the points to the trajectory
   // Allows to remove traces from the map
   this->MinDistAroundTrajectory = this->PrivNh.param("min_dist_around_trajectory", 1.);
+  // Set maximal distance for input points
   this->MaxDistAroundTrajectory = this->PrivNh.param("max_dist_around_trajectory", -1.);
 
   ROS_INFO_STREAM("Aggregation node is ready !");
@@ -117,6 +118,9 @@ void AggregationNode::Callback(const CloudS::Ptr registeredCloud)
     closest = registeredCloud;
 
   // Add the points to the map
+  // Map is not rolled because if some points are wrong or a frame is bad,
+  // the whole map will be rolled and parts will be forgotten.
+  // The size of the map is relative to the first frame reveived
   this->DenseMap->Add(closest, false, false);
 
   // Publish the map

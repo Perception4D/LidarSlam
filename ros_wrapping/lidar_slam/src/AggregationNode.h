@@ -97,7 +97,7 @@ private:
   // Optional positions logged to compute
   // the direction to create a slice
   std::list<Eigen::Vector3d> Positions;
-  Eigen::Vector3d CurrentPosition;
+  Eigen::Vector3d CurrentPosition = {0., 0., 0.};
   double TrajectoryMaxLength = 0.5; // 50 cm
   double SliceWidth = 0.2; // 20 cm
   double SliceMaxDist = 5.; // 5 m
@@ -108,6 +108,7 @@ private:
 
   // Minimal distance around trajectory to remove points from the map
   double MinDistAroundTrajectory = 1.;
+  // Maximal distance around trajectory to remove far points from the last pose
   double MaxDistAroundTrajectory = -1.;
 };
 
