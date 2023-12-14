@@ -99,9 +99,11 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
   int minNbPointsPerVoxel;
   this->get_parameter_or<int>("min_points_per_voxel", minNbPointsPerVoxel, 2);
   this->DenseMap->SetMinFramesPerVoxel(minNbPointsPerVoxel);
-  // Set Minimal distance of the points to the trajectory
+  // Set minimal distance of the points to the trajectory
   // Allows to remove traces from the map
   this->get_parameter_or<double>("min_dist_around_trajectory", this->MinDistAroundTrajectory, 1.);
+  // Set maximal distance for input points
+  this->get_parameter_or<double>("max_dist_around_trajectory", this->MaxDistAroundTrajectory, -1.);
 
   RCLCPP_INFO_STREAM(this->get_logger(), "Aggregation node is ready !");
 }
@@ -113,19 +115,32 @@ void AggregationNode::Callback(const Pcl2_msg& registeredCloudMsg)
   CloudS::Ptr registeredCloud = std::make_shared<CloudS>();
   pcl::fromROSMsg(registeredCloudMsg, *registeredCloud);
 
-  // Aggregated points from all frames
+  // Remove the farthest points if required
+  CloudS::Ptr closest;
+  if (this->MaxDistAroundTrajectory > 0)
+  {
+    closest.reset(new CloudS);
+    closest->reserve(registeredCloud->size());
+    for (const auto& pt : *registeredCloud)
+    {
+      if ((pt.getVector3fMap() - this->CurrentPosition.cast<float>()).norm() < this->MaxDistAroundTrajectory)
+        closest->emplace_back(pt);
+    }
+  }
+  else
+    closest = registeredCloud;
+
+  // Add the points to the map
   // Map is not rolled because if some points are wrong or a frame is bad,
   // the whole map will be rolled and parts will be forgotten.
   // The size of the map is relative to the first frame reveived
-  this->DenseMap->Add(registeredCloud, false, false);
+  this->DenseMap->Add(closest, false, false);
+
+  // Publish the map
   this->Pointcloud = this->DenseMap->Get(true);
   this->Pointcloud->header = registeredCloud->header;
-
-  //convert aggregatedCloud to message
   Pcl2_msg aggregatedCloudMsg;
   pcl::toROSMsg(*this->Pointcloud, aggregatedCloudMsg);
-
-  // Publish aggregatedCloud
   this->PointsPublisher->publish(aggregatedCloudMsg);
 }
 
@@ -164,17 +179,17 @@ void AggregationNode::ResetService(const std::shared_ptr<lidar_slam::srv::Reset:
 //------------------------------------------------------------------------------
 void AggregationNode::PoseCallback(const nav_msgs::msg::Odometry& poseMsg)
 {
-  Eigen::Vector3d currPosition = Utils::PoseMsgToIsometry(poseMsg.pose.pose).translation();
+  this->CurrentPosition = Utils::PoseMsgToIsometry(poseMsg.pose.pose).translation();
 
   if (this->MinDistAroundTrajectory > 0.)
-    this->DenseMap->EmptyAroundPoint(this->MinDistAroundTrajectory, currPosition.cast<float>().array());
+    this->DenseMap->EmptyAroundPoint(this->MinDistAroundTrajectory, this->CurrentPosition.cast<float>().array());
 
   if (!this->DoExtractSlice)
     return;
 
   // Store pose
-  this->Positions.push_back(currPosition);
-  while ((currPosition - this->Positions.front()).norm() > this->TrajectoryMaxLength)
+  this->Positions.push_back(this->CurrentPosition);
+  while ((this->CurrentPosition - this->Positions.front()).norm() > this->TrajectoryMaxLength)
     this->Positions.pop_front();
 
   if (this->Positions.size() < 2)
