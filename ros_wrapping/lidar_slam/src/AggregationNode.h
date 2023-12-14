@@ -108,6 +108,7 @@ private:
 
   // Minimal distance around trajectory to remove points from the map
   double MinDistAroundTrajectory = 1.;
+  // Maximal distance around trajectory to remove far points from the last pose
   double MaxDistAroundTrajectory = -1.;
 };
 

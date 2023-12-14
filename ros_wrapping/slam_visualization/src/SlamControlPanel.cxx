@@ -117,7 +117,6 @@ void SlamControlPanel::CreateLayout()
   calibrateButton->setToolTip("Estimate the calibration between\n"
                               "the frame tracked by the SLAM and\n"
                               "the frame tracked in the input file.\n"
-                              "This frame ID must be written in the first line of the input file.\n"
                               "The first line must contain the frame ID of the sensor.\n"
                               "The file must contain the fields\n"
                               "<time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2>\n"
