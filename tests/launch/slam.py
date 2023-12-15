@@ -143,6 +143,7 @@ def generate_launch_description():
   # Manualy override lidar_config_outdoor_node parameters from parameter file
   params_slam_out['use_sim_time'] = LaunchConfiguration("use_sim_time")
   params_slam_out['slam.verbosity'] = 0
+  params_slam_out['slam.n_threads'] = 1
 
   slam_outdoor_node = Node(
     name="lidar_slam",
@@ -159,6 +160,7 @@ def generate_launch_description():
   # Manualy override lidar_config_indoor_node parameters from parameter file
   params_slam_in['use_sim_time'] = LaunchConfiguration("use_sim_time")
   params_slam_in['slam.verbosity'] = 0
+  params_slam_out['slam.n_threads'] = 1
 
   slam_indoor_node = Node(
     name="lidar_slam",
