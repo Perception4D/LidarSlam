@@ -781,7 +781,7 @@ bool Slam::OptimizeGraph()
                                           loopClosureTransform, loopClosureCovariance))
         {
           // Add loop closure constraint into pose graph
-          graphManager.AddLoopClosureConstraint(loop.QueryIdx, loop.RevisitedIdx,
+          graphManager.AddLoopClosureConstraint(itQueryState->Index, itRevisitedState->Index,
                                                 loopClosureTransform, loopClosureCovariance);
           externalConstraint = true;
         }
