@@ -186,14 +186,6 @@ void PoseGraphOptimizer::AddLoopClosureConstraint(const unsigned int queryFrameI
   auto* newEdge = new g2o::EdgeSE3Euler;
   newEdge->setVertex(0, this->Optimizer.vertex(revisitedFrameIdx));
   newEdge->setVertex(1, this->Optimizer.vertex(queryFrameIdx));
-  // Get inverse of the previous frame
-  auto* v = this->Optimizer.vertex(revisitedFrameIdx);
-  g2o::VertexSE3* vSE3 = dynamic_cast<g2o::VertexSE3*>(v);
-  if (!vSE3)
-  {
-    PRINT_ERROR("Error: could not cast the vertex")
-    return;
-  }
 
   std::stringstream measureInfo;
   Eigen::Vector6d poseRelative = Utils::IsometryToXYZRPY(loopClosureTransform);
@@ -213,7 +205,7 @@ void PoseGraphOptimizer::AddLoopClosureConstraint(const unsigned int queryFrameI
   newEdge->robustKernel()->setDelta(this->SaturationDistance);
   // Add edge
   if (!this->Optimizer.addEdge(newEdge))
-    PRINT_ERROR("Tag constraint could not be added to the graph");
+    PRINT_ERROR("Loop closure constraint could not be added to the graph");
   if (this->Verbose)
     PRINT_INFO("Add Loop closure constraint between state #" << revisitedFrameIdx
                << " and state #" << queryFrameIdx << " are added to the graph");
