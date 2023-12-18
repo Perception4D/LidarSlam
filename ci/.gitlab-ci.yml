@@ -246,7 +246,8 @@ linux_ros2_wrapping_build:
       outdoor:=$outdoor
       velodyne_driver:=$velodyne_driver
       wait_init:=$wait_init
-      res_path:=${PWD}/${PATH_REFERENCE_LOG}"
+      res_path:=${PWD}/${PATH_REFERENCE_LOG}
+      domain_id:=196"
 
     - echo "$ROS2_COMMAND"
     - $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
@@ -300,7 +301,8 @@ linux_ros2_wrapping_build:
       velodyne_driver:=$velodyne_driver
       wait_init:=$wait_init
       ref_path:=${PWD}/${PATH_REFERENCE_LOG}
-      res_path:=${PWD}/${PATH_RESULT_LOG}"
+      res_path:=${PWD}/${PATH_RESULT_LOG}
+      domain_id:=$((JOB_ID % 100))"
 
     - echo "$ROS2_COMMAND"
     - $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
