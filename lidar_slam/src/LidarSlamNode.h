@@ -19,6 +19,8 @@
 #ifndef LIDAR_SLAM_NODE_H
 #define LIDAR_SLAM_NODE_H
 
+#include <chrono>
+
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/publisher_base.hpp>
 #include <tf2_ros/buffer.h>
@@ -321,6 +323,7 @@ protected:
   // Start time (which corresponds to master Lidar scan reception)
   // It is stored to get the process time and be able to compensate the motion if required
   double StartTime = 0.;
+  std::chrono::high_resolution_clock::time_point StartTimeChrono;
 
   // TF stuff
   std::string OdometryFrameId = "odom";       ///< Frame in which SLAM odometry and maps are expressed.

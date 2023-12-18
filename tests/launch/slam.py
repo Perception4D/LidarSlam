@@ -59,7 +59,7 @@ def generate_launch_description():
     params_velod_driv["rpm"]          = LaunchConfiguration('rpm')
     params_velod_driv["port"]         = LaunchConfiguration('port')
     params_velod_driv["pcap"]         = LaunchConfiguration('pcap')
-    params_velod_driv["use_sim_time"] = False
+    params_velod_driv["use_sim_time"] = LaunchConfiguration("use_sim_time")
 
     # Manually override velodyne_convert_node parameters
     velodyne_pointcloud_share_path = get_package_share_directory('velodyne_pointcloud')
