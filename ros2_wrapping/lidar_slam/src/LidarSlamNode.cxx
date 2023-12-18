@@ -247,6 +247,7 @@ LidarSlamNode::~LidarSlamNode()
 //------------------------------------------------------------------------------
 void LidarSlamNode::ScanCallback(const Pcl2_msg& pcl_msg)
 {
+  this->StartTimeChrono = std::chrono::high_resolution_clock::now();
   this->StartTime = this->now().seconds();
 
   if (!this->SlamEnabled)
@@ -1523,7 +1524,9 @@ void LidarSlamNode::PublishOutput()
 {
   // Get current SLAM poses in WORLD coordinates at the specified frequency
   std::vector<LidarSlam::LidarState> lastStates = this->LidarSlam.GetLastStates(this->TrajFrequency);
-  double computationTime = (this->now().seconds() - this->StartTime);
+  std::chrono::duration<double> duration = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now()
+                                                                                                     - this->StartTimeChrono);
+  double computationTime = duration.count();
 
   // Publish SLAM pose
   if (this->Publish[POSE_ODOM] || this->Publish[POSE_TF])

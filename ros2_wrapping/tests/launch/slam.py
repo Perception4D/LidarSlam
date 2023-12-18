@@ -59,7 +59,7 @@ def generate_launch_description():
     params_velod_driv["rpm"]          = LaunchConfiguration('rpm')
     params_velod_driv["port"]         = LaunchConfiguration('port')
     params_velod_driv["pcap"]         = LaunchConfiguration('pcap')
-    params_velod_driv["use_sim_time"] = False
+    params_velod_driv["use_sim_time"] = LaunchConfiguration("use_sim_time")
 
     # Manually override velodyne_convert_node parameters
     velodyne_pointcloud_share_path = get_package_share_directory('velodyne_pointcloud')
@@ -119,7 +119,7 @@ def generate_launch_description():
 
   with open(os.path.join(get_package_share_directory('lidar_slam_test'), "params/eval.yaml"), 'r') as f:
       params_lidar_slam_test = yaml.safe_load(f)['/lidar_slam_test']['ros__parameters']
-  
+
   params_lidar_slam_test["res_path"]      = LaunchConfiguration("res_path")
   params_lidar_slam_test["ref_path"]      = LaunchConfiguration("ref_path")
   params_lidar_slam_test["use_sim_time"]  = LaunchConfiguration("use_sim_time")
@@ -143,6 +143,8 @@ def generate_launch_description():
   # Manualy override lidar_config_outdoor_node parameters from parameter file
   params_slam_out['use_sim_time'] = LaunchConfiguration("use_sim_time")
   params_slam_out['slam.verbosity'] = 0
+  params_slam_out['slam.n_threads'] = 1
+  params_slam_out['slam.confidence.overlap.sampling_ratio'] = 0.33
 
   slam_outdoor_node = Node(
     name="lidar_slam",
@@ -159,6 +161,8 @@ def generate_launch_description():
   # Manualy override lidar_config_indoor_node parameters from parameter file
   params_slam_in['use_sim_time'] = LaunchConfiguration("use_sim_time")
   params_slam_in['slam.verbosity'] = 0
+  params_slam_out['slam.n_threads'] = 1
+  params_slam_out['slam.confidence.overlap.sampling_ratio'] = 0.33
 
   slam_indoor_node = Node(
     name="lidar_slam",

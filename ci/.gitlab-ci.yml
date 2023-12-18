@@ -241,23 +241,72 @@ linux_ros2_wrapping_build:
     - cmake -E make_directory "$PATH_REFERENCE_LOG"
     - source install/setup.bash
 
-    - echo "ros2 launch lidar_slam_test slam.py
+    - ROS2_COMMAND="ros2 launch lidar_slam_test slam.py
       test_data:=${data_folder}/${test_name}
       outdoor:=$outdoor
       velodyne_driver:=$velodyne_driver
       wait_init:=$wait_init
       res_path:=${PWD}/${PATH_REFERENCE_LOG}
-      2>&1
-      | grep comparison ignored"
-    
-    - ros2 launch lidar_slam_test slam.py
-      test_data:="${data_folder}/${test_name}"
+      domain_id:=196"
+
+    - echo "$ROS2_COMMAND"
+    - $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - grep "comparison ignored" /tmp/test_log.txt
+
+# Perform test
+.ros2_test:
+  stage: ros2_test
+  tags: [linux, ros]
+  needs: [linux_ros2_wrapping_build]
+  image: gitlab.kitware.com:4567/keu-computervision/slam:ros2_humble
+  variables:
+    GIT_STRATEGY: none
+    PATH_REFERENCE_LOG: "test_log/${test_name}/reference"
+    PATH_RESULT_LOG: "test_log/${test_name}/result"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" &&
+          $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "feat/ROS2"
+      when: always
+  artifacts:
+    paths:
+    - "ros2_ws/test_log/${test_name}"
+    expire_in: "60 days"
+  script:
+    # Search the id of the latest pipeline from feat/ROS2
+    - PIPELINE_ID=$(curl --location "https://gitlab.kitware.com/api/v4/projects/4640/pipelines/latest?ref=feat/ROS2" |
+      jq -r ".id")
+    # Check that the variable is set
+    - ([[ -n "$PIPELINE_ID" ]])
+
+    # Search the id of the ref_name job in the latest pipeline from feat/ROS2
+    - JOB_ID=$(curl "https://gitlab.kitware.com/api/v4/projects/4640/pipelines/${PIPELINE_ID}/jobs" |
+      jq -r ".[] | select(.name == \"$ref_name\") | .id")
+    # Check that the variable is set
+    - ([[ -n "$JOB_ID" ]])
+
+    # Download the artifact for the searched job
+    - echo "Downloading artifact from the job ${JOB_ID} of the pipeline ${PIPELINE_ID}"
+    - curl "https://gitlab.kitware.com/api/v4/projects/4640/jobs/${JOB_ID}/artifacts" --output artifacts_reference.zip
+    - unzip artifacts_reference.zip
+
+    - cd ros2_ws
+
+    # Launch test
+    - cmake -E make_directory "$PATH_RESULT_LOG"
+    - source install/setup.bash
+
+    - ROS2_COMMAND="ros2 launch lidar_slam_test slam.py
+      test_data:=${data_folder}/${test_name}
       outdoor:=$outdoor
       velodyne_driver:=$velodyne_driver
       wait_init:=$wait_init
-      res_path:=${PWD}/${PATH_REFERENCE_LOG}
-      2>&1
-      | grep "comparison ignored"
+      ref_path:=${PWD}/${PATH_REFERENCE_LOG}
+      res_path:=${PWD}/${PATH_RESULT_LOG}
+      domain_id:=$((JOB_ID % 100))"
+
+    - echo "$ROS2_COMMAND"
+    - $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - grep "Test successfully passed" /tmp/test_log.txt
 
 # Create a reference for test1 from feat/ROS2 branch
 ros2_make_reference1:
@@ -277,3 +326,22 @@ ros2_make_reference2:
     velodyne_driver: "true"
     wait_init: "4" # To have time to init the process
 
+# Perform test 1
+ros2_test1:
+  extends: .ros2_test
+  variables:
+    test_name: "test1"
+    ref_name: "ros2_make_reference1" # job name to find the corresponding artifact
+    outdoor: "true"
+    velodyne_driver: "false"
+    wait_init: "2" # To have time to load the reference files
+
+# Perform test 2
+ros2_test2:
+  extends: .ros2_test
+  variables:
+    test_name: "test2"
+    ref_name: "ros2_make_reference2" # job name to find the corresponding artifact
+    outdoor: "false"
+    velodyne_driver: "true"
+    wait_init: "4" # To have time to load the reference files
