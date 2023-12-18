@@ -2116,6 +2116,20 @@
         </Hints>
       </DoubleVectorProperty>
 
+      <IntVectorProperty name="Add offset"
+                         command="SetLoopEnableOffset"
+                         number_of_elements="1"
+                         default_values="0"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          Enable adding an offset to pose prior when two frames of loop closure are too far.
+        </Documentation>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="0" />
+        </Hints>
+      </IntVectorProperty>
+
       <IntVectorProperty name="Advanced settings"
                          number_of_elements="1"
                          default_values="0"
@@ -2139,6 +2153,7 @@
         <Property name="Loop sample step" />
         <Property name="Revisited map start range" />
         <Property name="Revisited map end range" />
+        <Property name="Add offset" />
         <Property name="Advanced settings" />
         <Hints>
           <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Use loop closure constraint" value="1" />
@@ -2146,17 +2161,6 @@
       </PropertyGroup>
 
         <!-- ==================== Loop Closure Localization Parameters ==================== -->
-      <IntVectorProperty name="Add offset"
-                         command="SetLoopEnableOffset"
-                         number_of_elements="1"
-                         default_values="0"
-                         panel_visibility="advanced">
-        <BooleanDomain name="bool" />
-        <Documentation>
-          Enable adding an offset to pose prior when two frames of loop closure are too far.
-        </Documentation>
-      </IntVectorProperty>
-
       <IntVectorProperty name="Use sub maps"
                          command="SetLoopICPWithSubmap"
                          number_of_elements="1"
@@ -2352,7 +2356,6 @@
       </DoubleVectorProperty>
 
       <PropertyGroup label="Loop closure localization ICP matching and optimization parameters">
-        <Property name="Add offset" />
         <Property name="Use sub maps" />
         <Property name="ICP-Optimization iterations LC" />
         <Property name="LM optimization iterations LC" />
