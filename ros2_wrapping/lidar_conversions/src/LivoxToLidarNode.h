@@ -38,7 +38,7 @@ class LivoxToLidarNode : public rclcpp::Node
 {
 public:
   using PointL = pcl::PointXYZI;
-  using CloudL = pcl::PointCloud<PointL>;  ///< Pointcloud published by velodyne driver
+  using CloudL = pcl::PointCloud<PointL>;  ///< Pointcloud published by livox driver
   using PointS = LidarSlam::LidarPoint;
   using CloudS = pcl::PointCloud<PointS>;  ///< Pointcloud needed by SLAM
   using Pcl2_msg = sensor_msgs::msg::PointCloud2;
