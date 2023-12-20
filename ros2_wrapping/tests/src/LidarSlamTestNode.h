@@ -48,6 +48,38 @@ struct Pose
   Eigen::Isometry3d Data = Eigen::Isometry3d::Identity();
 };
 
+namespace Utils
+{
+template<typename T>
+class Averaging
+{
+  public:
+  Averaging(const T& initValue) : CurrentValue(initValue) {};
+
+  void Reset() {this->Counter = 0; this->CurrentValue = T();}
+
+  void Update(const T& newValue)
+  {
+    this->CurrentValue = ((this->CurrentValue * this->Counter) + newValue)/ (this->Counter + 1);
+    ++this->Counter;
+  }
+
+  T Get() {return this->CurrentValue;}
+
+  Averaging& operator =(const T& value)
+  {
+    this->CurrentValue = value;
+    this->Counter = 0;
+    return *this;
+  }
+
+  private:
+  T CurrentValue;
+  int Counter = 0;
+};
+
+} // End Utils namespace
+
 /**
  * @class VelodyneToLidarNode aims at converting pointclouds published by ROS
  * Velodyne driver to the expected SLAM pointcloud format.
@@ -125,11 +157,11 @@ private:
   unsigned int ConfidenceCounter = 0;
 
   // Global evaluator for the whole trajectory
-  float DiffAngle = 0.f;
-  float DiffPosition = 0.f;
-  float DiffOverlap = 0.f;
-  float DiffTime = 0.f;
-  float DiffNbMatches = 0.f;
+  Utils::Averaging<float> DiffAngle = 0.f;
+  Utils::Averaging<float> DiffPosition = 0.f;
+  Utils::Averaging<float> DiffOverlap = 0.f;
+  Utils::Averaging<float> DiffTime = 0.f;
+  Utils::Averaging<float> DiffNbMatches = 0.f;
 
   // Thresholds to warn the user :
   float PositionThreshold = 0.2f;  // 20cm
