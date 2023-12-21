@@ -304,10 +304,11 @@ linux_ros_wrapping_build:
   stage: ros_test
   tags: [linux, ros]
   needs: [linux_ros_wrapping_build]
+  dependencies: [linux_ros_wrapping_build]
   image: gitlab.kitware.com:4567/keu-computervision/slam:ros1_noetic
   variables:
     GIT_STRATEGY: none
-    PATH_REFERENCE_LOG: "log/${test_name}/reference"
+    PATH_REFERENCE_LOG: "test_log/${test_name}/reference"
   artifacts:
     paths:
     - "catkin_ws/$PATH_REFERENCE_LOG"
@@ -324,44 +325,37 @@ linux_ros_wrapping_build:
     - cmake -E make_directory "$PATH_REFERENCE_LOG"
     - source devel/setup.bash
 
-    - echo "roslaunch lidar_slam_test slam.launch
-      test_data:=${data_folder}/${test_name}/${test_name}.bag
+    - ROS1_COMMAND="roslaunch lidar_slam_test slam.launch
+      test_data:=${data_folder}/${test_name}
       outdoor:=$outdoor
       vlp16:=$vlp16
       wait_init:=$wait_init
-      res_path:=${PWD}/${PATH_REFERENCE_LOG}
-      2>&1
-      | grep comparison ignored"
-    
-    - roslaunch lidar_slam_test slam.launch
-      test_data:="${data_folder}/${test_name}/${test_name}.bag"
-      outdoor:=$outdoor
-      vlp16:=$vlp16
-      wait_init:=$wait_init
-      res_path:=${PWD}/${PATH_REFERENCE_LOG}
-      2>&1
-      | grep "comparison ignored"
+      res_path:=${PWD}/${PATH_REFERENCE_LOG}"
+
+    - echo "$ROS1_COMMAND"
+    - $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - grep "comparison ignored" /tmp/test_log.txt
+
 
 # Perform test
 .ros_test:
   stage: ros_test
   tags: [linux, ros]
   needs: [linux_ros_wrapping_build]
+  dependencies: [linux_ros_wrapping_build]
   image: gitlab.kitware.com:4567/keu-computervision/slam:ros1_noetic
   variables:
     GIT_STRATEGY: none
-    PATH_REFERENCE_LOG: "catkin_ws/log/${test_name}/reference"
-    PATH_RESULT_LOG: "log/${test_name}/result"
+    PATH_REFERENCE_LOG: "test_log/${test_name}/reference"
+    PATH_RESULT_LOG: "test_log/${test_name}/result"
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
   artifacts:
     paths:
-    - "catkin_ws/log/${test_name}"
+    - "catkin_ws/test_log/${test_name}"
     expire_in: "60 days"
   script:
-    - cd catkin_ws
-
     # Search the id of the latest pipeline from master
     - PIPELINE_ID=$(curl --location "https://gitlab.kitware.com/api/v4/projects/4640/pipelines/latest?ref=master" |
       jq -r ".id")
@@ -379,29 +373,24 @@ linux_ros_wrapping_build:
     - curl "https://gitlab.kitware.com/api/v4/projects/4640/jobs/${JOB_ID}/artifacts" --output artifacts_reference.zip
     - unzip artifacts_reference.zip
 
+    - cd catkin_ws
+
     # Launch test
     - cmake -E make_directory "$PATH_RESULT_LOG"
     - source devel/setup.bash
 
-    - echo "roslaunch lidar_slam_test slam.launch
-      test_data:=${data_folder}/${test_name}/${test_name}.bag
+    - ROS1_COMMAND="roslaunch lidar_slam_test slam.launch
+      test_data:=${data_folder}/${test_name}
       outdoor:=$outdoor
       vlp16:=$vlp16
       wait_init:=$wait_init
       ref_path:=${PWD}/${PATH_REFERENCE_LOG}
-      res_path:=${PWD}/${PATH_RESULT_LOG}
-      2>&1
-      | grep Test successfully passed"
+      res_path:=${PWD}/${PATH_RESULT_LOG}"
 
-    - roslaunch lidar_slam_test slam.launch
-      test_data:="${data_folder}/${test_name}/${test_name}.bag"
-      outdoor:=$outdoor
-      vlp16:=$vlp16
-      wait_init:=$wait_init
-      ref_path:="${PWD}/${PATH_REFERENCE_LOG}"
-      res_path:="${PWD}/${PATH_RESULT_LOG}"
-      2>&1
-      | grep "Test successfully passed"
+    - echo "$ROS1_COMMAND"
+    - $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - grep "Test successfully passed" /tmp/test_log.txt
+
 
 # Create a reference for test1 from master branch
 ros_make_reference1:
