@@ -152,6 +152,10 @@ private:
   unsigned int PoseCounter = 0;
   // Counter to keep track of the confidence index to compare with reference
   unsigned int ConfidenceCounter = 0;
+  unsigned int NbFramesDropped = 0;
+  // Boolean to store the fact that the previous frame can be used to create
+  // a relative transform to compare with reference
+  bool PreviousPoseExists = false;
 
   // Global evaluator for the whole trajectory
   Utils::Averaging<float> DiffAngle = 0.f;
@@ -164,6 +168,7 @@ private:
   float PositionThreshold = 0.2f;  // 20cm
   float AngleThreshold    = 5.f;   // 5°
   float TimeThreshold     = 0.01f; // 10ms
+  int MaxNbFramesDropped  = 5;     // 5 frames
 
 private:
 
