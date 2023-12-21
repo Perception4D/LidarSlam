@@ -45,7 +45,7 @@ struct Evaluator
 struct Pose
 {
   double Stamp = 0.;
-  Eigen::Vector6d Data = Eigen::Vector6d::Zero();
+  Eigen::Isometry3d Data = Eigen::Isometry3d::Identity();
 };
 
 /**
@@ -105,7 +105,7 @@ private:
   float LastPositionDiff = 0.f;
 
   // Path to the folder where to store the results (folder must exist)
-  std::string ResPath;
+  std::string ResPath = "/tmp";
 
   // Comparison
 
