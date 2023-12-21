@@ -122,10 +122,10 @@ LidarSlamTestNode::LidarSlamTestNode(ros::NodeHandle& nh, ros::NodeHandle& priv_
   : Nh(nh)
   , PrivNh(priv_nh)
 {
-  //  Compare or not the results with a reference
+  // Set the path to the reference if comparison is required
   if (this->PrivNh.getParam("ref_path", this->RefPath) && !this->RefPath.empty())
   {
-    ROS_INFO_STREAM("Loading reference...");
+    ROS_INFO_STREAM("Loading reference at " << this->RefPath);
     this->LoadRef();
   }
   else
@@ -190,14 +190,14 @@ void LidarSlamTestNode::LoadRef()
     for (int i = 0; i < 5; ++i)
     {
       pos = line.find(" ");
-      pose.data(i) = std::stod(line.substr(0, pos));
+      pose.Data(i) = std::stod(line.substr(0, pos));
       line.erase(0, pos + 1);
     }
-    pose.data(5) = std::stod(line);
+    pose.Data(5) = std::stod(line);
     this->RefPoses.push_back(pose);
   }
   refPosesFile.close();
-  ROS_INFO_STREAM("Poses loaded!");
+  ROS_INFO_STREAM(this->RefPoses.size() << " poses loaded!");
 
   // Fill the reference confidence vector
   std::ifstream refEvaluatorsFile(this->RefPath + "/Evaluators.csv");
@@ -229,7 +229,7 @@ void LidarSlamTestNode::LoadRef()
     this->RefEvaluators.push_back(eval);
   }
   refEvaluatorsFile.close();
-  ROS_INFO_STREAM("Evaluators loaded!");
+  ROS_INFO_STREAM(this->RefEvaluators.size() << " evaluators loaded!");
 }
 
 //------------------------------------------------------------------------------
@@ -270,6 +270,7 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
       ++this->PoseCounter;
   }
 
+  // No more reference
   if (this->PoseCounter == this->RefEvaluators.size())
   {
     this->OutputTestResult();
@@ -279,7 +280,7 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
   // If the current frame has not been seen in reference -> return (wait for next frame)
   if (this->RefPoses[this->PoseCounter].Stamp - time > 1e-6)
   {
-    ROS_WARN_STREAM("Reference does not contain a frame at "
+    ROS_WARN_STREAM("Reference does not contain a pose at "
                      << std::fixed << std::setprecision(9) << time
                      << " (may have been dropped)."
                      << " Check the reference was computed on the same data.");
@@ -287,10 +288,10 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
   }
 
   // Compare the pose with reference trajectory
-  Eigen::Isometry3d refTransform = Utils::XYZRPYtoIsometry(this->RefPoses[this->PoseCounter].data);
+  Eigen::Isometry3d refTransform = Utils::XYZRPYtoIsometry(this->RefPoses[this->PoseCounter].Data);
   Eigen::Isometry3d refPrevTransform;
   if (this->PoseCounter >= 1)
-     refPrevTransform = Utils::XYZRPYtoIsometry(this->RefPoses[this->PoseCounter - 1].data);
+     refPrevTransform = Utils::XYZRPYtoIsometry(this->RefPoses[this->PoseCounter - 1].Data);
   else
   {
     this->PrevTransform = transform;
@@ -306,7 +307,8 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
   this->DiffPosition = Utils::Average(currentDiffPosition, this->DiffPosition, this->PoseCounter);
 
   // Test fails if any pose is too different from its reference pose
-  if (currentDiffPosition > this->PositionThreshold || currentDiffAngle * 180.f / M_PI > this->AngleThreshold)
+  if (currentDiffPosition > this->PositionThreshold ||
+      currentDiffAngle * 180.f / M_PI > this->AngleThreshold)
   {
     ROS_ERROR_STREAM("Pose at " << std::fixed << std::setprecision(9) << time << " is not consistent with reference");
     this->Failure = true;
@@ -359,7 +361,8 @@ void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::Confidence& confide
   if (!this->CanBeCompared())
     return;
 
-  if (this->ConfidenceCounter >= this->RefEvaluators.size())
+  // No more reference
+  if (this->ConfidenceCounter == this->RefEvaluators.size())
   {
     this->OutputTestResult();
     return;
@@ -383,7 +386,7 @@ void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::Confidence& confide
   // The last frame cannot be dropped so the node should be ended in any case.
   if (this->RefEvaluators[this->ConfidenceCounter].Stamp - time > 1e-6)
   {
-    ROS_WARN_STREAM("Reference does not contain a frame at "
+    ROS_WARN_STREAM("Reference does not contain an evaluator at "
                      << std::fixed << std::setprecision(9) << time
                      << " (may have been dropped)."
                      << " Check the reference was computed on the same data");
@@ -424,6 +427,7 @@ void LidarSlamTestNode::OutputTestResult()
     ROS_ERROR_STREAM("Computation time is too long compared to reference (" << this->DiffTime << "s longer)");
     this->Failure = true;
   }
+
   if (!this->Failure)
     ROS_INFO_STREAM(BOLD_GREEN("Test successfully passed"));
   else
