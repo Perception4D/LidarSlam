@@ -11,7 +11,7 @@ No reference data nor dataset is supplied with this package for now. It is mainl
 ros2 launch lidar_slam_test slam.py test_data:="path/to/rosbag" res_path:="path/to/folder/where/to/store/log/files"
 ```
 
-This creates 2 files : _path/to/folder/where/to/store/log/files/Poses.csv_ and _path/to/folder/where/to/store/log/files/Evaluators.csv_. The first file contains the 6D poses for each frame received. The second one contains some confidence estimators relative to each pose: the overlap, the number of matches and the computation time.
+This creates 2 CSV files : _path/to/folder/where/to/store/log/files/Poses.csv_ and _path/to/folder/where/to/store/log/files/Evaluators.csv_. The first file contains the poses for each frame received in an inline matrix format (x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2 xi being the first element of the ith column of the rotation matrix). The second one contains some confidence estimators relative to each pose: the overlap, the number of matches and the computation time. Both file contain the corresponding timestamp.
 
 **2. Run a comparison**
 
@@ -28,11 +28,12 @@ Available parameters to launch file :
 
 The config file [`params/eval.yaml`](params/eval.yaml) contains some threshold parameters to qualify the results :
 
-* **_time_threshold_** : this value limits the mean computation time difference with reference for the default number of threads.
-* **_angle_threshold_** : this value limits the angle difference (in degrees) on EACH pose.
-* **_position_threshold_** : this value limits the position difference (in meters) on EACH pose.
+* **_nb_frames_dropped_** : Maximum number of frames dropped during replay. This can happen because of communication issues.
+* **_time_threshold_** : Maximum computation time difference using average time on all frames.
+* **_angle_threshold_** : Maximum rotation difference between relative transforms of reference and of current version.
+* **_position_threshold_** : Maximum translation difference between relative transforms of reference and of current version.
 
-**NOTE :** One can optionally activate the verbose option : ```verbose:=true``` in the ros2 launch command to print the difference with reference for each pose in order to debug.
+**NOTE :** One can optionally activate the verbose option : ```verbose:=true``` in the ros2 launch command to print the difference with reference for each pose in order to debug. This overloads the verbose parameter of the yaml file.
 
 ## CI
 
