@@ -141,6 +141,7 @@ LidarSlamTestNode::LidarSlamTestNode(std::string name_node, const rclcpp::NodeOp
   resEvalFile << "time,overlap,nb_matches,computation_time\n";
 
   // Loading parameters
+  this->get_parameter("nb_frames_dropped", this->MaxNbFramesDropped);
   this->get_parameter("time_threshold", this->TimeThreshold);
   this->get_parameter("position_threshold", this->PositionThreshold);
   this->get_parameter("angle_threshold", this->AngleThreshold);
@@ -289,34 +290,27 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::msg::Odometry& poseMsg)
   if (!this->CanBeCompared())
     return;
 
-  if (this->PoseCounter >= this->RefPoses.size())
-  {
-    RCLCPP_ERROR_STREAM(this->get_logger(), "More poses received than with reference, comparison ignored");
-    return;
-  }
-
-  // If the current reference frame has not been seen in this new run ->
-  // search the current frame in reference
-  if (time - this->RefPoses[this->PoseCounter].Stamp > 1e-6)
-  {
-    while (this->PoseCounter < this->RefEvaluators.size() && time - this->RefPoses[this->PoseCounter].Stamp > 1e-6)
-      ++this->PoseCounter;
-  }
+  // Search the pose in reference
+  while (this->PoseCounter < this->RefPoses.size() &&
+         this->RefPoses[this->PoseCounter].Stamp < time - 1e-6)
+    ++this->PoseCounter;
 
   // No more reference
-  if (this->PoseCounter == this->RefEvaluators.size())
+  if (this->PoseCounter == this->RefPoses.size())
   {
-    this->OutputTestResult();
+    this->OutputTestResult(); // will shut down the node
     return;
-  }
+ }
 
   // If the current frame has not been seen in reference -> return (wait for next frame)
-  if (this->RefPoses[this->PoseCounter].Stamp - time > 1e-6)
+  if (std::abs(this->RefPoses[this->PoseCounter].Stamp - time) > 1e-6)
   {
     RCLCPP_WARN_STREAM(this->get_logger(), "Reference does not contain a pose at "
                      << std::fixed << std::setprecision(9) << time
                      << " (may have been dropped)."
                      << " Check the reference was computed on the same data.");
+    ++this->NbFramesDropped;
+    this->PreviousPoseExists = false;
     return;
   }
 
@@ -362,13 +356,8 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::msg::Odometry& poseMsg)
   this->LastPositionDiff = diffPose.head(3).norm();
   this->LastAngleDiff = diffPose.tail(3).norm();
 
-  ++this->PoseCounter;
   this->PrevTransform = transform;
-
-  // At the end of the test data, notify the user about the success or the failure of the test
-  // The last frame cannot be dropped so the node should be ended in any case.
-  if (this->PoseCounter == this->RefPoses.size() && this->ConfidenceCounter == this->RefPoses.size())
-    this->OutputTestResult();
+  this->PreviousPoseExists = true;
 }
 
 //------------------------------------------------------------------------------
@@ -395,30 +384,20 @@ void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::msg::Confidence& co
   if (!this->CanBeCompared())
     return;
 
-  if (this->ConfidenceCounter >= this->RefEvaluators.size())
-  {
-    this->OutputTestResult();
-    return;
-  }
-
-  // If the current reference frame has not been seen in this new run ->
-  // search the current frame in reference
-  if (time - this->RefEvaluators[this->ConfidenceCounter].Stamp > 1e-6)
-  {
-    while (this->ConfidenceCounter < this->RefEvaluators.size() && time - this->RefEvaluators[this->ConfidenceCounter].Stamp > 1e-6)
-      ++this->ConfidenceCounter;
-  }
+  while (this->ConfidenceCounter < this->RefEvaluators.size() &&
+         this->RefEvaluators[this->ConfidenceCounter].Stamp < time - 1e-6)
+    ++this->ConfidenceCounter;
 
   // No more reference
   if (this->ConfidenceCounter == this->RefEvaluators.size())
   {
-    this->OutputTestResult();
+    this->OutputTestResult(); // will shut down the node
     return;
   }
 
   // If the current frame has not been seen in reference -> return (wait for next frame)
   // The last frame cannot be dropped so the node should be ended in any case.
-  if (this->RefEvaluators[this->ConfidenceCounter].Stamp - time > 1e-6)
+  if (std::abs(this->RefEvaluators[this->ConfidenceCounter].Stamp - time) > 1e-6)
   {
     RCLCPP_WARN_STREAM(this->get_logger(), "Reference does not contain an evaluator at "
                        << std::fixed << std::setprecision(9) << time
@@ -443,18 +422,18 @@ void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::msg::Confidence& co
                     << "\t" << "Number of matches difference : " << diffNbMatches     << " matches\n"
                     << "\t" << "Computation time difference : "  << diffTime          << " s");
   }
-
-  ++this->ConfidenceCounter;
-
-  // At the end of the test data, notify the user about the success or the failure of the test
-  // The last frame cannot be dropped so the node should be ended in any case.
-  if (this->PoseCounter == this->RefPoses.size() && this->ConfidenceCounter == this->RefPoses.size())
-    this->OutputTestResult();
 }
 
 //------------------------------------------------------------------------------
 void LidarSlamTestNode::OutputTestResult()
 {
+  if (this->NbFramesDropped > this->MaxNbFramesDropped)
+  {
+    RCLCPP_INFO_STREAM(this->get_logger(), this->NbFramesDropped
+                                           << " frames dropped comparing to reference");
+    this->Failure = true;
+  }
+
   // Test fails if the mean computation time is too high
   // compared with the reference processing
   if (this->DiffTime.Get() > this->TimeThreshold)
@@ -492,6 +471,7 @@ void LidarSlamTestNode::OutputTestResult()
 
   // Comparison has stopped : Shut the node down
   rclcpp::shutdown();
+  return;
 }
 
 }  // end of namespace lidar_slam_test
