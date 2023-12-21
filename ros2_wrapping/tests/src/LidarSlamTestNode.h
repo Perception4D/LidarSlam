@@ -45,8 +45,40 @@ struct Evaluator
 struct Pose
 {
   double Stamp = 0.;
-  Eigen::Vector6d data = Eigen::Vector6d::Zero();
+  Eigen::Isometry3d Data = Eigen::Isometry3d::Identity();
 };
+
+namespace Utils
+{
+template<typename T>
+class Averaging
+{
+  public:
+  Averaging(const T& initValue) : CurrentValue(initValue) {};
+
+  void Reset() {this->Counter = 0; this->CurrentValue = T();}
+
+  void Update(const T& newValue)
+  {
+    this->CurrentValue = ((this->CurrentValue * this->Counter) + newValue)/ (this->Counter + 1);
+    ++this->Counter;
+  }
+
+  T Get() {return this->CurrentValue;}
+
+  Averaging& operator =(const T& value)
+  {
+    this->CurrentValue = value;
+    this->Counter = 0;
+    return *this;
+  }
+
+  private:
+  T CurrentValue;
+  int Counter = 0;
+};
+
+} // End Utils namespace
 
 /**
  * @class VelodyneToLidarNode aims at converting pointclouds published by ROS
@@ -105,9 +137,9 @@ private:
   float LastPositionDiff = 0.f;
 
   // Path to the folder where to store the results (folder must exist)
-  std::string ResPath;
+  std::string ResPath = "/tmp";
 
-  // Reference data for comparison :
+  // Comparison
 
   // Path to the folder containing the reference results to compare with
   // If empty, no comparison is performed
@@ -117,23 +149,29 @@ private:
   std::vector<Evaluator> RefEvaluators;
   std::vector<Pose> RefPoses;
 
-  // Storage for current results :
+  // Storage for current results
 
   // Counter to keep track of the pose index to compare with reference
   unsigned int PoseCounter = 0;
-  float DiffAngle = 0.f;
-  float DiffPosition = 0.f;
-
   // Counter to keep track of the confidence index to compare with reference
   unsigned int ConfidenceCounter = 0;
-  float DiffOverlap = 0.f;
-  float DiffTime = 0.f;
-  float DiffNbMatches = 0.f;
+  unsigned int NbFramesDropped = 0;
+  // Boolean to store the fact that the previous frame can be used to create
+  // a relative transform to compare with reference
+  bool PreviousPoseExists = false;
+
+  // Global evaluator for the whole trajectory
+  Utils::Averaging<float> DiffAngle = 0.f;
+  Utils::Averaging<float> DiffPosition = 0.f;
+  Utils::Averaging<float> DiffOverlap = 0.f;
+  Utils::Averaging<float> DiffTime = 0.f;
+  Utils::Averaging<float> DiffNbMatches = 0.f;
 
   // Thresholds to warn the user :
-  float PositionThreshold = 0.2f;  // 20cm
-  float AngleThreshold = 5.f;       // 5°
-  float TimeThreshold = 0.01f;     // 10ms
+  float PositionThreshold         = 0.2f;  // 20cm
+  float AngleThreshold            = 5.f;   // 5°
+  float TimeThreshold             = 0.01f; // 10ms
+  unsigned int MaxNbFramesDropped = 5;     // 5 frames
 
 private:
 

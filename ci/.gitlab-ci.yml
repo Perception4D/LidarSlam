@@ -221,6 +221,7 @@ linux_ros2_wrapping_build:
   stage: ros2_test
   tags: [linux, ros]
   needs: [linux_ros2_wrapping_build]
+  dependencies: [linux_ros2_wrapping_build]
   image: gitlab.kitware.com:4567/keu-computervision/slam:ros2_humble
   variables:
     GIT_STRATEGY: none
@@ -258,6 +259,7 @@ linux_ros2_wrapping_build:
   stage: ros2_test
   tags: [linux, ros]
   needs: [linux_ros2_wrapping_build]
+  dependencies: [linux_ros2_wrapping_build]
   image: gitlab.kitware.com:4567/keu-computervision/slam:ros2_humble
   variables:
     GIT_STRATEGY: none
