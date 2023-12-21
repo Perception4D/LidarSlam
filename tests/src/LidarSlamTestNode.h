@@ -45,7 +45,7 @@ struct Evaluator
 struct Pose
 {
   double Stamp = 0.;
-  Eigen::Vector6d data = Eigen::Vector6d::Zero();
+  Eigen::Vector6d Data = Eigen::Vector6d::Zero();
 };
 
 /**
@@ -107,7 +107,7 @@ private:
   // Path to the folder where to store the results (folder must exist)
   std::string ResPath;
 
-  // Reference data for comparison :
+  // Comparison
 
   // Path to the folder containing the reference results to compare with
   // If empty, no comparison is performed
@@ -117,23 +117,24 @@ private:
   std::vector<Evaluator> RefEvaluators;
   std::vector<Pose> RefPoses;
 
-  // Storage for current results :
+  // Storage for current results
 
   // Counter to keep track of the pose index to compare with reference
   unsigned int PoseCounter = 0;
-  float DiffAngle = 0.f;
-  float DiffPosition = 0.f;
-
   // Counter to keep track of the confidence index to compare with reference
   unsigned int ConfidenceCounter = 0;
+
+  // Global evaluator for the whole trajectory
+  float DiffAngle = 0.f;
+  float DiffPosition = 0.f;
   float DiffOverlap = 0.f;
   float DiffTime = 0.f;
   float DiffNbMatches = 0.f;
 
   // Thresholds to warn the user :
   float PositionThreshold = 0.2f;  // 20cm
-  float AngleThreshold = 5.f;       // 5°
-  float TimeThreshold = 0.01f;     // 10ms
+  float AngleThreshold    = 5.f;   // 5°
+  float TimeThreshold     = 0.01f; // 10ms
 
 private:
 
