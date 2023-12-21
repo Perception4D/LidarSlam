@@ -25,6 +25,7 @@
 #include "LidarSlamTestNode.h"
 
 #define BOLD_GREEN(s) "\033[1;32m" << s << "\033[0m"
+#define BOLD_RED(s) "\033[1;31m" << s << "\033[0m"
 
 namespace lidar_slam_test
 {
@@ -124,7 +125,7 @@ LidarSlamTestNode::LidarSlamTestNode(ros::NodeHandle& nh, ros::NodeHandle& priv_
   std::ofstream resPosesFile(this->ResPath + "/Poses.csv");
   if (resPosesFile.fail())
   {
-    ROS_ERROR_STREAM("Cannot save poses at " << this->ResPath);
+    ROS_ERROR_STREAM(BOLD_RED("Cannot save poses at " << this->ResPath));
     ros::shutdown();
     return;
   }
@@ -133,7 +134,7 @@ LidarSlamTestNode::LidarSlamTestNode(ros::NodeHandle& nh, ros::NodeHandle& priv_
   std::ofstream resEvalFile(this->ResPath + "/Evaluators.csv");
   if (resEvalFile.fail())
   {
-    ROS_ERROR_STREAM("Cannot save evaluators at " << this->ResPath);
+    ROS_ERROR_STREAM(BOLD_RED("Cannot save evaluators at " << this->ResPath));
     ros::shutdown();
     return;
   }
@@ -167,7 +168,8 @@ void LidarSlamTestNode::LoadRef()
   std::ifstream refPosesFile(path);
   if (refPosesFile.fail())
   {
-    ROS_ERROR_STREAM("The poses csv file '" << path << "' was not found : shutting down the node");
+    ROS_ERROR_STREAM(BOLD_RED("The poses csv file '"
+                     << path << "' was not found : shutting down the node"));
     ros::shutdown();
     return;
   }
@@ -179,7 +181,8 @@ void LidarSlamTestNode::LoadRef()
   std::getline(refPosesFile, line);
   if (line.find("x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2") == std::string::npos)
   {
-    ROS_ERROR_STREAM("The poses csv file '" << path << "is badly formatted : shutting down the node");
+    ROS_ERROR_STREAM(BOLD_RED("The poses csv file '"
+                     << path << " is badly formatted : shutting down the node"));
     ros::shutdown();
     return;
   }
@@ -222,7 +225,8 @@ void LidarSlamTestNode::LoadRef()
   std::ifstream refEvaluatorsFile(this->RefPath + "/Evaluators.csv");
   if (refEvaluatorsFile.fail())
   {
-    ROS_ERROR_STREAM("The evaluators csv file '" << path << "' was not found : shutting down the node");
+    ROS_ERROR_STREAM(BOLD_RED("The evaluators csv file '"
+                     << path << "' was not found : shutting down the node"));
     ros::shutdown();
     return;
   }
@@ -231,7 +235,8 @@ void LidarSlamTestNode::LoadRef()
   std::getline(refEvaluatorsFile, line);
   if (line.find("time,overlap,nb_matches,computation_time") == std::string::npos)
   {
-    ROS_ERROR_STREAM("The evaluators csv file '" << path << "is badly formatted : shutting down the node");
+    ROS_ERROR_STREAM(BOLD_RED("The evaluators csv file '"
+                     << path << " is badly formatted : shutting down the node"));
     ros::shutdown();
     return;
   }
@@ -267,7 +272,7 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
   std::ofstream resPosesFile(this->ResPath + "/Poses.csv", std::ofstream::app);
   if (resPosesFile.fail())
   {
-    ROS_ERROR_STREAM("Could not save pose");
+    ROS_ERROR_STREAM(BOLD_RED("Could not save pose"));
     ros::shutdown();
     return;
   }
@@ -369,7 +374,7 @@ void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::Confidence& confide
   std::ofstream EvaluatorsFile(this->ResPath + "/Evaluators.csv", std::ofstream::app);
   if (EvaluatorsFile.fail())
   {
-    ROS_ERROR_STREAM("Could not save confidence estimators");
+    ROS_ERROR_STREAM(BOLD_RED("Could not save confidence estimators"));
     ros::shutdown();
     return;
   }
