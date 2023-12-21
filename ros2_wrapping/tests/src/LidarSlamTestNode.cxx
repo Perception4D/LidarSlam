@@ -25,6 +25,7 @@
 #include "LidarSlamTestNode.h"
 
 #define BOLD_GREEN(s) "\033[1;32m" << s << "\033[0m"
+#define BOLD_RED(s) "\033[1;31m" << s << "\033[0m"
 
 namespace lidar_slam_test
 {
@@ -125,7 +126,7 @@ LidarSlamTestNode::LidarSlamTestNode(std::string name_node, const rclcpp::NodeOp
   std::ofstream resPosesFile(this->ResPath + "/Poses.csv");
   if (resPosesFile.fail())
   {
-    RCLCPP_ERROR_STREAM(this->get_logger(), "Cannot save poses at " << this->ResPath);
+    RCLCPP_ERROR_STREAM(this->get_logger(), BOLD_RED("Cannot save poses at " << this->ResPath));
     rclcpp::shutdown();
     return;
   }
@@ -134,7 +135,7 @@ LidarSlamTestNode::LidarSlamTestNode(std::string name_node, const rclcpp::NodeOp
   std::ofstream resEvalFile(this->ResPath + "/Evaluators.csv");
   if (resEvalFile.fail())
   {
-    RCLCPP_ERROR_STREAM(this->get_logger(), "Cannot save evaluators at " << this->ResPath);
+    RCLCPP_ERROR_STREAM(this->get_logger(), BOLD_RED("Cannot save evaluators at " << this->ResPath));
     rclcpp::shutdown();
     return;
   }
@@ -170,7 +171,8 @@ void LidarSlamTestNode::LoadRef()
   std::ifstream refPosesFile(path);
   if (refPosesFile.fail())
   {
-    RCLCPP_ERROR_STREAM(this->get_logger(), "The poses csv file '" << path << "' was not found : shutting down the node");
+    RCLCPP_ERROR_STREAM(this->get_logger(), BOLD_RED("The poses csv file '"
+                                            << path << "' was not found : shutting down the node"));
     rclcpp::shutdown();
     return;
   }
@@ -182,7 +184,8 @@ void LidarSlamTestNode::LoadRef()
   std::getline(refPosesFile, line);
   if (line.find("x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2") == std::string::npos)
   {
-    RCLCPP_ERROR_STREAM(this->get_logger(), "The poses csv file '" << path << "is badly formatted : shutting down the node");
+    RCLCPP_ERROR_STREAM(this->get_logger(), BOLD_RED("The poses csv file '"
+                                            << path << " is badly formatted : shutting down the node"));
     rclcpp::shutdown();
     return;
   }
@@ -225,7 +228,8 @@ void LidarSlamTestNode::LoadRef()
   std::ifstream refEvaluatorsFile(this->RefPath + "/Evaluators.csv");
   if (refEvaluatorsFile.fail())
   {
-    RCLCPP_ERROR_STREAM(this->get_logger(), "The evaluators csv file '" << path << "' was not found : shutting down the node");
+    RCLCPP_ERROR_STREAM(this->get_logger(), BOLD_RED("The evaluators csv file '"
+                                            << path << "' was not found : shutting down the node"));
     rclcpp::shutdown();
     return;
   }
@@ -234,7 +238,8 @@ void LidarSlamTestNode::LoadRef()
   std::getline(refEvaluatorsFile, line);
   if (line.find("time,overlap,nb_matches,computation_time") == std::string::npos)
   {
-    RCLCPP_ERROR_STREAM(this->get_logger(), "The evaluators csv file '" << path << "is badly formatted : shutting down the node");
+    RCLCPP_ERROR_STREAM(this->get_logger(), BOLD_RED("The evaluators csv file '"
+                                            << path << "is badly formatted : shutting down the node"));
     rclcpp::shutdown();
     return;
   }
@@ -270,7 +275,7 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::msg::Odometry& poseMsg)
   std::ofstream resPosesFile(this->ResPath + "/Poses.csv", std::ofstream::app);
   if (resPosesFile.fail())
   {
-    RCLCPP_ERROR_STREAM(this->get_logger(), "Could not save pose");
+    RCLCPP_ERROR_STREAM(this->get_logger(), BOLD_RED("Could not save pose"));
     rclcpp::shutdown();
     return;
   }
@@ -371,7 +376,7 @@ void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::msg::Confidence& co
   std::ofstream EvaluatorsFile(this->ResPath + "/Evaluators.csv", std::ofstream::app);
   if (EvaluatorsFile.fail())
   {
-    RCLCPP_ERROR_STREAM(this->get_logger(), "Could not save confidence estimators");
+    RCLCPP_ERROR_STREAM(this->get_logger(), BOLD_RED("Could not save confidence estimators"));
     rclcpp::shutdown();
     return;
   }
