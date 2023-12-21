@@ -90,12 +90,6 @@ Eigen::Isometry3d PoseMsgToIsometry(const geometry_msgs::Pose& poseMsg)
 }
 
 //------------------------------------------------------------------------------
-float Average(float value, float average, unsigned int counter)
-{
-  return (average * counter + value) / (counter + 1);
-}
-
-//------------------------------------------------------------------------------
 double Normalize(double value)
 {
   return abs(value) < 1e-15 ? 0.f : value;
@@ -336,10 +330,10 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
   Eigen::Vector6d diffPose = Utils::IsometryToXYZRPY(diffTransform);
   // Compute angle difference
   float currentDiffAngle = diffPose.tail(3).norm();
-  this->DiffAngle = Utils::Average(currentDiffAngle, this->DiffAngle, this->PoseCounter);
+  this->DiffAngle.Update(currentDiffAngle);
   // Compute translation difference
   float currentDiffPosition = diffPose.head(3).norm();
-  this->DiffPosition = Utils::Average(currentDiffPosition, this->DiffPosition, this->PoseCounter);
+  this->DiffPosition.Update(currentDiffPosition);
 
   // Test fails if any pose is too different from its reference pose
   if (currentDiffPosition > this->PositionThreshold ||
@@ -355,8 +349,8 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
                     << "\t" << currentDiffAngle * 180.f / M_PI << " degrees\n"
                     << "\t" << currentDiffPosition << " m");
     ROS_INFO_STREAM("Pose difference average (at " << std::fixed << std::setprecision(9) << time << ") :\n"
-                    << "\t" << this->DiffAngle * 180.f / M_PI << " degrees\n"
-                    << "\t" << this->DiffPosition << " m");
+                    << "\t" << this->DiffAngle.Get() * 180.f / M_PI << " degrees\n"
+                    << "\t" << this->DiffPosition.Get() << " m");
   }
 
   diffTransform = refTransform.inverse() * transform;
@@ -433,9 +427,9 @@ void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::Confidence& confide
   float diffOverlap   = overlap         - this->RefEvaluators[this->ConfidenceCounter].Overlap;
   float diffNbMatches = nbMatches       - this->RefEvaluators[this->ConfidenceCounter].NbMatches;
   float diffTime      = computationTime - this->RefEvaluators[this->ConfidenceCounter].Duration;
-  this->DiffOverlap   = Utils::Average(diffOverlap,   this->DiffOverlap,   this->ConfidenceCounter);
-  this->DiffNbMatches = Utils::Average(diffNbMatches, this->DiffNbMatches, this->ConfidenceCounter);
-  this->DiffTime      = Utils::Average(diffTime,      this->DiffTime,      this->ConfidenceCounter);
+  this->DiffOverlap.Update(diffOverlap);
+  this->DiffNbMatches.Update(diffNbMatches);
+  this->DiffTime.Update(diffTime);
 
   if (this->Verbose)
   {
@@ -458,9 +452,9 @@ void LidarSlamTestNode::OutputTestResult()
 {
   // Test fails if the mean computation time is too high
   // compared with the reference processing
-  if (this->DiffTime > this->TimeThreshold)
+  if (this->DiffTime.Get() > this->TimeThreshold)
   {
-    ROS_ERROR_STREAM("Computation time is too long compared to reference (" << this->DiffTime << "s longer)");
+    ROS_ERROR_STREAM("Computation time is too long compared to reference (" << this->DiffTime.Get() << "s longer)");
     this->Failure = true;
   }
 
@@ -470,11 +464,13 @@ void LidarSlamTestNode::OutputTestResult()
     ROS_ERROR_STREAM("Test failed");
 
   ROS_INFO_STREAM("Comparison with reference (averages): ");
-  ROS_INFO_STREAM("Overlap difference : "           << 100 * this->DiffOverlap << " %");
-  ROS_INFO_STREAM("Number of matches difference : " << this->DiffNbMatches     << " matches");
-  ROS_INFO_STREAM("Computation time difference : "  << this->DiffTime          << " s");
-  ROS_INFO_STREAM("Trajectory difference : "        << this->DiffAngle         << " degrees and " << this->DiffPosition << " m");
-  ROS_INFO_STREAM ("Final drift from reference : "  << this->LastAngleDiff     << " degrees and " << this->LastPositionDiff << " m");
+  ROS_INFO_STREAM("Overlap difference : "           << 100 * this->DiffOverlap.Get() << " %");
+  ROS_INFO_STREAM("Number of matches difference : " << this->DiffNbMatches.Get()     << " matches");
+  ROS_INFO_STREAM("Computation time difference : "  << this->DiffTime.Get()          << " s");
+  ROS_INFO_STREAM("Trajectory difference : "        << this->DiffAngle.Get()         << " degrees and "
+                                                    << this->DiffPosition.Get()      << " meters");
+  ROS_INFO_STREAM ("Final drift from reference : "  << this->LastAngleDiff           << " degrees and "
+                                                    << this->LastPositionDiff        << " meters");
 
   // Comparison has stopped : Shut the node down
   ros::shutdown();
