@@ -66,16 +66,6 @@ Eigen::Vector3d RotationMatrixToRPY(const Eigen::Matrix3d& rot)
 }
 
 //------------------------------------------------------------------------------
-Eigen::Isometry3d XYZRPYtoIsometry(Eigen::Vector6d pose)
-{
-  Eigen::Isometry3d transform;
-  transform.linear() = RPYtoRotationMatrix(pose(3), pose(4), pose(5));    // Set rotation part
-  transform.translation() = Eigen::Vector3d(pose(0), pose(1), pose(2));   // Set translation part
-  transform.makeAffine();                                                 // Set the last row to [0 0 0 1]
-  return transform;
-}
-
-//------------------------------------------------------------------------------
 Eigen::Vector6d IsometryToXYZRPY(const Eigen::Isometry3d& transform)
 {
   Eigen::Vector6d xyzrpy;
@@ -131,16 +121,29 @@ LidarSlamTestNode::LidarSlamTestNode(ros::NodeHandle& nh, ros::NodeHandle& priv_
   else
     ROS_INFO_STREAM("No reference data supplied : comparison ignored");
 
-  //  Compare or not the results with a reference
+  // Set result output path
+  // Poses
   if (!this->PrivNh.getParam("res_path", this->ResPath) || this->ResPath.empty())
-  {
     ROS_WARN_STREAM("No result folder specified : the results will be stored in /tmp if it exists");
-    this->ResPath = "/tmp";
-  }
 
-  // Clean results if necessary
-  std::remove((this->ResPath + "/Poses.csv").c_str());
-  std::remove((this->ResPath + "/Evaluators.csv").c_str());
+  // Init result folder
+  std::ofstream resPosesFile(this->ResPath + "/Poses.csv");
+  if (resPosesFile.fail())
+  {
+    ROS_ERROR_STREAM("Cannot save poses at " << this->ResPath);
+    ros::shutdown();
+    return;
+  }
+  resPosesFile << "time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
+  // Evaluators
+  std::ofstream resEvalFile(this->ResPath + "/Evaluators.csv");
+  if (resEvalFile.fail())
+  {
+    ROS_ERROR_STREAM("Cannot save evaluators at " << this->ResPath);
+    ros::shutdown();
+    return;
+  }
+  resEvalFile << "time,overlap,nb_matches,computation_time\n";
 
   // Loading parameters
   this->PrivNh.getParam("time_threshold",     this->TimeThreshold);
@@ -169,31 +172,52 @@ void LidarSlamTestNode::LoadRef()
   std::ifstream refPosesFile(path);
   if (refPosesFile.fail())
   {
-    ROS_ERROR_STREAM("The poses csv file '" << path << "' was not found : comparison ignored");
+    ROS_ERROR_STREAM("The poses csv file '" << path << "' was not found : shutting down the node");
+    ros::shutdown();
     return;
   }
 
   // Temporal string to store line data
   std::string line;
 
+  // Check and remove header line
+  std::getline(refPosesFile, line);
+  if (line.find("x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2") == std::string::npos)
+  {
+    ROS_ERROR_STREAM("The poses csv file '" << path << "is badly formatted : shutting down the node");
+    ros::shutdown();
+    return;
+  }
+
   // Fill the reference poses vector
-  while (getline(refPosesFile, line))
+  while (std::getline(refPosesFile, line))
   {
     // Temporal struct to store pose info
     Pose pose;
     int pos; // char position
     // Store timestamp :
-    pos = line.find(" ");
+    pos = line.find(",");
     pose.Stamp = std::stod(line.substr(0, pos));
     line.erase(0, pos + 1);
     // Get pose
-    for (int i = 0; i < 5; ++i)
+    // Translation
+    for (int i = 0; i < 3; ++i)
     {
-      pos = line.find(" ");
-      pose.Data(i) = std::stod(line.substr(0, pos));
+      pos = line.find(",");
+      pose.Data.translation()(i) = std::stod(line.substr(0, pos));
       line.erase(0, pos + 1);
     }
-    pose.Data(5) = std::stod(line);
+    // Rotation
+    for (int i = 0; i < 3; ++i)
+    {
+      for (int j = 0; j < 3; ++j)
+      {
+        pos = line.find(",");
+        pose.Data.linear()(j, i) = std::stod(line.substr(0, pos));
+        if (pos != std::string::npos)
+          line.erase(0, pos + 1);
+      }
+    }
     this->RefPoses.push_back(pose);
   }
   refPosesFile.close();
@@ -203,7 +227,17 @@ void LidarSlamTestNode::LoadRef()
   std::ifstream refEvaluatorsFile(this->RefPath + "/Evaluators.csv");
   if (refEvaluatorsFile.fail())
   {
-    ROS_ERROR_STREAM("The evaluators csv file '" << path << "' was not found : comparison ignored");
+    ROS_ERROR_STREAM("The evaluators csv file '" << path << "' was not found : shutting down the node");
+    ros::shutdown();
+    return;
+  }
+
+  // Remove header line
+  std::getline(refEvaluatorsFile, line);
+  if (line.find("time,overlap,nb_matches,computation_time") == std::string::npos)
+  {
+    ROS_ERROR_STREAM("The evaluators csv file '" << path << "is badly formatted : shutting down the node");
+    ros::shutdown();
     return;
   }
 
@@ -213,15 +247,15 @@ void LidarSlamTestNode::LoadRef()
     Evaluator eval;
     int pos; // char position
     // Store timestamp :
-    pos = line.find(" ");
+    pos = line.find(",");
     eval.Stamp = std::stod(line.substr(0, pos));
     line.erase(0, pos + 1);
     // Store overlap
-    pos = line.find(" ");
+    pos = line.find(",");
     eval.Overlap = std::stof(line.substr(0, pos));
     line.erase(0, pos + 1);
     // Store the number of matches
-    pos = line.find(" ");
+    pos = line.find(",");
     eval.NbMatches = std::stoi(line.substr(0, pos));
     line.erase(0, pos + 1);
     // Store the computation time
@@ -239,17 +273,18 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
   if (resPosesFile.fail())
   {
     ROS_ERROR_STREAM("Could not save pose");
+    ros::shutdown();
     return;
   }
 
   // Save the pose in a file
   double time = poseMsg.header.stamp.toSec();
   Eigen::Isometry3d transform = Utils::PoseMsgToIsometry(poseMsg.pose.pose);
-  Eigen::Vector6d pose = Utils::IsometryToXYZRPY(transform);
-
-  resPosesFile << std::fixed << std::setprecision(9) << time << " "
-               << Utils::Normalize(pose(0)) << " " << Utils::Normalize(pose(1)) << " " << Utils::Normalize(pose(2)) << " "
-               << Utils::Normalize(pose(3)) << " " << Utils::Normalize(pose(4)) << " " << Utils::Normalize(pose(5)) << "\n";
+  resPosesFile << std::fixed << std::setprecision(9) << time << ","
+               << transform.translation().x() << "," << transform.translation().y() << "," << transform.translation().z() << ","
+               << transform.linear()(0,0)     << "," << transform.linear()(1,0)     << "," << transform.linear()(2,0)     << ","
+               << transform.linear()(0,1)     << "," << transform.linear()(1,1)     << "," << transform.linear()(2,1)     << ","
+               << transform.linear()(0,2)     << "," << transform.linear()(1,2)     << "," << transform.linear()(2,2)     << "\n";
   resPosesFile.close();
 
   // Check if comparison is required
@@ -288,10 +323,10 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
   }
 
   // Compare the pose with reference trajectory
-  Eigen::Isometry3d refTransform = Utils::XYZRPYtoIsometry(this->RefPoses[this->PoseCounter].Data);
+  Eigen::Isometry3d refTransform = this->RefPoses[this->PoseCounter].Data;
   Eigen::Isometry3d refPrevTransform;
   if (this->PoseCounter >= 1)
-     refPrevTransform = Utils::XYZRPYtoIsometry(this->RefPoses[this->PoseCounter - 1].Data);
+     refPrevTransform = this->RefPoses[this->PoseCounter - 1].Data;
   else
   {
     this->PrevTransform = transform;
@@ -350,11 +385,12 @@ void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::Confidence& confide
   if (EvaluatorsFile.fail())
   {
     ROS_ERROR_STREAM("Could not save confidence estimators");
+    ros::shutdown();
     return;
   }
 
-  EvaluatorsFile << std::fixed << std::setprecision(9) << time << " "
-                 << overlap << " " << nbMatches << " " << computationTime << "\n";
+  EvaluatorsFile << std::fixed << std::setprecision(9) << time << ","
+                 << overlap << "," << nbMatches << "," << computationTime << "\n";
   EvaluatorsFile.close();
 
   // Check if comparison is required
