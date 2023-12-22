@@ -40,6 +40,7 @@ public:
   using CloudL = pcl::PointCloud<PointL>;  ///< Pointcloud published by livox driver
   using PointS = LidarSlam::LidarPoint;
   using CloudS = pcl::PointCloud<PointS>;  ///< Pointcloud needed by SLAM
+  using LivoxCustomPoint = lidar_conversions::CustomPoint;
 
   //----------------------------------------------------------------------------
   /*!
@@ -72,9 +73,7 @@ private:
   ros::Subscriber Listener;
   ros::Publisher Talker;
 
-  int DeviceId = 0;  ///< LiDAR device identifier to set for each point.
-
-  bool IsPcl2 = true;
+  bool IsPcl2 = false;
 };
 
 }  // end of namespace lidar_conversions

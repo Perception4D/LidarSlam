@@ -20,7 +20,7 @@
 
   <!-- Livox points conversion -->
   <node name="livox_conversion" pkg="lidar_conversions" type="livox_conversion_node" output="screen">
-  <param name="pointcloud2" value="$(arg pointcloud2)"/>
+    <param name="pointcloud2" value="$(arg pointcloud2)"/>
   </node>
 
   <!-- LiDAR SLAM : compute TF slam_init -> Livox -->

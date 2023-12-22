@@ -32,7 +32,7 @@ LivoxToLidarNode::LivoxToLidarNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh
   // Init ROS publisher
   this->Talker = nh.advertise<CloudS>("lidar_points", 1);
 
-  //  Get LiDAR id
+  // Get LiDAR id
   this->PrivNh.param("pointcloud2", this->IsPcl2, this->IsPcl2);
 
   // Init ROS subscriber
@@ -55,14 +55,7 @@ void LivoxToLidarNode::PointCloud2Callback(const CloudL& cloudL)
   }
 
   // Init SLAM pointcloud
-  CloudS cloudS;
-  cloudS.reserve(cloudL.size());
-
-  // Copy pointcloud metadata
-  Utils::CopyPointCloudMetadata(cloudL, cloudS);
-
-  // Helper to estimate frameAdvancement in case time field is invalid
-  Utils::SpinningFrameAdvancementEstimator frameAdvancementEstimator;
+  CloudS cloudS = Utils::InitCloudS<CloudL>(cloudL);
 
   // Build SLAM pointcloud
   double prevTime = -0.1;
@@ -76,8 +69,6 @@ void LivoxToLidarNode::PointCloud2Callback(const CloudL& cloudL)
     slamPoint.x = livoxPoint.x;
     slamPoint.y = livoxPoint.y;
     slamPoint.z = livoxPoint.z;
-    if (slamPoint.getVector3fMap().norm() < 1e-6)
-      continue;
     slamPoint.intensity = livoxPoint.intensity;
     slamPoint.laser_id = 0;
 
@@ -104,17 +95,21 @@ void LivoxToLidarNode::LivoxCustomMsgCallback(const CustomMsg& cloudLmsg)
   // Build SLAM pointcloud
   for (int i = 0; i < cloudLmsg.point_num; ++i)
   {
-    PointS slamPoint;
-    slamPoint.x = cloudLmsg.points[i].x;
-    slamPoint.y = cloudLmsg.points[i].y;
-    slamPoint.z = cloudLmsg.points[i].z;
-    if (slamPoint.getVector3fMap().norm() < 1e-6)
-      continue;
-    slamPoint.intensity = cloudLmsg.points[i].reflectivity;
-    slamPoint.laser_id = cloudLmsg.points[i].line;
+    const LivoxCustomPoint& livoxPoint = cloudLmsg.points[i];
 
-    slamPoint.time = double(cloudLmsg.points[i].offset_time) * 1e-9; // seconds
-    cloudS.push_back(slamPoint);
+    if (!Utils::IsPointValid(pcl::PointXYZ(livoxPoint.x, livoxPoint.y, livoxPoint.z)))
+      continue;
+
+    PointS slamPoint;
+    slamPoint.x = livoxPoint.x;
+    slamPoint.y = livoxPoint.y;
+    slamPoint.z = livoxPoint.z;
+    slamPoint.intensity = livoxPoint.reflectivity;
+    slamPoint.laser_id = livoxPoint.line;
+    slamPoint.time = double(livoxPoint.offset_time) * 1e-9; // seconds
+
+    if (!Utils::HasNanField(slamPoint))
+      cloudS.push_back(slamPoint);
   }
 
   this->Talker.publish(cloudS);
