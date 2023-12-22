@@ -23,21 +23,23 @@
 #include <ouster_point.h>
 #include <LidarSlam/LidarPoint.h>
 
+#include "Utilities.h"
+#include "lidar_conversions/EstimSense.h"
 namespace lidar_conversions
 {
 
 /**
  * @class OusterToLidarNode aims at converting pointclouds published by ROS
- * Velodyne driver to the expected SLAM pointcloud format.
+ * Ouster driver to the expected SLAM pointcloud format.
  *
- * The ROS Velodyne driver can be found here :
- * https://github.com/ros-drivers/velodyne
+ * The ROS Ouster driver can be found here :
+ * https://github.com/ouster-lidar/ouster-ros
  */
 class OusterToLidarNode
 {
 public:
   using PointO = ouster_ros::Point;
-  using CloudV = pcl::PointCloud<PointO>;  ///< Pointcloud published by ouster driver
+  using CloudO = pcl::PointCloud<PointO>;  ///< Pointcloud published by ouster driver
   using PointS = LidarSlam::LidarPoint;
   using CloudS = pcl::PointCloud<PointS>;  ///< Pointcloud needed by SLAM
 
@@ -51,10 +53,17 @@ public:
 
   //----------------------------------------------------------------------------
   /*!
-   * @brief New lidar frame callback, converting and publishing Velodyne PointCloud as SLAM LidarPoint.
-   * @param cloud New Lidar Frame, published by velodyne_pointcloud/transform_node.
+   * @brief New lidar frame callback, converting and publishing Ouster PointCloud as SLAM LidarPoint.
    */
-  void Callback(const CloudV& cloud);
+  void Callback(const CloudO& cloud);
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Service to re-compute the rotation sense of LiDAR.
+   * @param request Service request
+   * @param response Service response
+   */
+  bool EstimSenseService(lidar_conversions::EstimSenseRequest& req, lidar_conversions::EstimSenseResponse& res);
 
 private:
 
@@ -64,20 +73,22 @@ private:
   ros::NodeHandle &Nh, &PrivNh;
   ros::Subscriber Listener;
   ros::Publisher Talker;
+  ros::ServiceServer EstimService;
 
-  // Optional mapping used to correct the numeric identifier of the laser ring that shot each point.
-  // SLAM expects that the lowest/bottom laser ring is 0, and is increasing upward.
-  // If unset, identity mapping (no laser_id change) will be used.
-  // NOTE: the Velodyne ROS driver should already correctly modify the laser_id,
-  // so this shouldn't be needed.
-  std::vector<int> LaserIdMapping;
+  unsigned int NbLasers = 64; ///< Number of lasers of the LiDAR. Optional as it can be taken from header attribute .height of the PointCloud.
+  bool RotationSenseEstimated = false; ///< Flag to initialize the parameters useful for time estimations.
+  bool RotationIsClockwise;  ///< True if the LiDAR rotates clockwise, false otherwise.
 
-  int DeviceId = 0;  ///< LiDAR device identifier to set for each point.
+  // Useful variable to estimate the rotation duration (itself used to estimate time)
+  // NOTE: to be precise, this rotation duration estimation requires that each input
+  // scan is an entire scan covering excatly 360°
+  double RotationDuration = -1.;
+  double RotationDurationPrior = -1.;
+  double PrevFrameTime = -1.;
+  std::vector<double> PossibleFrequencies = {10., 20.}; ///< Vector of all the possible frequencies for Ouster LiDAR
 
-  // Useful variables for approximate point-wise timestamps computation
-  // These parameters should be set to the same values as ROS Velodyne driver's.
-  double Rpm = 600;  ///< Spinning speed of sensor [rpm]
-  bool TimestampFirstPacket = false;  ///< Wether timestamping is based on the first or last packet of each scan
+  // Number of threads to use for the conversion
+  int NbThreads = 1;
 };
 
 }  // end of namespace lidar_conversions

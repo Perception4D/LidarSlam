@@ -18,9 +18,7 @@
   <arg name="metadata_out" default="" doc="Output Ouster config file"/>
   <!-- lidar_mode must be linked to frequency / rpm -->
   <arg name="lidar_mode" default="1024x10" doc="Lidar mode : 1024x10, 2048x10, 1024x20, 2048x20"/>
-  <!-- /!\ rpm and timestamp_first_packet are also used to generate approximate point-wise timestamps as 'time' field is not usable. -->
-  <arg name="rpm" default="600." doc="Ouster sensor spinning speed."/>
-  <arg name="timestamp_first_packet" default="false" doc="If Ouster timestamping is based on the first or last packet of each scan."/>
+  <!-- Aggregation node -->
   <arg name="aggregate" default="false" doc="run aggregation node"/>
 
   <!-- Sim Time, used when replaying rosbag files (with mandatory option 'clock') -->
@@ -60,8 +58,7 @@
 
   <!-- Ouster points conversion -->
   <node name="ouster_conversion" pkg="lidar_conversions" type="ouster_conversion_node" output="screen">
-    <param name="rpm" value="$(arg rpm)"/>
-    <param name="timestamp_first_packet" value="$(arg timestamp_first_packet)"/>
+		<rosparam file="$(find lidar_conversions)/params/conversion_config.yaml" command="load"/>
   </node>
 
   <!-- LiDAR SLAM : compute TF slam_init -> Ouster -->
