@@ -17,7 +17,6 @@
 //==============================================================================
 
 #include "HesaiToLidarNode.h"
-#include "Utilities.h"
 #include <pcl_conversions/pcl_conversions.h>
 
 #define BOLD_GREEN(s) "\033[1;32m" << s << "\033[0m"
@@ -29,18 +28,25 @@ HesaiToLidarNode::HesaiToLidarNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh
   : Nh(nh)
   , PrivNh(priv_nh)
 {
-  // Get laser ID mapping
-  this->PrivNh.param("laser_id_mapping", this->LaserIdMapping, this->LaserIdMapping);
+  // Get number of lasers
+  int nbLasers = 32;
+  if (this->PrivNh.getParam("nb_laser", nbLasers))
+    this->NbLasers = static_cast<unsigned int>(nbLasers);
 
-  //  Get LiDAR spinning speed and first timestamp option
-  this->PrivNh.param("rpm", this->Rpm, this->Rpm);
-  this->PrivNh.param("timestamp_first_packet", this->TimestampFirstPacket, this->TimestampFirstPacket);
+  // Get possible frequencies
+  this->PrivNh.param("possible_frequencies", this->PossibleFrequencies, this->PossibleFrequencies);
+
+  // Get number of threads
+  this->PrivNh.param("nb_threads", this->NbThreads, this->NbThreads);
 
   // Init ROS publisher
   this->Talker = nh.advertise<CloudS>("lidar_points", 1);
 
   // Init ROS subscriber
   this->Listener = nh.subscribe("/hesai/pandar", 1, &HesaiToLidarNode::Callback, this);
+
+  // Init ROS service
+  this->EstimService = nh.advertiseService("lidar_conversions/estim_sense", &HesaiToLidarNode::EstimSenseService, this);
 
   ROS_INFO_STREAM(BOLD_GREEN("Hesai data converter is ready !"));
 }
@@ -55,28 +61,62 @@ void HesaiToLidarNode::Callback(const CloudH& cloudH)
     return;
   }
 
+  // Rotation duration is estimated to be used in time estimation if needed
+  double currFrameTime = Utils::PclStampToSec(cloudH.header.stamp);
+  double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
+  this->PrevFrameTime = currFrameTime;
+
+  // If the rotation duration has not been estimated
+  if (this->RotationDuration < 0.)
+  {
+    // Check if this duration is possible
+    if (Utils::CheckRotationDuration(diffTimePrevFrame, this->PossibleFrequencies))
+    {
+      // Check a confirmation of the frame duration to avoid outliers (frames dropped)
+      // For the first frame, RotationDurationPrior is -1, this condition won't be fulfilled
+      // For the second frame, RotationDurationPrior is absurd, this condition won't be fulfilled
+      // First real intempt occurs at the 3rd frame
+      if (std::abs(diffTimePrevFrame - this->RotationDurationPrior) < 5e-3) // 5ms threshold
+        this->RotationDuration = (diffTimePrevFrame + this->RotationDurationPrior) / 2.;
+      this->RotationDurationPrior = diffTimePrevFrame;
+      ROS_INFO_STREAM(std::setprecision(12) << "Difference between successive frames is :" << diffTimePrevFrame);
+    }
+  }
+
+  if (this->RotationDuration < 0.)
+    return;
+
   // Init SLAM pointcloud
-  CloudS cloudS;
-  cloudS.reserve(cloudH.size());
+  CloudS cloudS = Utils::InitCloudS<CloudH>(cloudH);
 
-  // Copy pointcloud metadata
-  Utils::CopyPointCloudMetadata(cloudH, cloudS);
+  const unsigned int nbLasers = (cloudH.height >= 8 && cloudH.height <= 128) ?
+                                 cloudH.height :
+                                  (cloudH.width >= 8 && cloudH.width <= 128) ?
+                                   cloudH.width :
+                                   this->NbLasers;
 
-  // Check wether to use custom laser ID mapping or leave it untouched
-  bool useLaserIdMapping = !this->LaserIdMapping.empty();
+  // Estimate the rotation sense
+  if (!this->RotationSenseEstimated)
+  {
+    this->RotationIsClockwise = Utils::IsRotationClockwise<PointH>(cloudH, nbLasers);
+    this->RotationSenseEstimated = true;
+  }
+
+  // Check if time field looks properly set
+  double duration = cloudH.back().timestamp - cloudH.front().timestamp;
+  double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
 
   // Check if time field looks properly set
   // If first and last points have same timestamps, this is not normal
-  bool isTimeValid = cloudH.back().timestamp - cloudH.front().timestamp > 1e-8;
+  bool isTimeValid = duration > 1e-8 && duration < 2. * this->RotationDuration;
+
   if (!isTimeValid)
     ROS_WARN_STREAM("Invalid 'time' field, it will be built from azimuth advancement.");
 
-  // Helper to estimate frameAdvancement in case time field is invalid
-  Utils::SpinningFrameAdvancementEstimator frameAdvancementEstimator;
-
-  double frameTime = cloudH.header.stamp * 1e-6;
+  Eigen::Vector2d firstPoint = {cloudH[0].x, cloudH[0].y};
 
   // Build SLAM pointcloud
+  #pragma omp parallel for num_threads(this->NbThreads)
   for (const PointH& hesaiPoint : cloudH)
   {
     // Remove no return points by checking unvalid values (NaNs or zeros)
@@ -88,30 +128,28 @@ void HesaiToLidarNode::Callback(const CloudH& cloudH)
     slamPoint.y = hesaiPoint.y;
     slamPoint.z = hesaiPoint.z;
     slamPoint.intensity = hesaiPoint.intensity;
-    slamPoint.laser_id = useLaserIdMapping ? this->LaserIdMapping[hesaiPoint.ring] : hesaiPoint.ring;
+    slamPoint.laser_id = hesaiPoint.ring;
 
-    // Use time field if available
-    // time is the offset to add to header.stamp to get point-wise timestamp
+    // Use time field if available, else estimate it from azimuth advancement
     if (isTimeValid)
-      slamPoint.time = hesaiPoint.timestamp - frameTime;
-
-    // Build approximate point-wise timestamp from azimuth angle
-    // 'frameAdvancement' is 0 for first point, and should match 1 for last point
-    // for a 360 degrees scan at ideal spinning frequency.
-    // 'time' is the offset to add to 'header.stamp' to get approximate point-wise timestamp.
-    // By default, 'header.stamp' is the timestamp of the last Hesai packet,
-    // but user can choose the first packet timestamp using parameter 'timestamp_first_packet'.
+      slamPoint.time = factor * (hesaiPoint.timestamp - currFrameTime);
     else
-    {
-      double frameAdvancement = frameAdvancementEstimator(slamPoint);
-      slamPoint.time = (this->TimestampFirstPacket ? frameAdvancement : frameAdvancement - 1) / this->Rpm * 60.;
-    }
+      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 
     if (!Utils::HasNanField(slamPoint))
       cloudS.push_back(slamPoint);
   }
 
   this->Talker.publish(cloudS);
+}
+
+//------------------------------------------------------------------------------
+bool HesaiToLidarNode::EstimSenseService(lidar_conversions::EstimSenseRequest& req, lidar_conversions::EstimSenseResponse& res)
+{
+  this->RotationSenseEstimated = false;
+  ROS_INFO_STREAM("Rotation sense will be re-estimated with next frames.");
+  res.success = true;
+  return true;
 }
 
 }  // end of namespace lidar_conversions

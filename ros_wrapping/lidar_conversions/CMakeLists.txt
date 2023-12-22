@@ -79,6 +79,8 @@ add_dependencies(velodyne_conversion_node lidar_conversions_generate_messages_cp
 add_executable(hesai_conversion_node src/HesaiToLidarNode.cxx)
 target_link_libraries(hesai_conversion_node ${catkin_LIBRARIES})
 
+add_dependencies(hesai_conversion_node lidar_conversions_generate_messages_cpp)
+
 # Ouster Lidar
 add_executable(ouster_conversion_node src/OusterToLidarNode.cxx)
 target_link_libraries(ouster_conversion_node ${catkin_LIBRARIES})
