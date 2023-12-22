@@ -73,6 +73,8 @@ include_directories(
 add_executable(velodyne_conversion_node src/VelodyneToLidarNode.cxx)
 target_link_libraries(velodyne_conversion_node ${catkin_LIBRARIES})
 
+add_dependencies(velodyne_conversion_node lidar_conversions_generate_messages_cpp)
+
 # Hesai Lidar
 add_executable(hesai_conversion_node src/HesaiToLidarNode.cxx)
 target_link_libraries(hesai_conversion_node ${catkin_LIBRARIES})
