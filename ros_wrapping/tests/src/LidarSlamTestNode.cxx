@@ -25,6 +25,7 @@
 #include "LidarSlamTestNode.h"
 
 #define BOLD_GREEN(s) "\033[1;32m" << s << "\033[0m"
+#define BOLD_RED(s) "\033[1;31m" << s << "\033[0m"
 
 namespace lidar_slam_test
 {
@@ -66,16 +67,6 @@ Eigen::Vector3d RotationMatrixToRPY(const Eigen::Matrix3d& rot)
 }
 
 //------------------------------------------------------------------------------
-Eigen::Isometry3d XYZRPYtoIsometry(Eigen::Vector6d pose)
-{
-  Eigen::Isometry3d transform;
-  transform.linear() = RPYtoRotationMatrix(pose(3), pose(4), pose(5));    // Set rotation part
-  transform.translation() = Eigen::Vector3d(pose(0), pose(1), pose(2));   // Set translation part
-  transform.makeAffine();                                                 // Set the last row to [0 0 0 1]
-  return transform;
-}
-
-//------------------------------------------------------------------------------
 Eigen::Vector6d IsometryToXYZRPY(const Eigen::Isometry3d& transform)
 {
   Eigen::Vector6d xyzrpy;
@@ -100,12 +91,6 @@ Eigen::Isometry3d PoseMsgToIsometry(const geometry_msgs::Pose& poseMsg)
 }
 
 //------------------------------------------------------------------------------
-float Average(float value, float average, unsigned int counter)
-{
-  return (average * counter + value) / (counter + 1);
-}
-
-//------------------------------------------------------------------------------
 double Normalize(double value)
 {
   return abs(value) < 1e-15 ? 0.f : value;
@@ -122,27 +107,41 @@ LidarSlamTestNode::LidarSlamTestNode(ros::NodeHandle& nh, ros::NodeHandle& priv_
   : Nh(nh)
   , PrivNh(priv_nh)
 {
-  //  Compare or not the results with a reference
+  // Set the path to the reference if comparison is required
   if (this->PrivNh.getParam("ref_path", this->RefPath) && !this->RefPath.empty())
   {
-    ROS_INFO_STREAM("Loading reference...");
+    ROS_INFO_STREAM("Loading reference at " << this->RefPath);
     this->LoadRef();
   }
   else
     ROS_INFO_STREAM("No reference data supplied : comparison ignored");
 
-  //  Compare or not the results with a reference
+  // Set result output path
+  // Poses
   if (!this->PrivNh.getParam("res_path", this->ResPath) || this->ResPath.empty())
-  {
     ROS_WARN_STREAM("No result folder specified : the results will be stored in /tmp if it exists");
-    this->ResPath = "/tmp";
-  }
 
-  // Clean results if necessary
-  std::remove((this->ResPath + "/Poses.csv").c_str());
-  std::remove((this->ResPath + "/Evaluators.csv").c_str());
+  // Init result folder
+  std::ofstream resPosesFile(this->ResPath + "/Poses.csv");
+  if (resPosesFile.fail())
+  {
+    ROS_ERROR_STREAM(BOLD_RED("Cannot save poses at " << this->ResPath));
+    ros::shutdown();
+    return;
+  }
+  resPosesFile << "time,x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2\n";
+  // Evaluators
+  std::ofstream resEvalFile(this->ResPath + "/Evaluators.csv");
+  if (resEvalFile.fail())
+  {
+    ROS_ERROR_STREAM(BOLD_RED("Cannot save evaluators at " << this->ResPath));
+    ros::shutdown();
+    return;
+  }
+  resEvalFile << "time,overlap,nb_matches,computation_time\n";
 
   // Loading parameters
+  this->PrivNh.getParam("nb_frames_dropped",  this->MaxNbFramesDropped);
   this->PrivNh.getParam("time_threshold",     this->TimeThreshold);
   this->PrivNh.getParam("position_threshold", this->PositionThreshold);
   this->PrivNh.getParam("angle_threshold",    this->AngleThreshold);
@@ -169,41 +168,76 @@ void LidarSlamTestNode::LoadRef()
   std::ifstream refPosesFile(path);
   if (refPosesFile.fail())
   {
-    ROS_ERROR_STREAM("The poses csv file '" << path << "' was not found : comparison ignored");
+    ROS_ERROR_STREAM(BOLD_RED("The poses csv file '"
+                     << path << "' was not found : shutting down the node"));
+    ros::shutdown();
     return;
   }
 
   // Temporal string to store line data
   std::string line;
 
+  // Check and remove header line
+  std::getline(refPosesFile, line);
+  if (line.find("x,y,z,x0,y0,z0,x1,y1,z1,x2,y2,z2") == std::string::npos)
+  {
+    ROS_ERROR_STREAM(BOLD_RED("The poses csv file '"
+                     << path << " is badly formatted : shutting down the node"));
+    ros::shutdown();
+    return;
+  }
+
   // Fill the reference poses vector
-  while (getline(refPosesFile, line))
+  while (std::getline(refPosesFile, line))
   {
     // Temporal struct to store pose info
     Pose pose;
     int pos; // char position
     // Store timestamp :
-    pos = line.find(" ");
+    pos = line.find(",");
     pose.Stamp = std::stod(line.substr(0, pos));
     line.erase(0, pos + 1);
     // Get pose
-    for (int i = 0; i < 5; ++i)
+    // Translation
+    for (int i = 0; i < 3; ++i)
     {
-      pos = line.find(" ");
-      pose.data(i) = std::stod(line.substr(0, pos));
+      pos = line.find(",");
+      pose.Data.translation()(i) = std::stod(line.substr(0, pos));
       line.erase(0, pos + 1);
     }
-    pose.data(5) = std::stod(line);
+    // Rotation
+    for (int i = 0; i < 3; ++i)
+    {
+      for (int j = 0; j < 3; ++j)
+      {
+        pos = line.find(",");
+        pose.Data.linear()(j, i) = std::stod(line.substr(0, pos));
+        if (pos != std::string::npos)
+          line.erase(0, pos + 1);
+      }
+    }
     this->RefPoses.push_back(pose);
   }
   refPosesFile.close();
-  ROS_INFO_STREAM("Poses loaded!");
+  ROS_INFO_STREAM(this->RefPoses.size() << " poses loaded!");
 
   // Fill the reference confidence vector
   std::ifstream refEvaluatorsFile(this->RefPath + "/Evaluators.csv");
   if (refEvaluatorsFile.fail())
   {
-    ROS_ERROR_STREAM("The evaluators csv file '" << path << "' was not found : comparison ignored");
+    ROS_ERROR_STREAM(BOLD_RED("The evaluators csv file '"
+                     << path << "' was not found : shutting down the node"));
+    ros::shutdown();
+    return;
+  }
+
+  // Remove header line
+  std::getline(refEvaluatorsFile, line);
+  if (line.find("time,overlap,nb_matches,computation_time") == std::string::npos)
+  {
+    ROS_ERROR_STREAM(BOLD_RED("The evaluators csv file '"
+                     << path << " is badly formatted : shutting down the node"));
+    ros::shutdown();
     return;
   }
 
@@ -213,15 +247,15 @@ void LidarSlamTestNode::LoadRef()
     Evaluator eval;
     int pos; // char position
     // Store timestamp :
-    pos = line.find(" ");
+    pos = line.find(",");
     eval.Stamp = std::stod(line.substr(0, pos));
     line.erase(0, pos + 1);
     // Store overlap
-    pos = line.find(" ");
+    pos = line.find(",");
     eval.Overlap = std::stof(line.substr(0, pos));
     line.erase(0, pos + 1);
     // Store the number of matches
-    pos = line.find(" ");
+    pos = line.find(",");
     eval.NbMatches = std::stoi(line.substr(0, pos));
     line.erase(0, pos + 1);
     // Store the computation time
@@ -229,7 +263,7 @@ void LidarSlamTestNode::LoadRef()
     this->RefEvaluators.push_back(eval);
   }
   refEvaluatorsFile.close();
-  ROS_INFO_STREAM("Evaluators loaded!");
+  ROS_INFO_STREAM(this->RefEvaluators.size() << " evaluators loaded!");
 }
 
 //------------------------------------------------------------------------------
@@ -238,59 +272,56 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
   std::ofstream resPosesFile(this->ResPath + "/Poses.csv", std::ofstream::app);
   if (resPosesFile.fail())
   {
-    ROS_ERROR_STREAM("Could not save pose");
+    ROS_ERROR_STREAM(BOLD_RED("Could not save pose"));
+    ros::shutdown();
     return;
   }
 
   // Save the pose in a file
   double time = poseMsg.header.stamp.toSec();
   Eigen::Isometry3d transform = Utils::PoseMsgToIsometry(poseMsg.pose.pose);
-  Eigen::Vector6d pose = Utils::IsometryToXYZRPY(transform);
-
-  resPosesFile << std::fixed << std::setprecision(9) << time << " "
-               << Utils::Normalize(pose(0)) << " " << Utils::Normalize(pose(1)) << " " << Utils::Normalize(pose(2)) << " "
-               << Utils::Normalize(pose(3)) << " " << Utils::Normalize(pose(4)) << " " << Utils::Normalize(pose(5)) << "\n";
+  resPosesFile << std::fixed << std::setprecision(9) << time << ","
+               << transform.translation().x() << "," << transform.translation().y() << "," << transform.translation().z() << ","
+               << transform.linear()(0,0)     << "," << transform.linear()(1,0)     << "," << transform.linear()(2,0)     << ","
+               << transform.linear()(0,1)     << "," << transform.linear()(1,1)     << "," << transform.linear()(2,1)     << ","
+               << transform.linear()(0,2)     << "," << transform.linear()(1,2)     << "," << transform.linear()(2,2)     << "\n";
   resPosesFile.close();
 
   // Check if comparison is required
   if (!this->CanBeCompared())
     return;
 
-  if (this->PoseCounter >= this->RefPoses.size())
-  {
-    ROS_ERROR_STREAM("More poses received than with reference, comparison ignored");
-    return;
-  }
+  // Search the pose in reference
+  while (this->PoseCounter < this->RefPoses.size() &&
+         this->RefPoses[this->PoseCounter].Stamp < time - 1e-6)
+    ++this->PoseCounter;
 
-  // If the current reference frame has not been seen in this new run ->
-  // search the current frame in reference
-  if (time - this->RefPoses[this->PoseCounter].Stamp > 1e-6)
+  // No more reference
+  // or time close to the end (1s margin)
+  if (this->PoseCounter == this->RefPoses.size() ||
+      this->RefPoses.back().Stamp - time < 1.)
   {
-    while (this->PoseCounter < this->RefEvaluators.size() && time - this->RefPoses[this->PoseCounter].Stamp > 1e-6)
-      ++this->PoseCounter;
-  }
-
-  if (this->PoseCounter == this->RefEvaluators.size())
-  {
-    this->OutputTestResult();
+    this->OutputTestResult(); // will shut down the node
     return;
   }
 
   // If the current frame has not been seen in reference -> return (wait for next frame)
-  if (this->RefPoses[this->PoseCounter].Stamp - time > 1e-6)
+  if (std::abs(this->RefPoses[this->PoseCounter].Stamp - time) > 1e-6)
   {
-    ROS_WARN_STREAM("Reference does not contain a frame at "
+    ROS_WARN_STREAM("Reference does not contain a pose at "
                      << std::fixed << std::setprecision(9) << time
                      << " (may have been dropped)."
                      << " Check the reference was computed on the same data.");
+    ++this->NbFramesDropped;
+    this->PreviousPoseExists = false;
     return;
   }
 
   // Compare the pose with reference trajectory
-  Eigen::Isometry3d refTransform = Utils::XYZRPYtoIsometry(this->RefPoses[this->PoseCounter].data);
+  Eigen::Isometry3d refTransform = this->RefPoses[this->PoseCounter].Data;
   Eigen::Isometry3d refPrevTransform;
   if (this->PoseCounter >= 1)
-     refPrevTransform = Utils::XYZRPYtoIsometry(this->RefPoses[this->PoseCounter - 1].data);
+     refPrevTransform = this->RefPoses[this->PoseCounter - 1].Data;
   else
   {
     this->PrevTransform = transform;
@@ -300,13 +331,14 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
   Eigen::Vector6d diffPose = Utils::IsometryToXYZRPY(diffTransform);
   // Compute angle difference
   float currentDiffAngle = diffPose.tail(3).norm();
-  this->DiffAngle = Utils::Average(currentDiffAngle, this->DiffAngle, this->PoseCounter);
+  this->DiffAngle.Update(currentDiffAngle);
   // Compute translation difference
   float currentDiffPosition = diffPose.head(3).norm();
-  this->DiffPosition = Utils::Average(currentDiffPosition, this->DiffPosition, this->PoseCounter);
+  this->DiffPosition.Update(currentDiffPosition);
 
   // Test fails if any pose is too different from its reference pose
-  if (currentDiffPosition > this->PositionThreshold || currentDiffAngle * 180.f / M_PI > this->AngleThreshold)
+  if (currentDiffPosition > this->PositionThreshold ||
+      currentDiffAngle * 180.f / M_PI > this->AngleThreshold)
   {
     ROS_ERROR_STREAM("Pose at " << std::fixed << std::setprecision(9) << time << " is not consistent with reference");
     this->Failure = true;
@@ -318,8 +350,8 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
                     << "\t" << currentDiffAngle * 180.f / M_PI << " degrees\n"
                     << "\t" << currentDiffPosition << " m");
     ROS_INFO_STREAM("Pose difference average (at " << std::fixed << std::setprecision(9) << time << ") :\n"
-                    << "\t" << this->DiffAngle * 180.f / M_PI << " degrees\n"
-                    << "\t" << this->DiffPosition << " m");
+                    << "\t" << this->DiffAngle.Get() * 180.f / M_PI << " degrees\n"
+                    << "\t" << this->DiffPosition.Get() << " m");
   }
 
   diffTransform = refTransform.inverse() * transform;
@@ -327,13 +359,8 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
   this->LastPositionDiff = diffPose.head(3).norm();
   this->LastAngleDiff = diffPose.tail(3).norm();
 
-  ++this->PoseCounter;
   this->PrevTransform = transform;
-
-  // At the end of the test data, notify the user about the success or the failure of the test
-  // The last frame cannot be dropped so the node should be ended in any case.
-  if (this->PoseCounter == this->RefPoses.size() && this->ConfidenceCounter == this->RefPoses.size())
-    this->OutputTestResult();
+  this->PreviousPoseExists = true;
 }
 
 //------------------------------------------------------------------------------
@@ -347,43 +374,37 @@ void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::Confidence& confide
   std::ofstream EvaluatorsFile(this->ResPath + "/Evaluators.csv", std::ofstream::app);
   if (EvaluatorsFile.fail())
   {
-    ROS_ERROR_STREAM("Could not save confidence estimators");
+    ROS_ERROR_STREAM(BOLD_RED("Could not save confidence estimators"));
+    ros::shutdown();
     return;
   }
 
-  EvaluatorsFile << std::fixed << std::setprecision(9) << time << " "
-                 << overlap << " " << nbMatches << " " << computationTime << "\n";
+  EvaluatorsFile << std::fixed << std::setprecision(9) << time << ","
+                 << overlap << "," << nbMatches << "," << computationTime << "\n";
   EvaluatorsFile.close();
 
   // Check if comparison is required
   if (!this->CanBeCompared())
     return;
 
-  if (this->ConfidenceCounter >= this->RefEvaluators.size())
-  {
-    this->OutputTestResult();
-    return;
-  }
+  while (this->ConfidenceCounter < this->RefEvaluators.size() &&
+         this->RefEvaluators[this->ConfidenceCounter].Stamp < time - 1e-6)
+    ++this->ConfidenceCounter;
 
-  // If the current reference frame has not been seen in this new run ->
-  // search the current frame in reference
-  if (time - this->RefEvaluators[this->ConfidenceCounter].Stamp > 1e-6)
+  // No more reference
+  // or time close to the end (1s margin)
+  if (this->ConfidenceCounter == this->RefEvaluators.size() ||
+      this->RefEvaluators.back().Stamp - time < 1.)
   {
-    while (this->ConfidenceCounter < this->RefEvaluators.size() && time - this->RefEvaluators[this->ConfidenceCounter].Stamp > 1e-6)
-      ++this->ConfidenceCounter;
-  }
-
-  if (this->ConfidenceCounter >= this->RefEvaluators.size())
-  {
-    this->OutputTestResult();
+    this->OutputTestResult(); // will shut down the node
     return;
   }
 
   // If the current frame has not been seen in reference -> return (wait for next frame)
   // The last frame cannot be dropped so the node should be ended in any case.
-  if (this->RefEvaluators[this->ConfidenceCounter].Stamp - time > 1e-6)
+  if (std::abs(this->RefEvaluators[this->ConfidenceCounter].Stamp - time) > 1e-6)
   {
-    ROS_WARN_STREAM("Reference does not contain a frame at "
+    ROS_WARN_STREAM("Reference does not contain an evaluator at "
                      << std::fixed << std::setprecision(9) << time
                      << " (may have been dropped)."
                      << " Check the reference was computed on the same data");
@@ -394,9 +415,9 @@ void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::Confidence& confide
   float diffOverlap   = overlap         - this->RefEvaluators[this->ConfidenceCounter].Overlap;
   float diffNbMatches = nbMatches       - this->RefEvaluators[this->ConfidenceCounter].NbMatches;
   float diffTime      = computationTime - this->RefEvaluators[this->ConfidenceCounter].Duration;
-  this->DiffOverlap   = Utils::Average(diffOverlap,   this->DiffOverlap,   this->ConfidenceCounter);
-  this->DiffNbMatches = Utils::Average(diffNbMatches, this->DiffNbMatches, this->ConfidenceCounter);
-  this->DiffTime      = Utils::Average(diffTime,      this->DiffTime,      this->ConfidenceCounter);
+  this->DiffOverlap.Update(diffOverlap);
+  this->DiffNbMatches.Update(diffNbMatches);
+  this->DiffTime.Update(diffTime);
 
   if (this->Verbose)
   {
@@ -405,38 +426,40 @@ void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::Confidence& confide
                     << "\t" << "Number of matches difference : " << diffNbMatches     << " matches\n"
                     << "\t" << "Computation time difference : "  << diffTime          << " s");
   }
-
-  ++this->ConfidenceCounter;
-
-  // At the end of the test data, notify the user about the success or the failure of the test
-  // The last frame cannot be dropped so the node should be ended in any case.
-  if (this->PoseCounter == this->RefPoses.size() && this->ConfidenceCounter == this->RefPoses.size())
-    this->OutputTestResult();
 }
 
 //------------------------------------------------------------------------------
 void LidarSlamTestNode::OutputTestResult()
 {
-  // Test fails if the mean computation time is too high
-  // compared with the reference processing
-  if (this->DiffTime > this->TimeThreshold)
+  if (this->NbFramesDropped > this->MaxNbFramesDropped)
   {
-    ROS_ERROR_STREAM("Computation time is too long compared to reference (" << this->DiffTime << "s longer)");
+    ROS_INFO_STREAM(this->NbFramesDropped << " frames dropped comparing to reference");
     this->Failure = true;
   }
+
+  // Test fails if the mean computation time is too high
+  // compared with the reference processing
+  if (this->DiffTime.Get() > this->TimeThreshold)
+  {
+    ROS_ERROR_STREAM("Computation time is too long compared to reference (" << this->DiffTime.Get() << "s longer)");
+    this->Failure = true;
+  }
+
   if (!this->Failure)
     ROS_INFO_STREAM(BOLD_GREEN("Test successfully passed"));
   else
     ROS_ERROR_STREAM("Test failed");
 
   ROS_INFO_STREAM("Comparison with reference (averages): ");
-  ROS_INFO_STREAM("Overlap difference : "           << 100 * this->DiffOverlap << " %");
-  ROS_INFO_STREAM("Number of matches difference : " << this->DiffNbMatches     << " matches");
-  ROS_INFO_STREAM("Computation time difference : "  << this->DiffTime          << " s");
-  ROS_INFO_STREAM("Trajectory difference : "        << this->DiffAngle         << " degrees and " << this->DiffPosition << " m");
-  ROS_INFO_STREAM ("Final drift from reference : "  << this->LastAngleDiff     << " degrees and " << this->LastPositionDiff << " m");
+  ROS_INFO_STREAM("Overlap difference : "           << 100 * this->DiffOverlap.Get() << " %");
+  ROS_INFO_STREAM("Number of matches difference : " << this->DiffNbMatches.Get()     << " matches");
+  ROS_INFO_STREAM("Computation time difference : "  << this->DiffTime.Get()          << " s");
+  ROS_INFO_STREAM("Trajectory difference : "        << this->DiffAngle.Get()         << " degrees and "
+                                                    << this->DiffPosition.Get()      << " meters");
+  ROS_INFO_STREAM ("Final drift from reference : "  << this->LastAngleDiff           << " degrees and "
+                                                    << this->LastPositionDiff        << " meters");
 
-  // Comparison has stopped : Shut the node down
+  // Comparison has stopped : Shut down the node
   ros::shutdown();
 }
 
