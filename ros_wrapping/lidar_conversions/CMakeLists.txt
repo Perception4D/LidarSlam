@@ -91,6 +91,8 @@ add_dependencies(ouster_conversion_node lidar_conversions_generate_messages_cpp)
 add_executable(robosense_conversion_node src/RobosenseToLidarNode.cxx)
 target_link_libraries(robosense_conversion_node ${catkin_LIBRARIES})
 
+add_dependencies(robosense_conversion_node lidar_conversions_generate_messages_cpp)
+
 # Livox mid100 Lidar
 add_executable(livox_conversion_node src/LivoxToLidarNode.cxx)
 target_link_libraries(livox_conversion_node ${catkin_LIBRARIES})
