@@ -301,7 +301,8 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::msg::Odometry& poseMsg)
     ++this->PoseCounter;
 
   // No more reference
-  if (this->PoseCounter == this->RefPoses.size())
+  if (this->PoseCounter == this->RefPoses.size() ||
+      time > this->RefPoses.back().Stamp - 1.f) // 1 second margin
   {
     this->OutputTestResult(); // will shut down the node
     return;
@@ -394,7 +395,8 @@ void LidarSlamTestNode::ConfidenceCallback(const lidar_slam::msg::Confidence& co
     ++this->ConfidenceCounter;
 
   // No more reference
-  if (this->ConfidenceCounter == this->RefEvaluators.size())
+  if (this->ConfidenceCounter == this->RefEvaluators.size() ||
+      time > this->RefPoses.back().Stamp - 1.f) // 1 second margin
   {
     this->OutputTestResult(); // will shut down the node
     return;
