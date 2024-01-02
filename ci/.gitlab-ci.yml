@@ -333,7 +333,7 @@ linux_ros_wrapping_build:
       res_path:=${PWD}/${PATH_REFERENCE_LOG}"
 
     - echo "$ROS1_COMMAND"
-    - $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - eval $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
     - grep "comparison ignored" /tmp/test_log.txt
 
 
@@ -388,7 +388,7 @@ linux_ros_wrapping_build:
       res_path:=${PWD}/${PATH_RESULT_LOG}"
 
     - echo "$ROS1_COMMAND"
-    - $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - eval $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
     - grep "Test successfully passed" /tmp/test_log.txt
 
 
