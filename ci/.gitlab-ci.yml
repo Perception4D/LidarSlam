@@ -326,7 +326,7 @@ linux_ros_wrapping_build:
     - source devel/setup.bash
 
     - ROS1_COMMAND="roslaunch lidar_slam_test slam.launch
-      test_data:=${data_folder}/${test_name}
+      test_data:=${data_folder}/${test_name}/${test_name}.bag
       outdoor:=$outdoor
       vlp16:=$vlp16
       wait_init:=$wait_init
@@ -380,7 +380,7 @@ linux_ros_wrapping_build:
     - source devel/setup.bash
 
     - ROS1_COMMAND="roslaunch lidar_slam_test slam.launch
-      test_data:=${data_folder}/${test_name}
+      test_data:=${data_folder}/${test_name}/${test_name}.bag
       outdoor:=$outdoor
       vlp16:=$vlp16
       wait_init:=$wait_init
