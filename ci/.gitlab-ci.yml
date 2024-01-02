@@ -334,6 +334,8 @@ linux_ros_wrapping_build:
 
     - echo "$ROS1_COMMAND"
     - eval $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
+    # Checks whether the ROS1_COMMAND has worked properly
+    - test ${PIPESTATUS[0]} -eq 0
     - grep "comparison ignored" /tmp/test_log.txt
 
 
@@ -389,6 +391,8 @@ linux_ros_wrapping_build:
 
     - echo "$ROS1_COMMAND"
     - eval $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
+    # Checks whether the ROS1_COMMAND has worked properly
+    - test ${PIPESTATUS[0]} -eq 0
     - grep "Test successfully passed" /tmp/test_log.txt
 
 
