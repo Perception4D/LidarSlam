@@ -113,7 +113,7 @@ void LivoxToLidarNode::LivoxCustomMsgCallback(const LivoxCustomMsg& cloudLmsg)
   {
     const LivoxCustomPoint& livoxPoint = cloudLmsg.points[i];
 
-  if (!Utils::IsPointValid(pcl::PointXYZ(livoxPoint.x, livoxPoint.y, livoxPoint.z)))
+    if (!Utils::IsPointValid(pcl::PointXYZ(livoxPoint.x, livoxPoint.y, livoxPoint.z)))
       continue;
 
     PointS slamPoint;
