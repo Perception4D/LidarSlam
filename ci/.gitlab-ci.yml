@@ -252,6 +252,8 @@ linux_ros2_wrapping_build:
 
     - echo "$ROS2_COMMAND"
     - eval $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    # Checks whether the ROS2_COMMAND has worked properly
+    - test ${PIPESTATUS[0]} -eq 0
     - grep "comparison ignored" /tmp/test_log.txt
 
 # Perform test
@@ -308,6 +310,8 @@ linux_ros2_wrapping_build:
 
     - echo "$ROS2_COMMAND"
     - eval $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    # Checks whether the ROS2_COMMAND has worked properly
+    - test ${PIPESTATUS[0]} -eq 0
     - grep "Test successfully passed" /tmp/test_log.txt
 
 # Create a reference for test1 from feat/ROS2 branch
