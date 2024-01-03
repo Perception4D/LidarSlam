@@ -84,7 +84,9 @@ def generate_launch_description():
           executable='velodyne_driver_node',
           name='velodyne_driver_node',
           output='both',
-          parameters=[params_velod_driv]),
+          parameters=[params_velod_driv],
+          condition=UnlessCondition(LaunchConfiguration("use_sim_time"))
+        ),
         # Part 2
         Node(
           package='velodyne_pointcloud',
