@@ -251,7 +251,7 @@ linux_ros2_wrapping_build:
       domain_id:=196"
 
     - echo "$ROS2_COMMAND"
-    - $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - eval $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
     - grep "comparison ignored" /tmp/test_log.txt
 
 # Perform test
@@ -307,7 +307,7 @@ linux_ros2_wrapping_build:
       domain_id:=$((JOB_ID % 100))"
 
     - echo "$ROS2_COMMAND"
-    - $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - eval $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
     - grep "Test successfully passed" /tmp/test_log.txt
 
 # Create a reference for test1 from feat/ROS2 branch
