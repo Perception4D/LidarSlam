@@ -222,6 +222,15 @@ void LidarSlamTestNode::LoadRef()
     this->RefPoses.push_back(pose);
   }
   refPosesFile.close();
+
+  if (this->RefPoses.empty())
+  {
+    RCLCPP_ERROR_STREAM(this->get_logger(), BOLD_RED("The poses csv file '"
+                        << path << " is empty : shutting down the node"));
+    rclcpp::shutdown();
+    return;
+  }
+
   RCLCPP_INFO_STREAM(this->get_logger(), "Poses loaded!");
 
   // Fill the reference confidence vector
@@ -266,6 +275,15 @@ void LidarSlamTestNode::LoadRef()
     this->RefEvaluators.push_back(eval);
   }
   refEvaluatorsFile.close();
+
+  if (this->RefEvaluators.empty())
+  {
+    RCLCPP_ERROR_STREAM(this->get_logger(), BOLD_RED("The evaluators csv file '"
+                        << path << " is empty : shutting down the node"));
+    rclcpp::shutdown();
+    return;
+  }
+
   RCLCPP_INFO_STREAM(this->get_logger(), "Evaluators loaded!");
 }
 
