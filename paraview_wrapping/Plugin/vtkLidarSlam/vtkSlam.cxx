@@ -204,7 +204,13 @@ void vtkSlam::DetectLoop()
   if (lidarStates.size() < 2)
     return;
 
-  this->SetLoopDetected(this->SlamAlgo->DetectLoopClosureIndices(this->LoopIdx));
+  if (!this->SlamAlgo->DetectLoopClosureIndices(this->LoopIdx))
+  {
+    vtkWarningMacro(<< "Loop closure is not detected automatically!");
+    return;
+  }
+
+  this->SetLoopDetected(true);
   // Store detected loop closure indices
   // Note: For now, detected loop indices are stored as long as LoopDetected is ture.
   // A popUp window, which requires users to confirm the loop, is going to be added.
@@ -2049,6 +2055,14 @@ void vtkSlam::SetLoopDetector(int detector)
     vtkErrorMacro(<< "Invalid loop closure detector (" << detector << "), ignoring setting.");
     return;
   }
+  #ifndef USE_TEASERPP
+  if (loopClosureDetector == LidarSlam::LoopClosureDetector::TEASERPP)
+  {
+    vtkErrorMacro(<< "Automatic loop closure detection requires TEASER++, but it was not found.");
+    return;
+  }
+  #endif
+
   vtkDebugMacro(<< "Setting loop closure detector to " << static_cast<int>(loopClosureDetector));
   if (this->SlamAlgo->GetLoopDetector() != loopClosureDetector)
   {
