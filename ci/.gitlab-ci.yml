@@ -326,14 +326,16 @@ linux_ros_wrapping_build:
     - source devel/setup.bash
 
     - ROS1_COMMAND="roslaunch lidar_slam_test slam.launch
-      test_data:=${data_folder}/${test_name}
+      test_data:=${data_folder}/${test_name}/${test_name}.bag
       outdoor:=$outdoor
       vlp16:=$vlp16
       wait_init:=$wait_init
       res_path:=${PWD}/${PATH_REFERENCE_LOG}"
 
     - echo "$ROS1_COMMAND"
-    - $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - eval $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
+    # Checks whether the ROS1_COMMAND has worked properly
+    - test ${PIPESTATUS[0]} -eq 0
     - grep "comparison ignored" /tmp/test_log.txt
 
 
@@ -380,7 +382,7 @@ linux_ros_wrapping_build:
     - source devel/setup.bash
 
     - ROS1_COMMAND="roslaunch lidar_slam_test slam.launch
-      test_data:=${data_folder}/${test_name}
+      test_data:=${data_folder}/${test_name}/${test_name}.bag
       outdoor:=$outdoor
       vlp16:=$vlp16
       wait_init:=$wait_init
@@ -388,7 +390,9 @@ linux_ros_wrapping_build:
       res_path:=${PWD}/${PATH_RESULT_LOG}"
 
     - echo "$ROS1_COMMAND"
-    - $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - eval $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
+    # Checks whether the ROS1_COMMAND has worked properly
+    - test ${PIPESTATUS[0]} -eq 0
     - grep "Test successfully passed" /tmp/test_log.txt
 
 
