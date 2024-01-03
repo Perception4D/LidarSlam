@@ -263,6 +263,15 @@ void LidarSlamTestNode::LoadRef()
     this->RefEvaluators.push_back(eval);
   }
   refEvaluatorsFile.close();
+
+  if (this->RefEvaluators.empty())
+  {
+    ROS_ERROR_STREAM(BOLD_RED("The evaluators csv file '"
+                     << path << " is empty : shutting down the node"));
+    ros::shutdown();
+    return;
+  }
+
   ROS_INFO_STREAM(this->RefEvaluators.size() << " evaluators loaded!");
 }
 
