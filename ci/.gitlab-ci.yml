@@ -275,6 +275,7 @@ linux_ros2_wrapping_build:
     paths:
     - "ros2_ws/test_log/${test_name}"
     expire_in: "60 days"
+    when: always
   script:
     # Search the id of the latest pipeline from feat/ROS2
     - PIPELINE_ID=$(curl --location "https://gitlab.kitware.com/api/v4/projects/4640/pipelines/latest?ref=feat/ROS2" |
