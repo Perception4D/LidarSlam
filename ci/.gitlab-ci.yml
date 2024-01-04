@@ -251,7 +251,9 @@ linux_ros2_wrapping_build:
       domain_id:=196"
 
     - echo "$ROS2_COMMAND"
-    - $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - eval $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    # Checks whether the ROS2_COMMAND has worked properly
+    - test ${PIPESTATUS[0]} -eq 0
     - grep "comparison ignored" /tmp/test_log.txt
 
 # Perform test
@@ -273,6 +275,7 @@ linux_ros2_wrapping_build:
     paths:
     - "ros2_ws/test_log/${test_name}"
     expire_in: "60 days"
+    when: always
   script:
     # Search the id of the latest pipeline from feat/ROS2
     - PIPELINE_ID=$(curl --location "https://gitlab.kitware.com/api/v4/projects/4640/pipelines/latest?ref=feat/ROS2" |
@@ -307,7 +310,9 @@ linux_ros2_wrapping_build:
       domain_id:=$((JOB_ID % 100))"
 
     - echo "$ROS2_COMMAND"
-    - $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    - eval $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    # Checks whether the ROS2_COMMAND has worked properly
+    - test ${PIPESTATUS[0]} -eq 0
     - grep "Test successfully passed" /tmp/test_log.txt
 
 # Create a reference for test1 from feat/ROS2 branch
