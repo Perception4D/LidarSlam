@@ -78,8 +78,8 @@ private:
   rclcpp::Publisher<Pcl2_msg>::SharedPtr Talker;
   rclcpp::Service<lidar_conversions::srv::EstimSense>::SharedPtr EstimService;
 
-  unsigned int NbLasers = 16; ///< Number of lasers of the LiDAR. Optional as it can be taken from header attribute .height of the PointCloud.
-  bool RotationSenseEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations.
+  unsigned int NbLasers = 16; ///< Number of lasers of the LiDAR. Optional as it can be taken from header attribute "height" of the PointCloud. It is only used if the time of the points is not valid.
+  bool RotationSenseEstimated = false; ///< Flag to initialize the parameters useful for time estimations.
   bool RotationIsClockwise;  ///< True if the LiDAR rotates clockwise, false otherwise.
 
   // Useful variable to estimate the rotation duration (itself used to estimate time)
@@ -89,9 +89,6 @@ private:
   double RotationDurationPrior = -1.;
   double PrevFrameTime = -1.;
   std::vector<double> PossibleFrequencies = {5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20.}; ///< Vector of all the possible frequencies for Velodyne LiDAR
-
-  // Useful variable to estimate laser_id
-  std::vector<Utils::Cluster> Clusters;
 
   // Number of threads to use for the conversion
   int NbThreads = 1;

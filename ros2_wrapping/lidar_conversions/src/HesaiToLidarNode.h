@@ -79,7 +79,7 @@ private:
   rclcpp::Service<lidar_conversions::srv::EstimSense>::SharedPtr EstimService;
 
   unsigned int NbLasers = 32; ///< Number of lasers of the LiDAR. Optional as it can be taken from header attribute .height of the PointCloud.
-  bool RotationSenseEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations.
+  bool RotationSenseEstimated = false; ///< Flag to initialize the parameters useful for time estimations.
   bool RotationIsClockwise;  ///< True if the LiDAR rotates clockwise, false otherwise.
 
   // Useful variable to estimate the rotation duration (itself used to estimate time)
@@ -89,9 +89,6 @@ private:
   double RotationDurationPrior = -1.;
   double PrevFrameTime = -1.;
   std::vector<double> PossibleFrequencies = {5., 10., 20.}; ///< Vector of all the possible frequencies for Hesai LiDAR
-
-  // Useful variable to estimate laser_id
-  std::vector<Utils::Cluster> Clusters;
 
   // Number of threads to use for the conversion
   int NbThreads = 1;
