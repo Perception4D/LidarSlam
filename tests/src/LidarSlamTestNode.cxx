@@ -334,7 +334,6 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::msg::Odometry& poseMsg)
                      << " (may have been dropped)."
                      << " Check the reference was computed on the same data.");
     ++this->NbFramesDropped;
-    this->PreviousPoseExists = false;
     return;
   }
 
@@ -381,7 +380,6 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::msg::Odometry& poseMsg)
   this->LastAngleDiff = diffPose.tail(3).norm();
 
   this->PrevTransform = transform;
-  this->PreviousPoseExists = true;
 }
 
 //------------------------------------------------------------------------------
