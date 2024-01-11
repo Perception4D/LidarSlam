@@ -84,7 +84,7 @@ void VelodyneToLidarNode::Callback(const CloudV& cloudV)
   }
 
   if (this->RotationDuration < 0.)
-    return;
+    this->RotationDuration = 0.1;
 
   // Init SLAM pointcloud
   CloudS cloudS = Utils::InitCloudS<CloudV>(cloudV);
