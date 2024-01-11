@@ -9,8 +9,6 @@
   <arg name="camera_topic" default="camera" doc="topic from which to get the rgb camera data"/>
   <arg name="camera_info_topic" default="camera_info" doc="topic from which to get the rgb camera info"/>
   <arg name="aggregate" default="false" doc="run aggregation node"/>
-  <arg name="rpm" default="600." doc="Hsai sensor spinning speed."/>
-  <arg name="timestamp_first_packet" default="false" doc="If Hesai timestamping is based on the first or last packet of each scan."/>
 
   <!-- Sim Time, used when replaying rosbag files (with mandatory option 'clock') -->
   <!-- /!\ if replaying pcap files use_sim_time must be false-->
@@ -23,8 +21,7 @@
 
   <!-- Hesai points conversion -->
   <node name="hesai_conversion" pkg="lidar_conversions" type="hesai_conversion_node" output="screen">
-    <param name="rpm" value="$(arg rpm)"/>
-    <param name="timestamp_first_packet" value="$(arg timestamp_first_packet)"/>
+		<rosparam file="$(find lidar_conversions)/params/conversion_config.yaml" command="load"/>
   </node>
 
   <!-- LiDAR SLAM : compute TF slam_init -> hesai -->

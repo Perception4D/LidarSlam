@@ -33,6 +33,7 @@ add_message_files(
 add_service_files(
   FILES
   EstimParams.srv
+  EstimSense.srv
 )
 
 # Generate added messages and services with any dependencies listed here
@@ -72,17 +73,25 @@ include_directories(
 add_executable(velodyne_conversion_node src/VelodyneToLidarNode.cxx)
 target_link_libraries(velodyne_conversion_node ${catkin_LIBRARIES})
 
+add_dependencies(velodyne_conversion_node lidar_conversions_generate_messages_cpp)
+
 # Hesai Lidar
 add_executable(hesai_conversion_node src/HesaiToLidarNode.cxx)
 target_link_libraries(hesai_conversion_node ${catkin_LIBRARIES})
+
+add_dependencies(hesai_conversion_node lidar_conversions_generate_messages_cpp)
 
 # Ouster Lidar
 add_executable(ouster_conversion_node src/OusterToLidarNode.cxx)
 target_link_libraries(ouster_conversion_node ${catkin_LIBRARIES})
 
+add_dependencies(ouster_conversion_node lidar_conversions_generate_messages_cpp)
+
 # Robosense RSLidar
 add_executable(robosense_conversion_node src/RobosenseToLidarNode.cxx)
 target_link_libraries(robosense_conversion_node ${catkin_LIBRARIES})
+
+add_dependencies(robosense_conversion_node lidar_conversions_generate_messages_cpp)
 
 # Livox mid100 Lidar
 add_executable(livox_conversion_node src/LivoxToLidarNode.cxx)

@@ -24,6 +24,8 @@
 #include <pcl/point_types.h>
 #include <LidarSlam/LidarPoint.h>
 
+#include "Utilities.h"
+#include "lidar_conversions/EstimParams.h"
 namespace lidar_conversions
 {
 
@@ -57,6 +59,14 @@ public:
    */
   void Callback(const CloudRS& cloud);
 
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief Service to re-compute the estimation parameters of the conversion node.
+   * @param request Service request
+   * @param response Service response
+   */
+  bool EstimParamsService(lidar_conversions::EstimParamsRequest& req, lidar_conversions::EstimParamsResponse& res);
+
 private:
 
   //----------------------------------------------------------------------------
@@ -65,21 +75,25 @@ private:
   ros::NodeHandle &Nh, &PrivNh;
   ros::Subscriber Listener;
   ros::Publisher Talker;
+  ros::ServiceServer EstimService;
 
-  // Optional mapping used to correct the numeric identifier of the laser ring that shot each point.
-  // SLAM expects that the lowest/bottom laser ring is 0, and is increasing upward.
-  // If unset, the following mappings will be used :
-  // - if input cloud has 16 rings : RS16 mapping [0, 1, 2, 3, 4, 5, 6, 7, 15, 14, 13, 12, 11, 10, 9, 8]
-  // - otherwise : identity mapping (no laser_id change)
-  std::vector<int> LaserIdMapping;
+  unsigned int NbLasers = 16; ///< Number of lasers of the LiDAR. Optional as it can be taken from header attribute .height of the PointCloud.
+  bool RotSenseAndClustersEstimated = false; ///< Flag to initialize the parameters useful for laser_id and time estimations.
+  bool RotationIsClockwise;  ///< True if the LiDAR rotates clockwise, false otherwise.
 
-  int DeviceId = 0;  ///< LiDAR device identifier to set for each point.
+  // Useful variable to estimate rotation duration (itself used to estimate time)
+  // NOTE: to be precise, this rotation duration estimation requires that each input
+  // scan is an entire scan covering excatly 360°
+  double RotationDuration = -1.;
+  double RotationDurationPrior = -1.;
+  double PrevFrameTime = -1.;
+  std::vector<double> PossibleFrequencies = {5., 10., 20.}; ///< Vector of all the possible frequencies for robosense LiDAR
 
-  // Useful variables for approximate point-wise timestamps computation
-  // These parameters should be set to the same values as ROS RSLidar driver's.
-  // NOTE: to be precise, this timestamp estimation requires that each input
-  // scan is an entire scan covering excatly 360°.
-  double Rpm = 600;  ///< Spinning speed of sensor [rpm]. The duration of each input scan will be 60 / Rpm seconds.
+  // Useful variable to estimate laser_id
+  std::vector<Utils::Cluster> Clusters;
+
+  // Number of threads to use for the conversion
+  int NbThreads = 1;
 };
 
 }  // end of namespace lidar_conversions

@@ -17,7 +17,6 @@
 //==============================================================================
 
 #include "OusterToLidarNode.h"
-#include "Utilities.h"
 #include <pcl_conversions/pcl_conversions.h>
 
 #define BOLD_GREEN(s) "\033[1;32m" << s << "\033[0m"
@@ -29,12 +28,13 @@ OusterToLidarNode::OusterToLidarNode(ros::NodeHandle& nh, ros::NodeHandle& priv_
   : Nh(nh)
   , PrivNh(priv_nh)
 {
-  // Get laser ID mapping
-  this->PrivNh.param("laser_id_mapping", this->LaserIdMapping, this->LaserIdMapping);
+  // Get number of lasers
+  int nbLasers = 64;
+  if (this->PrivNh.getParam("nb_laser", nbLasers))
+    this->NbLasers = static_cast<unsigned int>(nbLasers);
 
-  //  Get LiDAR spinning speed and first timestamp option
-  this->PrivNh.param("rpm", this->Rpm, this->Rpm);
-  this->PrivNh.param("timestamp_first_packet", this->TimestampFirstPacket, this->TimestampFirstPacket);
+  // Get possible frequencies
+  this->PrivNh.param("possible_frequencies", this->PossibleFrequencies, this->PossibleFrequencies);
 
   // Init ROS publisher
   this->Talker = nh.advertise<CloudS>("lidar_points", 1);
@@ -42,31 +42,73 @@ OusterToLidarNode::OusterToLidarNode(ros::NodeHandle& nh, ros::NodeHandle& priv_
   // Init ROS subscriber
   this->Listener = nh.subscribe("ouster/points", 1, &OusterToLidarNode::Callback, this);
 
+  // Init ROS service
+  this->EstimService = nh.advertiseService("lidar_conversions/estim_sense", &OusterToLidarNode::EstimSenseService, this);
+
   ROS_INFO_STREAM(BOLD_GREEN("Ouster data converter is ready !"));
 }
 
 //------------------------------------------------------------------------------
-void OusterToLidarNode::Callback(const CloudV& cloudO)
+void OusterToLidarNode::Callback(const CloudO& cloudO)
 {
   // If input cloud is empty, ignore it
   if (cloudO.empty())
   {
-    ROS_ERROR_STREAM("Input Velodyne pointcloud is empty : frame ignored.");
+    ROS_ERROR_STREAM("Input Ouster pointcloud is empty : frame ignored.");
     return;
   }
 
+  // Rotation duration is estimated to be used in time estimation if needed
+  double currFrameTime = Utils::PclStampToSec(cloudO.header.stamp);
+  double diffTimePrevFrame = currFrameTime - this->PrevFrameTime;
+  this->PrevFrameTime = currFrameTime;
+
+  // If the rotation duration has not been estimated
+  if (this->RotationDuration < 0.)
+  {
+    // Check if this duration is possible
+    if (Utils::CheckRotationDuration(diffTimePrevFrame, this->PossibleFrequencies))
+    {
+      // Check a confirmation of the frame duration to avoid outliers (frames dropped)
+      // For the first frame, RotationDurationPrior is -1, this condition won't be fulfilled
+      // For the second frame, RotationDurationPrior is absurd, this condition won't be fulfilled
+      // First real intempt occurs at the 3rd frame
+      if (std::abs(diffTimePrevFrame - this->RotationDurationPrior) < 5e-3) // 5ms threshold
+        this->RotationDuration = (diffTimePrevFrame + this->RotationDurationPrior) / 2.;
+      this->RotationDurationPrior = diffTimePrevFrame;
+      ROS_INFO_STREAM(std::setprecision(12) << "Difference between successive frames is :" << diffTimePrevFrame);
+    }
+  }
+
+  if (this->RotationDuration < 0.)
+    return;
+
   // Init SLAM pointcloud
-  CloudS cloudS;
-  cloudS.reserve(cloudO.size());
+  CloudS cloudS = Utils::InitCloudS<CloudO>(cloudO);
 
-  // Copy pointcloud metadata
-  Utils::CopyPointCloudMetadata(cloudO, cloudS);
+  const unsigned int nbLasers = (cloudO.height >= 8 && cloudO.height <= 128) ?
+                                 cloudO.height :
+                                  (cloudO.width >= 8 && cloudO.width <= 128) ?
+                                   cloudO.width :
+                                   this->NbLasers;
 
-  // Check wether to use custom laser ID mapping or leave it untouched
-  bool useLaserIdMapping = !this->LaserIdMapping.empty();
+  // Estimate the rotation sense
+  if (!this->RotationSenseEstimated)
+  {
+    this->RotationIsClockwise = Utils::IsRotationClockwise<PointO>(cloudO, nbLasers);
+    this->RotationSenseEstimated = true;
+  }
 
-  // Helper to estimate frameAdvancement in case time field is invalid
-  Utils::SpinningFrameAdvancementEstimator frameAdvancementEstimator;
+  // Check if time field looks properly set
+  double duration = cloudO.back().t - cloudO.front().t;
+  double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
+
+  bool isTimeValid = duration > 1e-8 && duration < 2. * this->RotationDuration;
+
+  if (!isTimeValid)
+    ROS_WARN_STREAM("Invalid 'time' field, it will be built from azimuth advancement.");
+
+  Eigen::Vector2d firstPoint = {cloudO[0].x, cloudO[0].y};
 
   // Build SLAM pointcloud
   for (const PointO& ousterPoint : cloudO)
@@ -80,22 +122,28 @@ void OusterToLidarNode::Callback(const CloudV& cloudO)
     slamPoint.y = ousterPoint.y;
     slamPoint.z = ousterPoint.z;
     slamPoint.intensity = ousterPoint.reflectivity;
-    slamPoint.laser_id = useLaserIdMapping ? this->LaserIdMapping[ousterPoint.ring] : ousterPoint.ring;
+    slamPoint.laser_id = ousterPoint.ring;
 
-    // Build approximate point-wise timestamp from azimuth angle
-    // 'frameAdvancement' is 0 for first point, and should match 1 for last point
-    // for a 360 degrees scan at ideal spinning frequency.
-    // 'time' is the offset to add to 'header.stamp' to get approximate point-wise timestamp.
-    // By default, 'header.stamp' is the timestamp of the last Ouster packet,
-    // but user can choose the first packet timestamp using parameter 'timestamp_first_packet'.
-    double frameAdvancement = frameAdvancementEstimator(slamPoint);
-    slamPoint.time = (this->TimestampFirstPacket ? frameAdvancement : frameAdvancement - 1) / this->Rpm * 60.;
+    // Use time field if available, else estimate it from azimuth advancement
+    if (isTimeValid)
+      slamPoint.time = factor * ousterPoint.t;
+    else
+      slamPoint.time = Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise);
 
     if (!Utils::HasNanField(slamPoint))
       cloudS.push_back(slamPoint);
   }
 
   this->Talker.publish(cloudS);
+}
+
+//------------------------------------------------------------------------------
+bool OusterToLidarNode::EstimSenseService(lidar_conversions::EstimSenseRequest& req, lidar_conversions::EstimSenseResponse& res)
+{
+  this->RotationSenseEstimated = false;
+  ROS_INFO_STREAM("Rotation sense will be re-estimated with next frames.");
+  res.success = true;
+  return true;
 }
 
 }  // end of namespace lidar_conversions

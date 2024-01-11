@@ -76,7 +76,7 @@ rosbag play --clock <my_bag_file>  # in 2nd shell
 ```
 - When using it in real live conditions, with the velodyne driver in parallel :
 ```bash
-roslaunch lidar_slam slam_velodyne.launch use_sim_time:=false vlp16_driver:=true device_ip:=<my_device_ip>
+roslaunch lidar_slam slam_velodyne.launch use_sim_time:=false velodyne_driver:=true model:=VLP16 device_ip:=<my_device_ip>
 ```
 
 ##### With an Ouster Lidar
@@ -101,7 +101,7 @@ These launch files will start :
 * the *lidar_slam_node* which implements the SLAM process,
 * a pre-configured RViz session,
 * the *lidar_conversion_node* which converts the driver point type to expected SLAM use (see next paragraph),
-* (optional) The Lidar drivers if required (see vlp16_driver and os_driver parameters),
+* (optional) The Lidar drivers if required (see velodyne_driver and os_driver parameters),
 * (optional) GPS/UTM conversions nodes to publish SLAM pose as a GPS coordinate in WGS84 format (if `gps` arg is enabled). This uses the prior that full GPS pose and GPS/LiDAR calibration are correctly known and set (see [GPS/SLAM calibration](#gpsslam-calibration) section below for more info).
 
 ##### With other LiDAR
