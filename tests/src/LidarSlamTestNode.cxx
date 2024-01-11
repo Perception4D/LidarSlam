@@ -314,9 +314,13 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::msg::Odometry& poseMsg)
     return;
 
   // Search the pose in reference
+  const int prevPoseCounter = this->PoseCounter;
   while (this->PoseCounter < this->RefPoses.size() &&
          this->RefPoses[this->PoseCounter].Stamp < time - 1e-6)
     ++this->PoseCounter;
+  // If there is more than 1 frame difference, one has been dropped
+  if (this->PoseCounter > prevPoseCounter)
+    this->NbFramesDropped += this->PoseCounter - prevPoseCounter - 1;
 
   // No more reference
   if (this->PoseCounter == this->RefPoses.size() ||
@@ -333,15 +337,18 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::msg::Odometry& poseMsg)
                      << std::fixed << std::setprecision(9) << time
                      << " (may have been dropped)."
                      << " Check the reference was computed on the same data.");
-    ++this->NbFramesDropped;
+
     return;
   }
 
+  // Update previous pose counter if the ref pose has been updated
+  if (this->PoseCounter > prevPoseCounter)
+    this->PrevPoseCounter = prevPoseCounter;
   // Compare the pose with reference trajectory
   Eigen::Isometry3d refTransform = this->RefPoses[this->PoseCounter].Data;
   Eigen::Isometry3d refPrevTransform;
   if (this->PoseCounter >= 1)
-    refPrevTransform = this->RefPoses[this->PoseCounter - 1].Data;
+    refPrevTransform = this->RefPoses[this->PrevPoseCounter].Data;
   else
   {
     this->PrevTransform = transform;
