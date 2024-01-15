@@ -43,6 +43,10 @@ inline Eigen::Array3i PositionToVoxel(const T& position, const T& origin, double
 
 } // end of Utils namespace
 
+// Define an alias for RollingGrid pointer
+class RollingGrid;
+using RollingGridPtr = std::shared_ptr<RollingGrid>;
+
 /*!
  * @brief Rolling voxel grid to store and access pointclouds of specific areas.
  *
@@ -152,14 +156,13 @@ public:
   //! if minNbPoints is negative, all points are taken (no moving objects rejection)
   void BuildSubMap(const PointCloud& pc, int minNbPoints = -1);
 
-  //! Build a KD-tree from the points laying in the input bounding box
-  //! This KD-tree can then be used for fast NN queries.
-  //! The kd tree is built over the current submap
+  //! Build a KD-tree from the submap
+  //! This KD-tree is implicitly used for fast NN queries
   //! /!\ the function will fail if the submap has not been created
   void BuildKdTree();
 
   //! Build a KD-tree from all the points in the grid
-  //! This KD-tree can then be used for fast NN queries.
+  //! This KD-tree is implicitly used for fast NN queries
   //! In this case, the submap contains all of the points
   void BuildKdTreeOnAllPts();
 
@@ -167,11 +170,16 @@ public:
   //! The KD-tree is cleared every time the map is modified.
   bool IsSubMapKdTreeValid() const {return this->KdTree.GetInputCloud() && !this->KdTree.GetInputCloud()->empty();}
 
-  //! Get the KD-Tree of the submap for fast NN queries
-  const KDTree& GetSubMapKdTree() const {return this->KdTree;}
-
   //! Get the internal pointcloud used by the KD-Tree
   const PointCloud::Ptr GetKdTreePcl() const{return this->KdTree.GetInputCloud();}
+
+  //! Do a KnnSearch on the RollingGrid Submap
+  inline size_t KnnSearch(const float queryPoint[3], int knearest, int* knnIndices, float* knnSqDistances) const
+  {return this->KdTree.KnnSearch(queryPoint, knearest, knnIndices, knnSqDistances);}
+
+  //! Do a KnnSearch on the RollingGrid Submap
+  inline size_t KnnSearch(const double queryPoint[3], int knearest, std::vector<int>& knnIndices, std::vector<float>& knnSqDistances) const
+  {return this->KdTree.KnnSearch(queryPoint, knearest, knnIndices, knnSqDistances);}
 
   //! Get the sub map lastly computed
   const PointCloud::Ptr GetSubMap() const {return this->SubMap;}

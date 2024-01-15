@@ -2519,7 +2519,7 @@ LocalOptimizer::RegistrationError Slam::EstimatePose(const std::map<Keypoint, Po
     this->TotalMatchedKeypoints = 0;
     for (auto k : this->UsableKeypoints)
     {
-      matchingResults[k] = matcher.BuildMatchResiduals(sourceKeypoints.at(k), targetKeypoints.at(k)->GetSubMapKdTree(), k);
+      matchingResults[k] = matcher.BuildMatchResiduals(sourceKeypoints.at(k), targetKeypoints.at(k), k);
       this->TotalMatchedKeypoints += matchingResults[k].NbMatches();
     }
 
