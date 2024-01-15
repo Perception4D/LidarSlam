@@ -321,10 +321,7 @@ void RollingGrid::Add(const PointCloud::Ptr& pointcloud, bool fixed, bool roll)
       auto& voxel = this->Voxels[idxOut][idxIn];
       voxel.point.time = Utils::PclStampToSec(pointcloud->header.stamp) + point.time;
       // Point added is not fixed
-      if (fixed)
-        voxel.point.label = 1;
-      else
-        voxel.point.label = 0;
+      voxel.point.label = static_cast<int>(fixed);
 
       if (!seen.count(idxOut) || !seen[idxOut].count(idxIn))
       {
