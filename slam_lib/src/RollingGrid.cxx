@@ -140,8 +140,8 @@ void RollingGrid::Roll(const Eigen::Array3f& minPoint, const Eigen::Array3f& max
 
   // Compute how much the new frame does not fit in current grid
   double halfGridSize = static_cast<double>(this->GridSize) / 2 * this->VoxelWidth;
-  Eigen::Array3f downOffset = minPoint - (VoxelGridPosition - halfGridSize);
-  Eigen::Array3f upOffset   = maxPoint - (VoxelGridPosition + halfGridSize);
+  Eigen::Array3f downOffset = minPoint - (this->VoxelGridPosition - halfGridSize);
+  Eigen::Array3f upOffset   = maxPoint - (this->VoxelGridPosition + halfGridSize);
   Eigen::Array3f offset = (upOffset + downOffset) / 2;
 
   // Clamp the rolling movement so that it only moves what is really necessary
@@ -288,11 +288,10 @@ void RollingGrid::Add(const PointCloud::Ptr& pointcloud, bool fixed, bool roll)
           case SamplingMode::CENTROID:
           {
             // Shortcut to voxel of added keypoints cloud
-            Voxel& v = meanPts[idxOut][idxIn];
+            Voxel& vMean = meanPts[idxOut][idxIn];
             // Compute mean point of current added points in the voxel
-            v.point.getVector3fMap() = (v.point.getVector3fMap() * v.count + point.getVector3fMap()) / (v.count + 1);
-            ++v.count;
-
+            vMean.point.getVector3fMap() = (vMean.point.getVector3fMap() * vMean.count + point.getVector3fMap()) / (vMean.count + 1);
+            ++vMean.count;
             // Notify that the voxel point has been updated
             updated = true;
             break;
