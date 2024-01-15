@@ -170,6 +170,9 @@ public:
   //! Get the KD-Tree of the submap for fast NN queries
   const KDTree& GetSubMapKdTree() const {return this->KdTree;}
 
+  //! Get the internal pointcloud used by the KD-Tree
+  const PointCloud::Ptr GetKdTreePcl() const{return this->KdTree.GetInputCloud();}
+
   //! Get the sub map lastly computed
   const PointCloud::Ptr GetSubMap() const {return this->SubMap;}
 

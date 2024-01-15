@@ -1536,7 +1536,7 @@ void Slam::ComputeEgoMotion()
     {
       std::cout << "Keypoints extracted from previous frame : ";
       for (auto k : this->UsableKeypoints)
-        std::cout << previousKeypoints[k]->GetSubMapKdTree().GetInputCloud()->size() << " " << Utils::Plural(KeypointTypeNames.at(k)) << " ";
+        std::cout << previousKeypoints[k]->GetKdTreePcl()->size() << " " << Utils::Plural(KeypointTypeNames.at(k)) << " ";
       std::cout << std::endl;
     }
 
@@ -1681,7 +1681,7 @@ void Slam::Localization()
     std::cout << "Keypoints extracted from map : ";
     for (auto k : this->UsableKeypoints)
     {
-      std::cout << this->LocalMaps[k]->GetSubMapKdTree().GetInputCloud()->size()
+      std::cout << this->LocalMaps[k]->GetKdTreePcl()->size()
                 << " " << Utils::Plural(KeypointTypeNames.at(k)) << " ";
     }
     std::cout << std::endl;
@@ -2311,7 +2311,7 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
   {
     std::cout << "Keypoints extracted from loop closure sub map : ";
     for (auto k : this->UsableKeypoints)
-      std::cout << loopClosureRevisitedSubMaps[k]->GetSubMapKdTree().GetInputCloud()->size()
+      std::cout << loopClosureRevisitedSubMaps[k]->GetKdTreePcl()->size()
                 << " " << Utils::Plural(KeypointTypeNames.at(k)) << " ";
     std::cout << std::endl;
   }
