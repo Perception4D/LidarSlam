@@ -55,6 +55,7 @@ void RollingGrid::Clear()
 {
   this->NbPoints = 0;
   this->Voxels.clear();
+  this->SubMap->clear();
   this->KdTree.Reset();
 }
 
