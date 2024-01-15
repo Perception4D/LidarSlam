@@ -609,11 +609,8 @@ void RollingGrid::BuildSubMap(const PointCloud& pc, int minNbPoints)
 }
 
 //------------------------------------------------------------------------------
-void RollingGrid::BuildKdTree(bool allPoints)
+void RollingGrid::BuildKdTree()
 {
-  if (allPoints)
-    this->SubMap = this->Get();
-
   if (!this->SubMap)
   {
     PRINT_WARNING("RollingGrid: no submap, Kdtree cannot be built");
@@ -621,6 +618,13 @@ void RollingGrid::BuildKdTree(bool allPoints)
   }
 
   this->KdTree.Reset(this->SubMap);
+}
+
+//------------------------------------------------------------------------------
+void RollingGrid::BuildKdTreeOnAllPts()
+{
+  this->BuildSubMap();
+  this->BuildKdTree();
 }
 
 //==============================================================================

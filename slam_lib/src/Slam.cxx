@@ -1528,7 +1528,8 @@ void Slam::ComputeEgoMotion()
     {
       Keypoint k = static_cast<Keypoint>(this->UsableKeypoints[i]);
       if (!previousKeypoints[k]->IsSubMapKdTreeValid())
-        previousKeypoints[k]->BuildKdTree(true); // true to build kdtree on all grid points
+        // Build kdtree on all grid points
+        previousKeypoints[k]->BuildKdTreeOnAllPts();
     }
 
     if (this->Verbosity >= 2)
@@ -2090,7 +2091,10 @@ bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, s
 
     // Build kdtree for candidate sub maps
     for (auto k : this->UsableKeypoints)
-      candidateSubMaps[k]->BuildKdTree(true); // true to build kdtree on all grid points
+    {
+      // Build kdtree on all grid points
+      candidateSubMaps[k]->BuildKdTreeOnAllPts();
+    }
 
     // Compute LCP like estimator
     // (see http://geometry.cs.ucl.ac.uk/projects/2014/super4PCS/ for more info)
@@ -2297,7 +2301,10 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
   {
     Keypoint k = static_cast<Keypoint>(this->UsableKeypoints[i]);
     if (!loopClosureRevisitedSubMaps[k]->IsSubMapKdTreeValid())
-      loopClosureRevisitedSubMaps[k]->BuildKdTree(true); // true to build kdtree on all grid points
+    {
+      // Build kdtree on all grid points
+      loopClosureRevisitedSubMaps[k]->BuildKdTreeOnAllPts();
+    }
   }
 
   if (this->Verbosity >= 2)

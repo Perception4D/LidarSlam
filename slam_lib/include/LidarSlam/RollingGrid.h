@@ -154,10 +154,14 @@ public:
 
   //! Build a KD-tree from the points laying in the input bounding box
   //! This KD-tree can then be used for fast NN queries.
-  //! if allPoints is true, the kd tree is built over all the points in the grid
+  //! The kd tree is built over the current submap
+  //! /!\ the function will fail if the submap has not been created
+  void BuildKdTree();
+
+  //! Build a KD-tree from all the points in the grid
+  //! This KD-tree can then be used for fast NN queries.
   //! In this case, the submap contains all of the points
-  //! if not, the kd tree is built over the submap that must have been extracted beforehands
-  void BuildKdTree(bool allPoints = false);
+  void BuildKdTreeOnAllPts();
 
   //! Check if the KD-tree built on top of the submap is valid or if it needs to be updated.
   //! The KD-tree is cleared every time the map is modified.
