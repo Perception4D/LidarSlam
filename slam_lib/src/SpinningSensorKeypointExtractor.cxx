@@ -35,65 +35,40 @@ namespace
 {
 //-----------------------------------------------------------------------------
 bool LineFitting::FitLineAndCheckConsistency(const SpinningSensorKeypointExtractor::PointCloud& cloud,
-                                            const std::vector<int>& indices)
+                                             const std::vector<int>& indices)
 {
-  // Check line width
-  float lineLength = (cloud[indices.front()].getVector3fMap() - cloud[indices.back()].getVector3fMap()).norm();
-  float widthTheshold = std::max(this->MaxLineWidth, lineLength / this->LengthWidthRatio);
-
-  float maxDist = widthTheshold;
-  Eigen::Vector3f bestDirection;
-
-  this->Position = Eigen::Vector3f::Zero();
-  for (int idx : indices)
-    this->Position += cloud[idx].getVector3fMap();
-  this->Position /= indices.size();
-
-  // RANSAC
-  for (int i = 0; i < int(indices.size()) - 1; ++i)
-  {
-    // Extract first point
-    auto& point1 = cloud[indices[i]].getVector3fMap();
-    for (int j = i+1; j < int(indices.size()); ++j)
-    {
-      // Extract second point
-      auto& point2 = cloud[indices[j]].getVector3fMap();
-
-      // Compute line formed by point1 and point2
-      this->Direction = (point1 - point2).normalized();
-
-      // Reset score for new points pair
-      float currentMaxDist = 0;
-      // Compute score : maximum distance of one neighbor to the current line
-      for (int idx : indices)
-      {
-        currentMaxDist = std::max(currentMaxDist, this->DistanceToPoint(cloud[idx].getVector3fMap()));
-
-        // If the current point distance is too high,
-        // the current line won't be selected anyway so we
-        // can avoid computing next points' distances
-        if (currentMaxDist > widthTheshold)
-          break;
-      }
-
-      // If the current line implies high error for one neighbor
-      // the output line is considered as not trustworthy
-      if (currentMaxDist > 2.f * widthTheshold)
-        return false;
-
-      if (currentMaxDist <= maxDist)
-      {
-        bestDirection = this->Direction;
-        maxDist = currentMaxDist;
-      }
-
-    }
-  }
-
-  if (maxDist >= widthTheshold - 1e-10)
+  // Check consistency of the line
+  if (indices.size() < 2)
     return false;
 
-  this->Direction = bestDirection;
+  float sqDistMax = 0.f;
+  float sqDistMin = std::numeric_limits<float>::max();
+  float sqDistCurr;
+  for (int i = 1; i < indices.size(); ++i)
+  {
+    sqDistCurr = (cloud[indices[i]].getVector3fMap() - cloud[indices[i-1]].getVector3fMap()).squaredNorm();
+    sqDistMax = std::max(sqDistMax, sqDistCurr);
+    sqDistMin = std::min(sqDistMin, sqDistCurr);
+  }
+  if (sqDistMax / sqDistMin > this->SquaredRatio)
+    return false;
+
+  Eigen::Vector3f diffVec = cloud[indices.back()].getVector3fMap() - cloud[indices.front()].getVector3fMap();
+  this->Direction = diffVec.normalized();
+  Eigen::Vector4f centroid;
+  pcl::compute3DCentroid(cloud, indices, centroid);
+  this->Position = centroid.head(3);
+
+  // Check line width
+  float lineLength = diffVec.norm();
+  float widthThreshold = lineLength / this->LengthWidthRatio;
+
+  for (auto idx : indices)
+  {
+    float error = (cloud[idx].getVector3fMap() - this->Position).cross(this->Direction).norm();
+    if (error > widthThreshold)
+      return false;
+  }
 
   return true;
 }
@@ -288,40 +263,36 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
 
       // Fill left and right neighbors
       // Those points must be more numerous than MinNeighNb and occupy more space than MinNeighRadius
-      auto GetNeighbors = [&](bool right) -> std::vector<int>
+      auto getNeighbors = [&](bool right, std::vector<int>& neighbors)
       {
-        std::vector<int> neighbors;
-        neighbors.reserve(this->MinNeighNb);
-        int plusOrMinus = right? 1 : -1;
-        int idxNeigh = 1;
-        float lineLength = 0.f;
-        while ((int(neighbors.size()) < this->MinNeighNb
-                || lineLength < this->MinNeighRadius)
-                && int(neighbors.size()) < nPts)
+        neighbors.reserve(nPts);
+        // Check number criterion
+        int step = right ? 1 : -1;
+        int idxNeigh = index;
+        while (int(neighbors.size()) < this->MinNeighNb &&
+              neighbors.size() < nPts) // ensure enough points in the line
         {
-          neighbors.emplace_back((index + plusOrMinus * idxNeigh + nPts) % nPts); // +nPts to avoid negative values
-          lineLength = (scanLineCloud[neighbors.back()].getVector3fMap() - scanLineCloud[neighbors.front()].getVector3fMap()).norm();
-          ++idxNeigh;
+          neighbors.emplace_back(idxNeigh);
+          idxNeigh = (idxNeigh + step + nPts) % nPts;
         }
-
-        // Sample the neighborhood to limit computation time
-        if (neighbors.size() > this->MinNeighNb)
+        // Check radius criterion
+        float lineLength = ((scanLineCloud[neighbors.back()]).getVector3fMap() - (scanLineCloud[neighbors.front()]).getVector3fMap()).norm();
+        while (lineLength < this->MinNeighRadius &&
+              neighbors.size() < nPts) // ensure enough points in the line
         {
-          int step = neighbors.size() / this->MinNeighNb;
-          std::vector<int> newIndices;
-          newIndices.reserve(neighbors.size() / step);
-          for (int i = 0; i < neighbors.size(); i = i + step)
-            newIndices.emplace_back(neighbors[i]);
-          neighbors = newIndices;
+          idxNeigh = (idxNeigh + step + nPts) % nPts;
+          neighbors.emplace_back(idxNeigh);
+          lineLength = ((scanLineCloud[neighbors.back()]).getVector3fMap() - (scanLineCloud[neighbors.front()]).getVector3fMap()).norm();
         }
-        return neighbors;
+        neighbors.shrink_to_fit();
       };
 
-      std::vector<int> leftNeighbors  = GetNeighbors(false);
-      std::vector<int> rightNeighbors = GetNeighbors(true);
+      std::vector<int> leftNeighbors, rightNeighbors;
+      getNeighbors(false, leftNeighbors);
+      getNeighbors(true, rightNeighbors);
 
-      const auto& rightPt = scanLineCloud[rightNeighbors.front()].getVector3fMap();
-      const auto& leftPt = scanLineCloud[leftNeighbors.front()].getVector3fMap();
+      const auto& rightPt = scanLineCloud[rightNeighbors[1]].getVector3fMap();
+      const auto& leftPt = scanLineCloud[leftNeighbors[1]].getVector3fMap();
 
       const float rightDepth = rightPt.norm();
       const float leftDepth = leftPt.norm();
@@ -354,17 +325,20 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
           distLeft = diffLeftNorm;
 
         this->SpaceGap[scanLine][index] = std::max(distLeft, distRight);
+      }
 
-        // Stop search for first and last points of the scan line
-        // because the discontinuity may alter the other criteria detection
-        if (index < int(leftNeighbors.size()) || index >= nPts - int(rightNeighbors.size()))
-          continue;
+      // Stop search for first and last points of the scan line
+      // because the discontinuity may alter the other criteria detection
+      if (index < int(leftNeighbors.size()) || index >= nPts - int(rightNeighbors.size()))
+        continue;
 
+      if (this->Enabled[EDGE])
+      {
         // Compute depth gap
 
-        // Reinit variables
-        distRight = -1.f;
-        distLeft = -1.f;
+        // Init variables
+        float distRight = -1.f;
+        float distLeft = -1.f;
 
         if (cosAngleRight > cosMaxAzimuth)
           distRight = centralPoint.dot(diffVecRight) / centralDepth;
@@ -375,7 +349,7 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
         // If the points lay on a bended wall, previous and next points should be in the same direction
         if (distRight > this->EdgeDepthGapThreshold)
         {
-          auto nextdiffVecRight = (scanLineCloud[rightNeighbors[1]].getVector3fMap() - rightPt).normalized();
+          auto nextdiffVecRight = (scanLineCloud[rightNeighbors[2]].getVector3fMap() - rightPt).normalized();
           if ((nextdiffVecRight.dot(diffVecRight) / diffRightNorm) > cosMinBeamSurfaceAngle ||
               (-diffVecLeft.dot(diffVecRight) / (diffRightNorm * diffLeftNorm)) > cosMinBeamSurfaceAngle)
             distRight = -1.f;
@@ -385,7 +359,7 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
         // If the points lay on a bended wall, previous and next points should be in the same direction
         if (distLeft > this->EdgeDepthGapThreshold)
         {
-          auto prevdiffVecLeft = (scanLineCloud[leftNeighbors[1]].getVector3fMap() - leftPt).normalized();
+          auto prevdiffVecLeft = (scanLineCloud[leftNeighbors[2]].getVector3fMap() - leftPt).normalized();
           if ((prevdiffVecLeft.dot(diffVecLeft) / diffLeftNorm > cosMinBeamSurfaceAngle) ||
               (-diffVecRight.dot(diffVecLeft) / (diffRightNorm * diffLeftNorm)) > cosMinBeamSurfaceAngle)
             distLeft = -1.f;
@@ -415,18 +389,30 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
       if (this->Enabled[INTENSITY_EDGE])
       {
         // Compute intensity gap
-        if (std::abs(scanLineCloud[rightNeighbors.front()].intensity - scanLineCloud[leftNeighbors.front()].intensity) > this->EdgeIntensityGapThreshold)
+        if (std::abs(scanLineCloud[rightNeighbors[1]].intensity - scanLineCloud[leftNeighbors[1]].intensity) > this->EdgeIntensityGapThreshold)
         {
           // Compute mean intensity on the left
-          float meanIntensityLeft = 0;
-          for (int indexLeft : leftNeighbors)
-            meanIntensityLeft += scanLineCloud[indexLeft].intensity;
-          meanIntensityLeft /= leftNeighbors.size();
+          float meanIntensityLeft = 0.f;
+          // We sample neighborhoods for computation time concerns
+          int step = leftNeighbors.size() > this->MinNeighNb ? leftNeighbors.size() / this->MinNeighNb : 1;
+          int cptMean = 0;
+          // The first element of the neighborhood is the central point itself so we skip it
+          for (int i = 1; i < leftNeighbors.size(); i += step)
+          {
+            meanIntensityLeft += scanLineCloud[leftNeighbors[i]].intensity;
+            cptMean++;
+          }
+          meanIntensityLeft /= cptMean;
           // Compute mean intensity on the right
-          float meanIntensityRight = 0;
-          for (int indexRight : rightNeighbors)
-            meanIntensityRight += scanLineCloud[indexRight].intensity;
-          meanIntensityRight /= rightNeighbors.size();
+          float meanIntensityRight = 0.f;
+          cptMean = 0;
+          step = rightNeighbors.size() > this->MinNeighNb ? rightNeighbors.size() / this->MinNeighNb : 1;
+          for (int i = 1; i < rightNeighbors.size(); i += step)
+          {
+            meanIntensityRight += scanLineCloud[rightNeighbors[i]].intensity;
+            cptMean++;
+          }
+          meanIntensityRight /= cptMean;
           this->IntensityGap[scanLine][index] = std::abs(meanIntensityLeft - meanIntensityRight);
 
           // Remove neighbor points to get the best intensity discontinuity locally
@@ -437,10 +423,6 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
         }
       }
 
-      // Check point is not too far from the fitted lines before computing an angle
-      if (leftLine.DistanceToPoint(centralPoint) > this->MaxDistance || rightLine.DistanceToPoint(centralPoint) > this->MaxDistance)
-        continue;
-
       if (this->Enabled[PLANE] || this->Enabled[EDGE])
       {
         // Compute angles
@@ -449,10 +431,11 @@ void SpinningSensorKeypointExtractor::ComputeCurvature()
         if (this->Enabled[EDGE] && this->Angles[scanLine][index] > this->EdgeSinAngleThreshold)
         {
           // Check previously computed angle to keep only the maximum angle keypoint locally
-          for (int indexLeft : leftNeighbors)
+          // We avoid first point as it's the central point itself
+          for (int i = 1; i < leftNeighbors.size(); i++)
           {
-            if (this->Angles[scanLine][indexLeft] <= this->Angles[scanLine][index])
-              this->Angles[scanLine][indexLeft] = -1;
+            if (this->Angles[scanLine][leftNeighbors[i]] <= this->Angles[scanLine][index])
+              this->Angles[scanLine][leftNeighbors[i]] = -1;
             else
             {
               this->Angles[scanLine][index] = -1;
