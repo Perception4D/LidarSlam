@@ -981,7 +981,7 @@ bool PoseManager::ComputeCalibration(const std::list<LidarState>& states,
   calibXYZQuat << 0., 0., 0., 0., 0., 0., 1.;
   int idxPose = startIdxPose;
 
-  for (auto it = itStart; it != states.end(); ++it)
+  for (auto it = itStart; it != states.end(); ++it, ++idxPose)
   {
     // Update current external pose
     PoseMeasurement& synchMeas = poseMeasurements[idxPose];
@@ -997,10 +997,7 @@ bool PoseManager::ComputeCalibration(const std::list<LidarState>& states,
       --idxPoseRef;
     }
 
-    // Update external pose index
-    ++idxPose;
-
-    if (std::abs(synchMeas.Time - it->Time) > 1e-6)
+    if (std::abs(synchMeas.Time - it->Time) > 1e-6 || idxPoseRef < 0)
       continue;
 
     // Create and store new residual(s) for next optimization
