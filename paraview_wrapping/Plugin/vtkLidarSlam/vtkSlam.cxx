@@ -902,10 +902,15 @@ void vtkSlam::SetSensorData(const std::string& fileName)
 //-----------------------------------------------------------------------------
 void vtkSlam::Calibrate()
 {
-  if (!this->SlamAlgo->PoseHasData())
-    vtkWarningMacro(<< this->GetClassName() << " (" << this << "): No external poses, cannot determine the calibration");
+  if (!this->SlamAlgo->PoseHasData() &&
+      !this->SlamAlgo->GpsHasData())
+    vtkWarningMacro(<< this->GetClassName() << " (" << this << "): No external poses, no GPS -> cannot estimate any calibration");
 
-  this->SlamAlgo->CalibrateWithExtPoses(this->CalibrationWindow, this->LeverArm, true, this->PlanarTrajectory); // true := reset calibration
+  if (this->SlamAlgo->PoseHasData())
+    this->SlamAlgo->CalibrateWithExtPoses(this->CalibrationWindow, this->LeverArm, true, this->PlanarTrajectory); // true := reset calibration
+  else
+    this->SlamAlgo->CalibrateWithGps(this->CalibrationWindow, this->LeverArm, true, this->PlanarTrajectory); // true := reset calibration
+
 }
 
 //-----------------------------------------------------------------------------

@@ -3288,6 +3288,14 @@ Eigen::Isometry3d Slam::GetGpsOffset()
   return this->GpsManager->GetOffset();
 }
 
+//-----------------------------------------------------------------------------
+bool Slam::CalibrateWithGps(int window, double leverArm, bool reset, bool planarTrajectory)
+{
+  if (!this->GpsManager)
+    return false;
+  return this->GpsManager->ComputeCalibration(this->LogStates, window, leverArm, reset, planarTrajectory);
+}
+
 // Pose
 //-----------------------------------------------------------------------------
 void Slam::AddPoseMeasurement(const ExternalSensors::PoseMeasurement& pm)

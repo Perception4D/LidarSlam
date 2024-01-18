@@ -685,6 +685,10 @@ public:
 
   bool GpsHasData() const {return this->GpsManager && this->GpsManager->HasData();}
 
+  // Find the calibration offset between the base frame and the frame tracked by the GPS
+  // The two trajectories can be represented in different global frames
+  bool CalibrateWithGps(int window, double leverArm, bool reset, bool planarTrajectory);
+
   // Pose
   double GetPoseWeight() const;
   void SetPoseWeight(double weight);
