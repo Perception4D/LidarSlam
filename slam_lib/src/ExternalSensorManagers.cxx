@@ -526,7 +526,9 @@ bool GpsManager::ComputeSynchronizedMeasure(double lidarTime, GpsMeasurement& sy
     return false;
   // Interpolate landmark relative pose at LiDAR timestamp
   synchMeas.Time = lidarTime;
-  synchMeas.Position = bounds.first->Position + lidarTime * (bounds.second->Position - bounds.first->Position) / (bounds.second->Time - bounds.first->Time);
+  auto deltaPosition = bounds.second->Position - bounds.first->Position;
+  double deltaTime = bounds.second->Time - bounds.first->Time;
+  synchMeas.Position = bounds.first->Position + (lidarTime - bounds.first->Time) * (deltaPosition / deltaTime);
   synchMeas.Covariance = bounds.first->Covariance;
 
   return true;
