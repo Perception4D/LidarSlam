@@ -624,7 +624,8 @@ std::unordered_map<std::string, std::vector<float>> SpinningSensorKeypointExtrac
     for (unsigned int i = 0; i < this->Scan->size(); i++)
     {
       const auto& laserId = this->Scan->points[i].laser_id;
-      v[i] = vector2d[laserId][indexByScanLine[laserId]];
+      int scanlineIdx = std::distance(this->ScanLines.begin(), this->ScanLines.find(laserId));
+      v[i] = vector2d[scanlineIdx][indexByScanLine[laserId]];
       indexByScanLine[laserId]++;
     }
     return v;
@@ -637,7 +638,8 @@ std::unordered_map<std::string, std::vector<float>> SpinningSensorKeypointExtrac
     for (unsigned int i = 0; i < this->Scan->size(); i++)
     {
       const auto& laserId = this->Scan->points[i].laser_id;
-      v[i] = vector2d[laserId][indexByScanLine[laserId]][flag];
+      int scanlineIdx = std::distance(this->ScanLines.begin(), this->ScanLines.find(laserId));
+      v[i] = vector2d[scanlineIdx][indexByScanLine[laserId]][flag];
       indexByScanLine[laserId]++;
     }
     return v;
