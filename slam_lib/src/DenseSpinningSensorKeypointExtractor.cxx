@@ -635,7 +635,30 @@ void DenseSpinningSensorKeypointExtractor::ComputeIntensityEdges()
 //-----------------------------------------------------------------------------
 std::unordered_map<std::string, std::vector<float>> DenseSpinningSensorKeypointExtractor::GetDebugArray() const
 {
-  //TODO
+  std::unordered_map<std::string, std::vector<float>> debugArray;
+  debugArray["space_gap"]               = std::vector<float>(this->Scan->size(), 0.f);
+  debugArray["depth_gap"]               = std::vector<float>(this->Scan->size(), 0.f);
+  debugArray["intensity_gap"]           = std::vector<float>(this->Scan->size(), 0.f);
+  debugArray["cos_angle"]               = std::vector<float>(this->Scan->size(), 0.f);
+  debugArray["edge_keypoint"]           = std::vector<float>(this->Scan->size(), 0.f);
+  debugArray["plane_keypoint"]          = std::vector<float>(this->Scan->size(), 0.f);
+  debugArray["intensity_edge_keypoint"] = std::vector<float>(this->Scan->size(), 0.f);
+  debugArray["blob_keypoint"]           = std::vector<float>(this->Scan->size(), 0.f);
+
+  for (int i = 0; i < this->Scan->size(); i++)
+  {
+    const std::shared_ptr<PtFeat>& ptrFeat = this->GetPtFeat(i);
+    debugArray["space_gap"][i]               = ptrFeat->SpaceGapH;
+    debugArray["depth_gap"][i]               = ptrFeat->DepthGapH;
+    debugArray["intensity_gap"][i]           = ptrFeat->IntensityGapH;
+    debugArray["cos_angle"][i]               = ptrFeat->Angle;
+    debugArray["edge_keypoint"][i]           = ptrFeat->KptTypes[static_cast<int>(Keypoint::EDGE)];
+    debugArray["plane_keypoint"][i]          = ptrFeat->KptTypes[static_cast<int>(Keypoint::PLANE)];
+    debugArray["intensity_edge_keypoint"][i] = ptrFeat->KptTypes[static_cast<int>(Keypoint::INTENSITY_EDGE)];
+    debugArray["blob_keypoint"][i]           = ptrFeat->KptTypes[static_cast<int>(Keypoint::BLOB)];
+  }
+
+  return debugArray;
 }
 
 }// end of LidarSlam namespace
