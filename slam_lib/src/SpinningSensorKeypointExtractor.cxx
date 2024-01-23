@@ -212,10 +212,11 @@ void SpinningSensorKeypointExtractor::PrepareDataForNextFrame()
   LidarPoint minPt, maxPt;
   pcl::getMinMax3D(*this->Scan, minPt, maxPt);
 
+  // Clear keypoints
+  this->Keypoints.clear();
+  // Initialize keypoints
   for (auto k : KeypointTypes)
   {
-    if (this->Keypoints.count(k))
-      this->Keypoints[k].Clear();
     if (this->Enabled[k])
       this->Keypoints[k].Init(minPt.getVector3fMap(), maxPt.getVector3fMap(), this->VoxelResolution, this->Scan->size());
   }
