@@ -55,6 +55,7 @@ void RollingGrid::Clear()
 {
   this->NbPoints = 0;
   this->Voxels.clear();
+  this->SubMap->clear();
   this->KdTree.Reset();
 }
 
@@ -140,8 +141,8 @@ void RollingGrid::Roll(const Eigen::Array3f& minPoint, const Eigen::Array3f& max
 
   // Compute how much the new frame does not fit in current grid
   double halfGridSize = static_cast<double>(this->GridSize) / 2 * this->VoxelWidth;
-  Eigen::Array3f downOffset = minPoint - (VoxelGridPosition - halfGridSize);
-  Eigen::Array3f upOffset   = maxPoint - (VoxelGridPosition + halfGridSize);
+  Eigen::Array3f downOffset = minPoint - (this->VoxelGridPosition - halfGridSize);
+  Eigen::Array3f upOffset   = maxPoint - (this->VoxelGridPosition + halfGridSize);
   Eigen::Array3f offset = (upOffset + downOffset) / 2;
 
   // Clamp the rolling movement so that it only moves what is really necessary
@@ -288,11 +289,10 @@ void RollingGrid::Add(const PointCloud::Ptr& pointcloud, bool fixed, bool roll)
           case SamplingMode::CENTROID:
           {
             // Shortcut to voxel of added keypoints cloud
-            Voxel& v = meanPts[idxOut][idxIn];
+            Voxel& vMean = meanPts[idxOut][idxIn];
             // Compute mean point of current added points in the voxel
-            v.point.getVector3fMap() = (v.point.getVector3fMap() * v.count + point.getVector3fMap()) / (v.count + 1);
-            ++v.count;
-
+            vMean.point.getVector3fMap() = (vMean.point.getVector3fMap() * vMean.count + point.getVector3fMap()) / (vMean.count + 1);
+            ++vMean.count;
             // Notify that the voxel point has been updated
             updated = true;
             break;
@@ -322,10 +322,7 @@ void RollingGrid::Add(const PointCloud::Ptr& pointcloud, bool fixed, bool roll)
       auto& voxel = this->Voxels[idxOut][idxIn];
       voxel.point.time = Utils::PclStampToSec(pointcloud->header.stamp) + point.time;
       // Point added is not fixed
-      if (fixed)
-        voxel.point.label = 1;
-      else
-        voxel.point.label = 0;
+      voxel.point.label = static_cast<int>(fixed);
 
       if (!seen.count(idxOut) || !seen[idxOut].count(idxIn))
       {
@@ -610,11 +607,8 @@ void RollingGrid::BuildSubMap(const PointCloud& pc, int minNbPoints)
 }
 
 //------------------------------------------------------------------------------
-void RollingGrid::BuildKdTree(bool allPoints)
+void RollingGrid::BuildKdTree()
 {
-  if (allPoints)
-    this->SubMap = this->Get();
-
   if (!this->SubMap)
   {
     PRINT_WARNING("RollingGrid: no submap, Kdtree cannot be built");
@@ -622,6 +616,13 @@ void RollingGrid::BuildKdTree(bool allPoints)
   }
 
   this->KdTree.Reset(this->SubMap);
+}
+
+//------------------------------------------------------------------------------
+void RollingGrid::BuildKdTreeOnAllPts()
+{
+  this->BuildSubMap();
+  this->BuildKdTree();
 }
 
 //==============================================================================

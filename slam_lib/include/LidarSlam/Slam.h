@@ -278,7 +278,7 @@ public:
   using PointCloud = pcl::PointCloud<Point>;
   using KeypointExtractorPtr = std::shared_ptr<SpinningSensorKeypointExtractor>;
   using PCStorage = PointCloudStorage<LidarPoint>;
-  using Maps = std::map<Keypoint, std::shared_ptr<RollingGrid>>;
+  using Maps = std::map<Keypoint, RollingGridPtr>;
 
   // Initialization
   Slam();
