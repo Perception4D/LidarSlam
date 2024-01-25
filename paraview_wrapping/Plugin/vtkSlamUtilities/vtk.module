@@ -1,0 +1,7 @@
+NAME
+  vtkSlamUtilities
+DEPENDS
+  VTK::CommonCore
+  VTK::RenderingCore
+PRIVATE_DEPENDS
+  VTK::FiltersSources
