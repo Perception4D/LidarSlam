@@ -1747,8 +1747,8 @@ void LidarSlamNode::SetSlamParameters()
     SetKeypointsExtractorParam(float, prefix + "edge_depth_gap_threshold", EdgeDepthGapThreshold)
     SetKeypointsExtractorParam(int, prefix + "edge_nb_gap_points", EdgeNbGapPoints)
     SetKeypointsExtractorParam(float, prefix + "edge_intensity_gap_threshold", EdgeIntensityGapThreshold)
-    SetKeypointsExtractorParam(int,   prefix + "max_points", MaxPoints)
-    SetKeypointsExtractorParam(float, prefix + "voxel_grid_resolution", VoxelResolution)
+    SetKeypointsExtractorParam(int,   prefix + "downsampling.max_points", MaxPoints)
+    SetKeypointsExtractorParam(float, prefix + "downsampling.voxel_grid_resolution", VoxelResolution)
     SetKeypointsExtractorParam(float, prefix + "input_sampling_ratio", InputSamplingRatio)
 
     #define EnableKeypoint(kType) \
