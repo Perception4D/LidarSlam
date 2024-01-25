@@ -149,9 +149,6 @@ public:
   vtkGetMacro(OutputKeypointsInWorldCoordinates, bool)
   vtkSetMacro(OutputKeypointsInWorldCoordinates, bool)
 
-  vtkGetMacro(ResetMaps, bool)
-  vtkSetMacro(ResetMaps, bool)
-
   void EnableEdges(bool enable);
   void EnableIntensityEdges(bool enable);
   void EnablePlanes(bool enable);

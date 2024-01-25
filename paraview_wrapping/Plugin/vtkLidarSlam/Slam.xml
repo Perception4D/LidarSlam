@@ -82,18 +82,6 @@
         </Documentation>
       </Property>
 
-      <IntVectorProperty name="Empty first"
-                         command="SetResetMaps"
-                         number_of_elements="1"
-                         default_values="0"
-                         panel_visibility="advanced">
-        <BooleanDomain name="bool" />
-        <Documentation>
-          If enabled, reset maps before rebuilding them with keypoints available in LogStates.
-          Otherwise, only replace recent points with LogStates keypoints.
-        </Documentation>
-      </IntVectorProperty>
-
       <Property name="Rebuild maps"
                 command="RebuildMaps"
                 panel_visibility="advanced">
@@ -434,7 +422,6 @@
 
       <PropertyGroup label="Filter inputs/outputs options">
         <Property name="Reset state" />
-        <Property name="Empty first" />
         <Property name="Rebuild maps" />
         <Property name="Clear maps" />
         <Property name="External sensors data file" />

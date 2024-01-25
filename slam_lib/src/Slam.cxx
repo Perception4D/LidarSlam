@@ -657,7 +657,7 @@ void Slam::UpdateMaps(bool resetMaps)
     this->ClearLocalMaps();
   else
   {
-    // Remove points older than the first logged state
+    // Keep points older than the first logged state and clear points newer
     for (auto k : this->UsableKeypoints)
       this->LocalMaps[k]->ClearPoints(this->LogStates.front().Time, false);
   }

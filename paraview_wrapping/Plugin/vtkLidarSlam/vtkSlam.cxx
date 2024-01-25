@@ -172,7 +172,7 @@ void vtkSlam::Reset()
 //-----------------------------------------------------------------------------
 void vtkSlam::RebuildMaps()
 {
-  this->SlamAlgo->UpdateMaps(this->ResetMaps);
+  this->SlamAlgo->UpdateMaps();
   PRINT_INFO("Rebuild maps finished.")
 
   // Refresh view
