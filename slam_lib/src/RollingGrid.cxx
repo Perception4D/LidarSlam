@@ -146,7 +146,7 @@ void RollingGrid::Roll(const Eigen::Array3f& minPoint, const Eigen::Array3f& max
   Eigen::Array3f offset = (upOffset + downOffset) / 2;
 
   // Clamp the rolling movement so that it only moves what is really necessary
-  offset = offset.max(downOffset.min(0)).min(upOffset.max(0));
+  offset = offset.max(downOffset.min(0.f)).min(upOffset.max(0.f));
   Eigen::Array3i voxelsOffset = (offset / this->VoxelWidth).round().cast<int>();
 
   // Exit if there is no need to roll
