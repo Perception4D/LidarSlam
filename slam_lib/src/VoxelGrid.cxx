@@ -102,10 +102,8 @@ VoxelGrid::PointCloud::Ptr VoxelGrid::GetCloud(int maxNbPoints) const
   }
 
   // Seed generator for deterministic processes
-  struct RNG {
-  int operator() (int n) {return 0; static_cast<void>(n);}
-  };
-  std::random_shuffle(voxelIndices.begin(), voxelIndices.end(), RNG());
+  std::mt19937 g(42);
+  std::shuffle(voxelIndices.begin(), voxelIndices.end(), g);
 
 
   // Loop over all voxels while there are not enough points;
