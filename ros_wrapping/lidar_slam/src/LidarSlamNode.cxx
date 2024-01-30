@@ -473,9 +473,9 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::PoseWithCovarianceStamp
   // Get Pose covariance
   // ROS covariance message is row major
   // Eigen matrix is col major by default
-  for (int i = 0; i < 3; ++i)
+  for (int i = 0; i < 6; ++i)
   {
-    for (int j = 0; j < 3; ++j)
+    for (int j = 0; j < 6; ++j)
       poseMeas.Covariance(i, j) = poseMsg.pose.covariance[i * 6 + j];
   }
   // Correct covariance if needed
@@ -1537,12 +1537,14 @@ void LidarSlamNode::PublishOutput()
         odomMsg.header.frame_id = this->OdometryFrameId;
         odomMsg.child_frame_id = this->TrackingFrameId;
         odomMsg.pose.pose = Utils::IsometryToPoseMsg(state.Isometry);
-        // Note : in eigen 3.4 iterators are available on matrices directly
-        //        >> std::copy(state.Covariance.begin(), state.Covariance.end(), confidenceMsg.covariance.begin());
-        // For now the only way is to copy or iterate on indices :
-        for (unsigned int i = 0; i < state.Covariance.size(); ++i)
-          odomMsg.pose.covariance[i] = state.Covariance(i);
-
+        // Set covariance
+        // ROS covariance message is row major
+        // Eigen matrix is col major by default
+        for (int i = 0; i < 6; ++i)
+        {
+          for (int j = 0; j < 6; ++j)
+            odomMsg.pose.covariance[i * 6 + j] = state.Covariance(i, j);
+        }
         this->Publishers[POSE_ODOM].publish(odomMsg);
       }
 
@@ -1577,8 +1579,15 @@ void LidarSlamNode::PublishOutput()
       odomMsg.header.frame_id = this->OdometryFrameId;
       odomMsg.child_frame_id = this->TrackingFrameId + "_prediction";
       odomMsg.pose.pose = Utils::IsometryToPoseMsg(predIsometry);
-      for (unsigned int i = 0; i < lastStates.back().Covariance.size(); ++i)
-        odomMsg.pose.covariance[i] = lastStates.back().Covariance(i);
+      // Set covariance
+      // ROS covariance message is row major
+      // Eigen matrix is col major by default
+      for (int i = 0; i < 6; ++i)
+      {
+        for (int j = 0; j < 6; ++j)
+          odomMsg.pose.covariance[i * 6 + j] = lastStates.back().Covariance(i, j);
+      }
+
       this->Publishers[POSE_PREDICTION_ODOM].publish(odomMsg);
     }
 
@@ -1629,10 +1638,15 @@ void LidarSlamNode::PublishOutput()
     confidenceMsg.header.frame_id = this->OdometryFrameId;
     confidenceMsg.overlap = this->LidarSlam.GetOverlapEstimation();
     confidenceMsg.computation_time = computationTime;
-    // Note : in eigen 3.4, iterators are available on matrices directly
-    //        >> std::copy(lastStates.back().Covariance.begin(), lastStates.back().Covariance.end(), confidenceMsg.covariance.begin());
-    for (unsigned int i = 0; i < lastStates.back().Covariance.size(); ++i)
-      confidenceMsg.covariance[i] = lastStates.back().Covariance(i);
+    // Set confidence covariance
+    // ROS covariance message is row major
+    // Eigen matrix is col major by default
+    for (int i = 0; i < 6; ++i)
+    {
+      for (int j = 0; j < 6; ++j)
+        confidenceMsg.covariance[i * 6 + j] = lastStates.back().Covariance(i, j);
+    }
+
     confidenceMsg.nb_matches = this->LidarSlam.GetTotalMatchedKeypoints();
     confidenceMsg.comply_motion_limits = this->LidarSlam.GetComplyMotionLimits();
     confidenceMsg.std_position_error = this->LidarSlam.GetPositionErrorStd();
