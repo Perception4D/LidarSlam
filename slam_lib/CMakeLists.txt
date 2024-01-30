@@ -2,25 +2,25 @@
 if (g2o_FOUND)
   set(SLAM_g2o_sources src/PoseGraphOptimizer.cxx)
   set(g2o_targets g2o::core g2o::types_slam3d g2o::types_slam3d_addons)
-  message("Lidar SLAM : G2O was found, pose graph API compiled")
+  message(STATUS "Lidar SLAM : G2O was found, pose graph API compiled")
 endif()
 
 # If GTSAM is available, compile IMU stuff
 if (GTSAM_FOUND)
   set(gtsam_targets gtsam)
-  message("Lidar SLAM : GTSAM was found, IMU preintegration compiled")
+  message(STATUS "Lidar SLAM : GTSAM was found, IMU preintegration compiled")
 endif()
 
 # If OpenCV is available, compile camera stuff
 if (OpenCV_FOUND)
   set(opencv_targets opencv_core opencv_highgui opencv_imgproc opencv_video)
-  message("Lidar SLAM : OPENCV was found, camera API compiled")
+  message(STATUS "Lidar SLAM : OPENCV was found, camera API compiled")
 endif()
 
 # If TEASER is available, compile automatic loop closure detection by teaserpp stuff
 if (teaserpp_FOUND)
   set(teaserpp_targets teaserpp::teaser_registration)
-  message("Lidar SLAM : TEASER++ was found, automatic loop closure detection enabled")
+  message(STATUS "Lidar SLAM : TEASER++ was found, automatic loop closure detection enabled")
 endif()
 
 # Generate export symbols on Windows to use this lib
@@ -85,7 +85,7 @@ endif()
 # windows.h is included by some dependencies (e.g. glog)
 if (WIN32)
   set(windows_def NOMINMAX)
-  message("Warning: NOMINMAX is defined for windows to solve dependencies windows.h inclusion.")
+  message(AUTHOR_WARNING "NOMINMAX is defined for windows to solve dependencies windows.h inclusion.")
 endif()
 
 target_compile_definitions(LidarSlam
