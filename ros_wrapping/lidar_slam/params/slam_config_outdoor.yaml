@@ -372,15 +372,13 @@ slam:
                             # and the parameterization : see leaf_size keyframes parameters for more details
 
   # Keypoint extractor for each LiDAR sensor
-  # Single LiDAR input
   ke:
+    # Single LiDAR input
     enable:
       edge: true
       intensity_edge: true
       plane: true
       blob: false
-    max_points: 1000                   # [points] Maximum number of keypoints of each type to extract
-    voxel_grid_resolution: 2.          # [m/voxel] Size of a voxel to downsample the extracted keypoints
     input_sampling_ratio: 1.           # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
     min_distance_to_sensor: 1.5        # [m] Minimal point to sensor distance to consider a point as valid.
     max_distance_to_sensor: 200.       # [m] Maximal point to sensor distance to consider a point as valid.
@@ -394,6 +392,9 @@ slam:
     edge_depth_gap_threshold: 1.       # [m] Threshold upon depth gap in neighborhood to select an edge keypoint.
     edge_nb_gap_points: 10             # [points] Minimum number of successive missing points to consider a space gap.
     edge_intensity_gap_threshold: 50.  # [0-255] Threshold upon intensity gap to select an edge keypoint.
+    downsampling:
+      max_points: 1000                 # [points] Maximum number of keypoints of each type to extract.
+      voxel_grid_resolution: 2.        # [m/voxel] Size of a voxel to downsample the extracted keypoints.
 
     # # Multi LiDAR inputs
     # # The multiple devices to use for SLAM.
@@ -408,10 +409,9 @@ slam:
     #     intensity_edge: true
     #     plane: true
     #     blob: false
-    #   max_points: 1000                   # [points] Maximum number of keypoints of each type to extract
-    #   voxel_grid_resolution: 1.          # [m/voxel] Size of a voxel to downsample the extracted keypoints
     #   input_sampling_ratio: 0.6          # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
     #   min_distance_to_sensor: 1.5        # [m] Minimal point to sensor distance to consider a point as valid.
+    #   max_distance_to_sensor: 200.       # [m] Maximal point to sensor distance to consider a point as valid.
     #   min_azimuth: -45.                  # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
     #   max_azimuth: 45.                   # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
     #   min_beam_surface_angle: 10.        # [°] Minimal angle between the point surface and the laser beam to consider a point as valid.
@@ -422,16 +422,18 @@ slam:
     #   edge_depth_gap_threshold: 1.5      # [m] Threshold upon depth gap in neighborhood to select an edge keypoint.
     #   edge_nb_gap_points: 10             # [points] Minimum number of successive missing points to consider a space gap.
     #   edge_intensity_gap_threshold: 30.  # [0-255] Threshold upon intensity gap to select an edge keypoint.
+    #   downsampling:
+    #     max_points: 1000                 # [points] Maximum number of keypoints of each type to extract.
+    #     voxel_grid_resolution: 1.        # [m/voxel] Size of a voxel to downsample the extracted keypoints.
     # device_lidar_frame_1:
     #   enable:
     #     edge: true
     #     intensity_edge: true
     #     plane: true
     #     blob: false
-    #   max_points: 1000                   # [points] Maximum number of keypoints of each type to extract
-    #   voxel_grid_resolution: 1.          # [m/voxel] Size of a voxel to downsample the extracted keypoints
     #   input_sampling_ratio: 1.           # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
     #   min_distance_to_sensor: 1.5        # [m] Minimal point to sensor distance to consider a point as valid.
+    #   max_distance_to_sensor: 200.       # [m] Maximal point to sensor distance to consider a point as valid.
     #   min_azimuth: -45.                  # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
     #   max_azimuth: 45.                   # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
     #   min_beam_surface_angle: 10.        # [°] Minimal angle between the point surface and the laser beam to consider a point as valid.
@@ -442,3 +444,6 @@ slam:
     #   edge_depth_gap_threshold: 1.5      # [m] Threshold upon depth gap in neighborhood to select an edge keypoint.
     #   edge_nb_gap_points: 10             # [points] Minimum number of successive missing points to consider a space gap.
     #   edge_intensity_gap_threshold: 200. # [0-255] Threshold upon intensity gap to select an edge keypoint.
+    #   downsampling:
+    #     max_points: 1000                 # [points] Maximum number of keypoints of each type to extract.
+    #     voxel_grid_resolution: 1.        # [m/voxel] Size of a voxel to downsample the extracted keypoints.
