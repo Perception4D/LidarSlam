@@ -148,9 +148,9 @@ private:
 
   // Storage for current results
 
-  // Counters to keep track of the pose index to compare with reference
-  unsigned int PoseCounter = 0;
-  unsigned int PrevPoseCounter = 0;
+  // Parameters to keep track of the pose index to compare with reference
+  unsigned int PoseIdx = 0;
+  unsigned int PrevPoseIdx = 0;
   // Counter to keep track of the confidence index to compare with reference
   unsigned int ConfidenceCounter = 0;
   // To count number of dropped frames with respect to reference

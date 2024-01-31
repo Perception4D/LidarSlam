@@ -301,17 +301,17 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
     return;
 
   // Search the pose in reference
-  const int prevPoseCounter = this->PoseCounter;
-  while (this->PoseCounter < this->RefPoses.size() &&
-         this->RefPoses[this->PoseCounter].Stamp < time - 1e-6)
-    ++this->PoseCounter;
+  const int prevPoseIdx = this->PoseIdx;
+  while (this->PoseIdx < this->RefPoses.size() &&
+         this->RefPoses[this->PoseIdx].Stamp < time - 1e-6)
+    ++this->PoseIdx;
   // If there is more than 1 frame difference, one has been dropped
-  if (this->PoseCounter > prevPoseCounter)
-    this->NbFramesDropped += this->PoseCounter - prevPoseCounter - 1;
+  if (this->PoseIdx > prevPoseIdx)
+    this->NbFramesDropped += this->PoseIdx - prevPoseIdx - 1;
 
   // No more reference
   // or time close to the end (1s margin)
-  if (this->PoseCounter == this->RefPoses.size() ||
+  if (this->PoseIdx == this->RefPoses.size() ||
       this->RefPoses.back().Stamp - time < 1.)
   {
     this->OutputTestResult(); // will shut down the node
@@ -319,7 +319,7 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
   }
 
   // If the current frame has not been seen in reference -> return (wait for next frame)
-  if (std::abs(this->RefPoses[this->PoseCounter].Stamp - time) > 1e-6)
+  if (std::abs(this->RefPoses[this->PoseIdx].Stamp - time) > 1e-6)
   {
     ROS_WARN_STREAM("Reference does not contain a pose at "
                      << std::fixed << std::setprecision(9) << time
@@ -329,13 +329,13 @@ void LidarSlamTestNode::PoseCallback(const nav_msgs::Odometry& poseMsg)
   }
 
   // Update previous pose counter if the ref pose has been updated
-  if (this->PoseCounter > prevPoseCounter)
-    this->PrevPoseCounter = prevPoseCounter;
+  if (this->PoseIdx > prevPoseIdx)
+    this->PrevPoseIdx = prevPoseIdx;
   // Compare the pose with reference trajectory
-  Eigen::Isometry3d refTransform = this->RefPoses[this->PoseCounter].Data;
+  Eigen::Isometry3d refTransform = this->RefPoses[this->PoseIdx].Data;
   Eigen::Isometry3d refPrevTransform;
-  if (this->PoseCounter >= 1)
-     refPrevTransform = this->RefPoses[this->PrevPoseCounter].Data;
+  if (this->PoseIdx >= 1)
+     refPrevTransform = this->RefPoses[this->PrevPoseIdx].Data;
   else
   {
     this->PrevTransform = transform;
