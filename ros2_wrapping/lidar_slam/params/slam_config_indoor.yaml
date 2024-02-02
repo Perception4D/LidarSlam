@@ -374,28 +374,43 @@
                                 # and the parameterization : see leaf_size keyframes parameters for more details
 
       # Keypoint extractor for each LiDAR sensor
-      # Single LiDAR input
       ke:
+        # Single LiDAR input
+        # The extractor modes allow to decide which keypoint extractor to choose
+        # 0) Sparse extractor called SpinningSensorKeypointExtractor. Convenient for all lidars.
+        # 1) Dense extractor called DenseSpinningSensorKeypointExtractor. Better option for lidars with 64 and 128 lasers.
+        extractor_mode: 0
         enable:
           edge: true
           intensity_edge: true
           plane: true
           blob: false
-        max_points: 1000                   # [points] Maximum number of keypoints of each type to extract
-        voxel_grid_resolution: 1.          # [m/voxel] Size of a voxel to downsample the extracted keypoints
         input_sampling_ratio: 1.           # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
         min_distance_to_sensor: 1.         # [m] Minimal point to sensor distance to consider a point as valid.
         max_distance_to_sensor: 200.       # [m] Maximal point to sensor distance to consider a point as valid.
         min_azimuth: 0.                    # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
         max_azimuth: 360.                  # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
         min_beam_surface_angle: 10.        # [°] Minimal angle between the point surface and the laser beam to consider a point as valid.
-        neighbors_side_nb: 4               # [>1] Minimum number of neighbors used on each side to estimate curvature and detect edges and planes.
+        neighbors_side_nb: 5               # [>1] Minimum number of neighbors used on each side to estimate curvature and detect edges and planes.
         neighbors_radius: 0.10             # [m] Minimum radius to define a neighborhood on each side of the studied point.
-        plane_sin_angle_threshold: 0.5     # [0-1] Sharpness threshold to select a planar keypoint (selected if sin angle is less than threshold).
-        edge_sin_angle_threshold: 0.86     # [0-1] Sharpness threshold to select an edge keypoint (selected if sin angle is more than threshold).
+        plane_angle_threshold: 150.        # [°] Threshold upon angle between left and right lines to consider a point as plane.
+                                           # It is used with its absolute sine value in SSKE for planes,
+                                           # with its cosine value in DSSKE for planes and
+                                           # with its opposite cosine value in DSSKE to filter too sharp edges.
+        edge_angle_threshold: 120.         # [°] Threshold upon angle between left and right lines to consider a point as edge.
+                                           # It is used with its absolute sine value in SSKE for edges and
+                                           # with its cosine value in DSSKE for edges.
         edge_depth_gap_threshold: 0.5      # [m] Threshold upon depth gap in neighborhood to select an edge keypoint.
         edge_nb_gap_points: 10             # [points] Minimum number of successive missing points to consider a space gap.
         edge_intensity_gap_threshold: 20.  # [0-255] Threshold upon intensity gap to select an edge keypoint.
+        downsampling:
+          max_points: 1000                 # [points] Maximum number of keypoints of each type to extract.
+          voxel_grid_resolution: 1.        # [m/voxel] Size of a voxel to downsample the extracted keypoints.
+          # Additional parameters for the dense extractor (DSSKE)
+          patch_size: 32                   # [nb] Size of a patch. It will contain at much patch_size*patch_size keypoints candidates.
+          sampling_mode: 0                 # {0, 1} Sampling mode for keypoint extraction :
+                                           # 0) Patch mode --> for a 2D grid built on the vertex map.
+                                           # 1) Voxel mode --> for a 3D grid built on the scan cloud, use voxel_grid_resolution common to SSKE.
 
         # # Multi LiDAR inputs
         # # The multiple devices to use for SLAM.
@@ -405,42 +420,74 @@
         #   - "lidar_frame_1"
         # # Keypoint extractors parameters for each LiDAR sensor "device_<device_id>"
         # device_lidar_frame_0:
+        #   # The extractor modes allow to decide which keypoint extractor to choose
+        #   # 0) Sparse extractor called SpinningSensorKeypointExtractor. Convenient for all lidars.
+        #   # 1) Dense extractor called DenseSpinningSensorKeypointExtractor. Better option for lidars with 64 and 128 lasers.
+        #   extractor_mode: 0
         #   enable:
         #     edge: true
         #     intensity_edge: true
         #     plane: true
         #     blob: false
-        #   max_points: 1000                   # [points] Maximum number of keypoints of each type to extract
-        #   voxel_grid_resolution: 0.5         # [m/voxel] Size of a voxel to downsample the extracted keypoints
         #   input_sampling_ratio: 1.           # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
         #   min_distance_to_sensor: 1.         # [m] Minimal point to sensor distance to consider a point as valid.
+        #   max_distance_to_sensor: 200.       # [m] Maximal point to sensor distance to consider a point as valid.
         #   min_azimuth: -90.                  # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
         #   max_azimuth: 90.                   # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
         #   min_beam_surface_angle: 10.        # [°] Minimal angle between the point surface and the laser beam to consider a point as valid.
-        #   neighbors_side_nb: 4               # [>1] Minimum number of neighbors used on each side to estimate curvature and detect edges and planes.
+        #   neighbors_side_nb: 5               # [>1] Minimum number of neighbors used on each side to estimate curvature and detect edges and planes.
         #   neighbors_radius: 0.10             # [m] Minimum radius to define a neighborhood on each side of the studied point.
-        #   plane_sin_angle_threshold: 0.5     # [0-1] Sharpness threshold to select a planar keypoint (selected if sin angle is less than threshold).
-        #   edge_sin_angle_threshold: 0.86     # [0-1] Sharpness threshold to select an edge keypoint (selected if sin angle is more than threshold).
+        #   plane_angle_threshold: 150.        # [°] Threshold upon angle between left and right lines to consider a point as plane.
+        #                                      # It is used with its absolute sine value in SSKE for planes,
+        #                                      # with its cosine value in DSSKE for planes and
+        #                                      # with its opposite cosine value in DSSKE to filter too sharp edges.
+        #   edge_angle_threshold: 120.         # [°] Threshold upon angle between left and right lines to consider a point as edge.
+        #                                      # It is used with its absolute sine value in SSKE for edges and
+        #                                      # with its cosine value in DSSKE for edges.
         #   edge_depth_gap_threshold: 0.5      # [m] Threshold upon depth gap in neighborhood to select an edge keypoint.
         #   edge_nb_gap_points: 10             # [points] Minimum number of successive missing points to consider a space gap.
         #   edge_intensity_gap_threshold: 20.  # [0-255] Threshold upon intensity gap to select an edge keypoint.
+        #   downsampling:
+        #     max_points: 1000                 # [points] Maximum number of keypoints of each type to extract.
+        #     voxel_grid_resolution: 0.5       # [m/voxel] Size of a voxel to downsample the extracted keypoints.
+        #     # Additional parameter for the dense extractor (DSSKE)
+        #     patch_size: 32                   # [nb] Size of a patch. It will contain at much patch_size*patch_size keypoints candidates.
+        #     sampling_mode: 0                 # {0, 1} Sampling mode for keypoint extraction :
+        #                                      # 0) Patch mode --> for a 2D grid built on the vertex map.
+        #                                      # 1) Voxel mode --> for a 3D grid built on the scan cloud, use voxel_grid_resolution common to SSKE.
         # device_lidar_frame_1:
+        #   # The extractor modes allow to decide which keypoint extractor to choose
+        #   # 0) Sparse extractor called SpinningSensorKeypointExtractor. Convenient for all lidars.
+        #   # 1) Dense extractor called DenseSpinningSensorKeypointExtractor. Better option for lidars with 64 and 128 lasers.
+        #   extractor_mode: 0
         #   enable:
         #     edge: true
         #     intensity_edge: true
         #     plane: true
         #     blob: false
-        #   max_points: 1000                   # [points] Maximum number of keypoints of each type to extract
-        #   voxel_grid_resolution: 0.5         # [m/voxel] Size of a voxel to downsample the extracted keypoints
         #   input_sampling_ratio: 0.6          # [0-1] Ratio of points from which to extract the keypoints (for computation time issues)
         #   min_distance_to_sensor: 1.         # [m] Minimal point to sensor distance to consider a point as valid.
+        #   max_distance_to_sensor: 200.       # [m] Maximal point to sensor distance to consider a point as valid.
         #   min_azimuth: -45.                  # [°] Minimal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
         #   max_azimuth: 45.                   # [°] Maximal azimuth angle to consider the point as keypoint. Right thumb rule between min/max azimuth angles.
         #   min_beam_surface_angle: 10.        # [°] Minimal angle between the point surface and the laser beam to consider a point as valid.
-        #   neighbors_side_nb: 4               # [>1] Minimum number of neighbors used on each side to estimate curvature and detect edges and planes.
+        #   neighbors_side_nb: 5               # [>1] Minimum number of neighbors used on each side to estimate curvature and detect edges and planes.
         #   neighbors_radius: 0.10             # [m] Minimum radius to define a neighborhood on each side of the studied point.
-        #   plane_sin_angle_threshold: 0.5     # [0-1] Sharpness threshold to select a planar keypoint (selected if sin angle is less than threshold).
-        #   edge_sin_angle_threshold: 0.86     # [0-1] Sharpness threshold to select an edge keypoint (selected if sin angle is more than threshold).
+        #   plane_angle_threshold: 150.        # [°] Threshold upon angle between left and right lines to consider a point as plane.
+        #                                      # It is used with its absolute sine value in SSKE for planes,
+        #                                      # with its cosine value in DSSKE for planes and
+        #                                      # with its opposite cosine value in DSSKE to filter too sharp edges.
+        #   edge_angle_threshold: 120.         # [°] Threshold upon angle between left and right lines to consider a point as edge.
+        #                                      # It is used with its absolute sine value in SSKE for edges and
+        #                                      # with its cosine value in DSSKE for edges.
         #   edge_depth_gap_threshold: 0.5      # [m] Threshold upon depth gap in neighborhood to select an edge keypoint.
         #   edge_nb_gap_points: 10             # [points] Minimum number of successive missing points to consider a space gap.
         #   edge_intensity_gap_threshold: 200. # [0-255] Threshold upon intensity gap to select an edge keypoint.
+        #   downsampling:
+        #     max_points: 1000                 # [points] Maximum number of keypoints of each type to extract.
+        #     voxel_grid_resolution: 0.5       # [m/voxel] Size of a voxel to downsample the extracted keypoints.
+        #     # Additional parameters for the dense extractor (DSSKE)
+        #     patch_size: 32                   # [nb] Size of a patch. It will contain at much patch_size*patch_size keypoints candidates.
+        #     sampling_mode: 0                 # {0, 1} Sampling mode for keypoint extraction :
+        #                                      # 0) Patch mode --> for a 2D grid built on the vertex map.
+        #                                      # 1) Voxel mode --> for a 3D grid built on the scan cloud, use voxel_grid_resolution common to SSKE.

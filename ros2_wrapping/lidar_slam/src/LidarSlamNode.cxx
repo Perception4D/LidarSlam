@@ -1731,6 +1731,43 @@ void LidarSlamNode::SetSlamParameters()
   this->get_parameter_or<std::string>("wheel_frame", this->WheelFrameId, "wheel");
 
   // Keypoint extractors
+  auto setExtractorMode = [this](LidarSlam::KeypointExtractorMode& mode,
+                                 const std::string& prefix,
+                                 const std::string& message = "")
+  {
+    int extractorMode;
+    if (this->get_parameter<int>(prefix + "extractor_mode", extractorMode))
+    {
+      mode = static_cast<LidarSlam::KeypointExtractorMode>(extractorMode);
+      if (mode != LidarSlam::KeypointExtractorMode::SPARSE &&
+          mode != LidarSlam::KeypointExtractorMode::DENSE)
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "Incorrect keypoint extractor mode value (" << extractorMode << ")"
+                                                << message << ". Setting it to '0', corresponding to sparse extractor.");
+        mode = LidarSlam::KeypointExtractorMode::SPARSE;
+      }
+    }
+  };
+
+  auto setSamplingMode = [this](auto& dsske,
+                                const std::string& prefix,
+                                const std::string& message = "")
+  {
+    int samplingMode;
+    if (this->get_parameter(prefix + "downsampling.sampling_mode", samplingMode))
+    {
+      LidarSlam::SamplingModeDSSKE sampling = static_cast<LidarSlam::SamplingModeDSSKE>(samplingMode);
+      if (sampling != LidarSlam::SamplingModeDSSKE::PATCH &&
+          sampling != LidarSlam::SamplingModeDSSKE::VOXEL)
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "Invalid DSSKE sampling mode (" << samplingMode << ")"
+                                                << message << ". Setting it to 'PATCH'.");
+        sampling = LidarSlam::SamplingModeDSSKE::PATCH;
+      }
+      dsske->SetSamplingDSSKE(sampling);
+    }
+  };
+
   auto initKeypointsExtractor = [this](auto& ke, const std::string& prefix)
   {
     #define SetKeypointsExtractorParam(type, rosParam, keParam) {type val; if (this->get_parameter<type>(rosParam, val)) ke->Set##keParam(val);}
@@ -1742,13 +1779,13 @@ void LidarSlamNode::SetSlamParameters()
     SetKeypointsExtractorParam(float, prefix + "min_beam_surface_angle", MinBeamSurfaceAngle)
     SetKeypointsExtractorParam(float, prefix + "min_azimuth", AzimuthMin)
     SetKeypointsExtractorParam(float, prefix + "max_azimuth", AzimuthMax)
-    SetKeypointsExtractorParam(float, prefix + "plane_sin_angle_threshold", PlaneSinAngleThreshold)
-    SetKeypointsExtractorParam(float, prefix + "edge_sin_angle_threshold", EdgeSinAngleThreshold)
+    SetKeypointsExtractorParam(float, prefix + "edge_angle_threshold", EdgeAngleThreshold)
+    SetKeypointsExtractorParam(float, prefix + "plane_angle_threshold", PlaneAngleThreshold)
     SetKeypointsExtractorParam(float, prefix + "edge_depth_gap_threshold", EdgeDepthGapThreshold)
     SetKeypointsExtractorParam(int, prefix + "edge_nb_gap_points", EdgeNbGapPoints)
     SetKeypointsExtractorParam(float, prefix + "edge_intensity_gap_threshold", EdgeIntensityGapThreshold)
-    SetKeypointsExtractorParam(int,   prefix + "max_points", MaxPoints)
-    SetKeypointsExtractorParam(float, prefix + "voxel_grid_resolution", VoxelResolution)
+    SetKeypointsExtractorParam(int,   prefix + "downsampling.max_points", MaxPoints)
+    SetKeypointsExtractorParam(float, prefix + "downsampling.voxel_grid_resolution", VoxelResolution)
     SetKeypointsExtractorParam(float, prefix + "input_sampling_ratio", InputSamplingRatio)
 
     #define EnableKeypoint(kType) \
@@ -1768,35 +1805,59 @@ void LidarSlamNode::SetSlamParameters()
     EnableKeypoint(LidarSlam::Keypoint::BLOB);
   };
 
-  // Multi-LiDAR devices
+  auto addExtractor = [this](auto& ke,
+                             const std::string& name,
+                             const std::string& message = "",
+                             const std::string& deviceId = "")
+  {
+    deviceId != "" ? this->LidarSlam.SetKeyPointsExtractor(ke, deviceId)
+                   : this->LidarSlam.SetKeyPointsExtractor(ke);
+    RCLCPP_INFO_STREAM(this->get_logger(), "Adding " << name << " keypoints extractor " << message);
+  };
+
+  // Init deviceIds vector
   std::vector<std::string> deviceIds;
   if (this->get_parameter("slam.ke.device_ids", deviceIds))
-  {
     RCLCPP_INFO_STREAM(this->get_logger(), "Multi-LiDAR devices setup");
-    for (auto deviceId: deviceIds)
-    {
-      // Init Keypoint extractor with default params
-      auto ke = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
-
-      // Change default parameters using ROS parameter server
-      std::string prefix = "slam.ke.device_" + deviceId + ".";
-      initKeypointsExtractor(ke, prefix);
-
-      // Add extractor to SLAM
-      this->LidarSlam.SetKeyPointsExtractor(ke, deviceId);
-      RCLCPP_INFO_STREAM(this->get_logger(), "Adding keypoints extractor for LiDAR device " << deviceId);
-    }
-  }
-  // Single LiDAR device
   else
   {
     RCLCPP_INFO_STREAM(this->get_logger(), "Single LiDAR device setup");
-    auto ke = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
-    initKeypointsExtractor(ke, "slam.ke.");
-    this->LidarSlam.SetKeyPointsExtractor(ke);
-    RCLCPP_INFO_STREAM(this->get_logger(), "Adding keypoints extractor");
+    deviceIds.push_back("");
   }
 
+  for (auto deviceId: deviceIds)
+  {
+    std::string prefix = "slam.ke.";
+    if (deviceIds.size() > 1)
+      prefix += "device_" + deviceId + ".";
+
+    // Set keypoints extractor mode. If multilidar, will add an information in error message.
+    LidarSlam::KeypointExtractorMode mode;
+    deviceIds.size() == 1 ? setExtractorMode(mode, prefix)
+                          : setExtractorMode(mode, prefix, " for LiDAR device " + deviceId);
+
+    // Set keypoints extractor
+    std::shared_ptr<LidarSlam::KeypointExtractor> ke;
+    if (mode == LidarSlam::KeypointExtractorMode::SPARSE)
+      ke = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
+    else
+    {
+      auto dsske = std::make_shared<LidarSlam::DenseSpinningSensorKeypointExtractor>();
+      // Set specific parameters for DSSKE
+      int patchSize;
+      if (this->get_parameter(prefix + "downsampling.patch_size", patchSize))
+        dsske->SetPatchSize(patchSize);
+      deviceIds.size() == 1 ? setSamplingMode(dsske, prefix)
+                            : setSamplingMode(dsske, prefix, " for LiDAR device " + deviceId);
+      ke = dsske;
+    }
+
+    // Set keypoints extractor parameters and enable keypoints
+    initKeypointsExtractor(ke, prefix);
+    // Add extractor to LidarSlam
+    deviceIds.size() == 1 ? addExtractor(ke, LidarSlam::KeypointExtractorModeNames.at(mode))
+                          : addExtractor(ke, LidarSlam::KeypointExtractorModeNames.at(mode), "for LiDAR device " + deviceId, deviceId);
+  }
 
   // Ego motion
   SetSlamParam(int,    "slam.ego_motion_registration.ICP_max_iter", EgoMotionICPMaxIter)
