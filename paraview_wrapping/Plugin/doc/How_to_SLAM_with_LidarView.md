@@ -261,7 +261,7 @@ If the calibration file is not provided, it is set to identity (i.e. the informa
 
 #### Estimation
 
-**For external poses**, the calibration can be estimated using a portion of trustworthy SLAM trajectory. The user just needs to click on the Calibrate button to trigger the calibration process using the available SLAM trajectory and the synchronized external poses. This calibration process has two parameters : *lever arm* and *planar trajectory*.
+For **external poses** or **GPS**, the calibration can be estimated using a portion of trustworthy SLAM trajectory. The user just needs to click on the Calibrate button to trigger the calibration process using the available SLAM trajectory and the synchronized external poses or GPS data, if external poses are not available. This calibration process has two parameters : *lever arm* and *planar trajectory*.
 
 The lever arm distance is the distance between the center of the external sensor and the center of the tracked frame (i.e, often the Lidar itself). If it has been physically measured, it can be input to the calibration process as a hint.
 

@@ -52,12 +52,13 @@ I have used those data to test.
 
 - [ ] Camel case everywhere except for ROS variables/parameters
 - [ ] Lower case for local variables and lambda functions
-- [ ] Upper case for pour members, methods and tool functions (in Utils)
+- [ ] Upper case for members, methods and tool functions (in Utils)
 - [ ] Precise namespace when calling a function (or this->X or classe.X)
 - [ ] Align code (for multiline if and while, "&&" or "||" go in upper line to ensure alignement)
-- [ ] Space between if, while, for and parenthesis
-- [ ] Space between operators and variables: e.g. a + b
-- [ ] Space after ","
+- [ ] Check your spaces
+    - [ ] between if, while, for and parenthesis
+    - [ ] between operators and variables: e.g. a + b
+    - [ ] after ","
 - [ ] Mind your commit titles/desc (plurals, he/she + "s", correct tags, title should begin by a verb...)
 - [ ] Function names should start with a verb, variable names should start with a name
 - [ ] Macros should be between {}
@@ -65,11 +66,11 @@ I have used those data to test.
 - [ ] Check minimal size of the types (double -> float -> int -> uint)
 - [ ] Check const and ref in functions arguments
 - [ ] References should be written "type& name", not "type &name"
-- [ ] Update documentation if needed
+- [ ] Update documentation
 - [ ] Add MR labels [ROS]/[ROS2]/[PV]
 - [ ] If ros/ros2, update task table [here](https://gitlab.kitware.com/keu-computervision/slam/-/issues/55)
 - [ ] Add a comment over each non trivial function in header files
-- [ ] Adda header to each new file
+- [ ] Add a header to each new file
 
 # What remains to solve
 

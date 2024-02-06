@@ -654,7 +654,10 @@ public:
 
   bool CanBeUsedLocally() const {return false;}
 
-  bool ComputeCalibration(const std::list<LidarState>& states);
+  // Compute calibration using the available GPS positions and the SLAM trajectory
+  bool ComputeCalibration(const std::list<LidarState>& states,
+                          int window, double leverArm,
+                          bool reset, bool planarTrajectory);
 
 private:
   // Offset transform to link GPS reference frame

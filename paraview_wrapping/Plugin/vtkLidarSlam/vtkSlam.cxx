@@ -826,7 +826,8 @@ void vtkSlam::SetSensorData(const std::string& fileName)
     extSensorFit = true;
   }
 
-  // 1_ Format XYZRPY (with PRY convention)
+  // Process external pose data
+  // 1_ Format XYZRPY
   if (Utils::CheckTableFields(csvTable, {"x", "y", "z", "roll", "pitch", "yaw"}))
   {
     this->SlamAlgo->SetPoseCalibration(base2Sensor);
@@ -857,10 +858,10 @@ void vtkSlam::SetSensorData(const std::string& fileName)
   }
 
   // 2_ Matrix format
-  if (Utils::CheckTableFields(csvTable, {"x", "y", "z",
-                                         "x0", "x1", "x2",
-                                         "y0", "y1", "y2",
-                                         "z0", "z1", "z2"}))
+  else if (Utils::CheckTableFields(csvTable, {"x", "y", "z",
+                                              "x0", "x1", "x2",
+                                              "y0", "y1", "y2",
+                                              "z0", "z1", "z2"}))
   {
     this->SlamAlgo->SetPoseCalibration(base2Sensor);
     auto arrayX   = csvTable->GetRowData()->GetArray("x");
@@ -892,6 +893,28 @@ void vtkSlam::SetSensorData(const std::string& fileName)
     extSensorFit = true;
   }
 
+  // Process GPS data
+  else if (Utils::CheckTableFields(csvTable, {"x", "y", "z"}))
+  {
+    this->SlamAlgo->SetGpsCalibration(base2Sensor);
+    auto arrayX = csvTable->GetRowData()->GetArray("x");
+    auto arrayY = csvTable->GetRowData()->GetArray("y");
+    auto arrayZ = csvTable->GetRowData()->GetArray("z");
+
+    for (vtkIdType i = 0; i < arrayTime->GetNumberOfTuples(); ++i)
+    {
+      LidarSlam::ExternalSensors::GpsMeasurement meas;
+      meas.Time = arrayTime->GetTuple1(i);
+      // Position
+      meas.Position = Eigen::Vector3d(arrayX->GetTuple1(i), arrayY->GetTuple1(i), arrayZ->GetTuple1(i));
+      // Default covariance
+      meas.Covariance = 1e-4 * Eigen::Matrix3d::Identity();
+      this->SlamAlgo->AddGpsMeasurement(meas);
+    }
+    PRINT_INFO("GPS data successfully loaded")
+    extSensorFit = true;
+  }
+
   if (!extSensorFit)
     vtkWarningMacro(<< this->GetClassName() << " (" << this << "): No usable data found in the external sensor file");
 
@@ -902,10 +925,15 @@ void vtkSlam::SetSensorData(const std::string& fileName)
 //-----------------------------------------------------------------------------
 void vtkSlam::Calibrate()
 {
-  if (!this->SlamAlgo->PoseHasData())
-    vtkWarningMacro(<< this->GetClassName() << " (" << this << "): No external poses, cannot determine the calibration");
+  if (!this->SlamAlgo->PoseHasData() &&
+      !this->SlamAlgo->GpsHasData())
+    vtkWarningMacro(<< this->GetClassName() << " (" << this << "): No external poses, no GPS -> cannot estimate any calibration");
 
-  this->SlamAlgo->CalibrateWithExtPoses(this->CalibrationWindow, this->LeverArm, true, this->PlanarTrajectory); // true := reset calibration
+  if (this->SlamAlgo->PoseHasData())
+    this->SlamAlgo->CalibrateWithExtPoses(this->CalibrationWindow, this->LeverArm, true, this->PlanarTrajectory); // true := reset calibration
+  else
+    this->SlamAlgo->CalibrateWithGps(this->CalibrationWindow, this->LeverArm, true, this->PlanarTrajectory); // true := reset calibration
+
 }
 
 //-----------------------------------------------------------------------------
