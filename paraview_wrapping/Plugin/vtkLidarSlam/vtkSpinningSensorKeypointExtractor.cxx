@@ -26,8 +26,12 @@ vtkStandardNewMacro(vtkSpinningSensorKeypointExtractor)
 
 //-----------------------------------------------------------------------------
 vtkSpinningSensorKeypointExtractor::vtkSpinningSensorKeypointExtractor()
-  : Extractor(std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>())
-{}
+{
+  if (this->Mode != LidarSlam::KeypointExtractorMode::DENSE)
+    this->Extractor = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
+  else
+    this->Extractor = std::make_shared<LidarSlam::DenseSpinningSensorKeypointExtractor>();
+}
 
 void vtkSpinningSensorKeypointExtractor::PrintSelf(std::ostream& os, vtkIndent indent)
 {
@@ -46,9 +50,9 @@ void vtkSpinningSensorKeypointExtractor::PrintSelf(std::ostream& os, vtkIndent i
   PrintParameter(AzimuthMin)
   PrintParameter(AzimuthMax)
 
-  PrintParameter(PlaneSinAngleThreshold)
+  PrintParameter(PlaneAngleThreshold)
 
-  PrintParameter(EdgeSinAngleThreshold)
+  PrintParameter(EdgeAngleThreshold)
   PrintParameter(EdgeDepthGapThreshold)
   PrintParameter(EdgeIntensityGapThreshold)
   PrintParameter(EdgeNbGapPoints)
