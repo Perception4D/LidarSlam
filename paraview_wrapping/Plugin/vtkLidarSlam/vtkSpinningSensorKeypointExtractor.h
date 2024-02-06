@@ -21,6 +21,7 @@
 #define VTK_SPINNING_SENSOR_KEYPOINT_EXTRACTOR_H
 
 #include <LidarSlam/SpinningSensorKeypointExtractor.h>
+#include <LidarSlam/DenseSpinningSensorKeypointExtractor.h>
 #include <vtkObject.h>
 
 //
@@ -72,9 +73,9 @@ public:
 
   vtkCustomSetMacro(MinBeamSurfaceAngle, float)
 
-  vtkCustomSetMacro(PlaneSinAngleThreshold, float)
+  vtkCustomSetMacro(PlaneAngleThreshold, float)
 
-  vtkCustomSetMacro(EdgeSinAngleThreshold, float)
+  vtkCustomSetMacro(EdgeAngleThreshold, float)
 
   vtkCustomSetMacro(EdgeDepthGapThreshold, float)
 
@@ -82,16 +83,31 @@ public:
 
   vtkCustomSetMacro(EdgeNbGapPoints, int)
 
-  std::shared_ptr<LidarSlam::SpinningSensorKeypointExtractor> GetExtractor() const { return Extractor; }
+  void SetMode(int mode)
+  {
+    vtkDebugMacro(<< this->GetClassName() << " (" << this << "): setting mode to " << mode);
+    LidarSlam::KeypointExtractorMode extractMode = static_cast<LidarSlam::KeypointExtractorMode>(mode);
+    if (this->Mode == extractMode)
+      return;
+
+    if (this->Mode != LidarSlam::KeypointExtractorMode::DENSE)
+      this->Extractor = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
+    else
+      this->Extractor = std::make_shared<LidarSlam::DenseSpinningSensorKeypointExtractor>();
+  }
+
+  std::shared_ptr<LidarSlam::KeypointExtractor> GetExtractor() const { return Extractor; }
 
 protected:
   vtkSpinningSensorKeypointExtractor();
 
-  std::shared_ptr<LidarSlam::SpinningSensorKeypointExtractor> Extractor;
+  std::shared_ptr<LidarSlam::KeypointExtractor> Extractor;
 
 private:
   vtkSpinningSensorKeypointExtractor(const vtkSpinningSensorKeypointExtractor&) = delete;
   void operator=(const vtkSpinningSensorKeypointExtractor&) = delete;
+
+  LidarSlam::KeypointExtractorMode Mode = LidarSlam::KeypointExtractorMode::SPARSE;
 };
 
 #endif // VTK_SPINNING_SENSOR_KEYPOINT_EXTRACTOR_H

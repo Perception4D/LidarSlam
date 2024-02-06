@@ -102,6 +102,19 @@ enum class EgoMotionMode
   EXTERNAL_OR_MOTION_EXTRAPOLATION = 5
 };
 
+enum KeypointExtractorMode
+{
+  //! Extract keypoints using SpinningSensorKeypointExtractor, convenient for all lidars.
+  SPARSE = 0,
+
+  //! Extract keypoints using DenseSpinningSensorKeypointExtractor, better option for lidars with 64 and 128 lasers.
+  DENSE = 1,
+
+  nbKeypointExtractorModes = 2
+};
+
+static const std::map<KeypointExtractorMode, std::string> KeypointExtractorModeNames = { {SPARSE, "sparse"}, {DENSE, "dense"} };
+
 //------------------------------------------------------------------------------
 namespace Interpolation
 {
@@ -141,6 +154,21 @@ enum class MappingMode
   //! Update map with new keypoints
   //! The points of the initial maps can disappear
   UPDATE = 2,
+};
+
+//------------------------------------------------------------------------------
+//! How to downsample for DSSKE
+enum class SamplingModeDSSKE
+{
+  //! Use 2D downsampling to extract keypoints
+  //! The grid is built using the VertexMap (like patches of an image)
+  PATCH = 0,
+
+  //! Use 3D downsampling to extract keypoints
+  //! The grid is built using the original Scan cloud (like voxel grid in SSKE)
+  VOXEL = 1,
+
+  nbSamplingModes = 2
 };
 
 //------------------------------------------------------------------------------

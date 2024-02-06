@@ -76,7 +76,9 @@
 #include "LidarSlam/Utilities.h"
 #include "LidarSlam/LidarPoint.h"
 #include "LidarSlam/Enums.h"
+#include "LidarSlam/KeypointExtractor.h"
 #include "LidarSlam/SpinningSensorKeypointExtractor.h"
+#include "LidarSlam/DenseSpinningSensorKeypointExtractor.h"
 #include "LidarSlam/KeypointsMatcher.h"
 #include "LidarSlam/LocalOptimizer.h"
 #include "LidarSlam/RollingGrid.h"
@@ -276,7 +278,7 @@ public:
   // Usefull types
   using Point = LidarPoint;
   using PointCloud = pcl::PointCloud<Point>;
-  using KeypointExtractorPtr = std::shared_ptr<SpinningSensorKeypointExtractor>;
+  using KeypointExtractorPtr = std::shared_ptr<KeypointExtractor>;
   using PCStorage = PointCloudStorage<LidarPoint>;
   using Maps = std::map<Keypoint, std::shared_ptr<RollingGrid>>;
 
