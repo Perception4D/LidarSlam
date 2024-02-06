@@ -16,6 +16,8 @@
 // limitations under the License.
 //==============================================================================
 
+#pragma once
+
 #ifndef KEYPOINT_EXTRACTOR_H
 #define KEYPOINT_EXTRACTOR_H
 
@@ -109,8 +111,10 @@ public:
       azimMin += 2 * M_PI;
     this->AzimuthMin = azimMin;
   };
-  GetMacro(AzimuthMin, float)
-
+  float GetAzimuthMin()
+  {
+    return Utils::Rad2Deg(this->AzimuthMin);
+  };
   void SetAzimuthMax(float angle)
   {
     float azimMax = Utils::Deg2Rad(angle);
@@ -118,7 +122,10 @@ public:
       azimMax += 2 * M_PI;
     this->AzimuthMax = azimMax;
   };
-  GetMacro(AzimuthMax, float)
+  float GetAzimuthMax()
+  {
+    return Utils::Rad2Deg(this->AzimuthMax);
+  };
 
   void SetMinBeamSurfaceAngle(float angle)
   {
@@ -224,8 +231,8 @@ protected:
   // Minimum angle between laser beam and surface to consider a point as valid
   float MinBeamSurfaceAngle = 10; // [°]
 
-  float AzimuthMin = 0; // [°]
-  float AzimuthMax = 360; // [°]
+  float AzimuthMin = 0.f; // [rad]
+  float AzimuthMax = 2.f * M_PI; // [rad]
 
   // Threshold upon depth gap in neighborhood to select an edge keypoint
   float EdgeDepthGapThreshold = 0.5;  // [m]

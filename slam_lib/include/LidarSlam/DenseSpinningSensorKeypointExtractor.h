@@ -16,6 +16,8 @@
 // limitations under the License.
 //==============================================================================
 
+#pragma once
+
 #include "Utilities.h"
 #include "LidarPoint.h"
 #include "Enums.h"
