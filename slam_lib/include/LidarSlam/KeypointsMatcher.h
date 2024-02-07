@@ -18,11 +18,11 @@
 
 #pragma once
 
-#include "LidarSlam/KDTreePCLAdaptor.h"
 #include "LidarSlam/CeresCostFunctions.h"
 #include "LidarSlam/LidarPoint.h"
 #include "LidarSlam/Utilities.h"
 #include "LidarSlam/Enums.h"
+#include "LidarSlam/RollingGrid.h"
 
 #include <Eigen/Dense>
 #include <pcl/point_cloud.h>
@@ -36,7 +36,6 @@ class KeypointsMatcher
 public:
   using Point = LidarPoint;
   using PointCloud = pcl::PointCloud<Point>;
-  using KDTree = KDTreePCLAdaptor<Point>;
 
   //! Structure to easily set all matching parameters
   struct Parameters
@@ -138,7 +137,7 @@ public:
   // - Build the corresponding point-to-model distance operator
   // If any of these steps fail, the matching procedure of the current keypoint aborts.
   MatchingResults BuildMatchResiduals(const PointCloud::Ptr& currPoints,
-                                      const KDTree& prevPoints,
+                                      const RollingGridPtr prevPoints,
                                       Keypoint keypointType);
 
   //----------------------------------------------------------------------------
@@ -163,19 +162,19 @@ private:
   CeresTools::Residual BuildResidual(const Eigen::Matrix3d& A, const Eigen::Vector3d& P, const Eigen::Vector3d& X, double weight = 1.);
 
   // Match the current keypoint with its neighborhood in the map / previous
-  MatchingResults::MatchInfo BuildLineMatch(const KDTree& previousEdges, const Point& p);
-  MatchingResults::MatchInfo BuildPlaneMatch(const KDTree& previousPlanes, const Point& p);
-  MatchingResults::MatchInfo BuildBlobMatch(const KDTree& previousBlobs, const Point& p);
+  MatchingResults::MatchInfo BuildLineMatch(const RollingGridPtr previousEdges, const Point& p);
+  MatchingResults::MatchInfo BuildPlaneMatch(const RollingGridPtr previousPlanes, const Point& p);
+  MatchingResults::MatchInfo BuildBlobMatch(const RollingGridPtr previousBlobs, const Point& p);
 
   // Instead of taking the k-nearest neigbors we will take specific neighbor
   // using the particularities of the lidar sensor
-  void GetPerRingLineNeighbors(const KDTree& previousEdges, const double pos[3],
+  void GetPerRingLineNeighbors(const RollingGridPtr previousEdges, const double pos[3],
                                unsigned int knearest, std::vector<int>& validKnnIndices,
                                std::vector<float>& validKnnSqDist) const;
 
   // Instead of taking the k-nearest neighbors we will take specific neighbor
   // using a sample consensus model
-  void GetRansacLineNeighbors(const KDTree& previousEdges, const double pos[3],
+  void GetRansacLineNeighbors(const RollingGridPtr previousEdges, const double pos[3],
                               unsigned int knearest, double maxDistInlier,
                               std::vector<int>& validKnnIndices,
                               std::vector<float>& validKnnSqDist) const;
