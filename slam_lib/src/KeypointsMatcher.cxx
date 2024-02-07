@@ -31,7 +31,7 @@ KeypointsMatcher::KeypointsMatcher(const KeypointsMatcher::Parameters& params,
 
 //-----------------------------------------------------------------------------
 KeypointsMatcher::MatchingResults KeypointsMatcher::BuildMatchResiduals(const PointCloud::Ptr& currPoints,
-                                                                        const KDTree& prevPoints,
+                                                                        const RollingGridPtr prevPoints,
                                                                         Keypoint keypointType)
 {
   // Call the correct point-to-neighborhood method
@@ -57,7 +57,7 @@ KeypointsMatcher::MatchingResults KeypointsMatcher::BuildMatchResiduals(const Po
   matchingResults.Reset(currPoints->size());
 
   // Loop over keypoints and try to build residuals
-  if (!currPoints->empty() && prevPoints.GetInputCloud() && !prevPoints.GetInputCloud()->empty())
+  if (!currPoints->empty() && prevPoints->GetKdTreePcl() && !prevPoints->GetKdTreePcl()->empty())
   {
     #pragma omp parallel for num_threads(this->Params.NbThreads) schedule(guided, 8)
     for (int ptIndex = 0; ptIndex < static_cast<int>(currPoints->size()); ++ptIndex)
@@ -105,7 +105,7 @@ CeresTools::Residual KeypointsMatcher::BuildResidual(const Eigen::Matrix3d& A, c
 }
 
 //-----------------------------------------------------------------------------
-KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildLineMatch(const KDTree& previousEdges, const Point& p)
+KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildLineMatch(const RollingGridPtr previousEdges, const Point& p)
 {
   // At least 2 points are needed to fit a line model
   if (this->Params.EdgeNbNeighbors < 2 || this->Params.EdgeMinNbNeighbors < 2)
@@ -148,7 +148,7 @@ KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildLineMatch(co
   Eigen::Vector3d mean;
   Eigen::Vector3d eigVals;
   Eigen::Matrix3d eigVecs;
-  Utils::ComputeMeanAndPCA(*previousEdges.GetInputCloud(), knnIndices, mean, eigVecs, eigVals);
+  Utils::ComputeMeanAndPCA(*previousEdges->GetKdTreePcl(), knnIndices, mean, eigVecs, eigVals);
 
   // =============================================
   // Compute point-to-line optimization parameters
@@ -189,7 +189,7 @@ KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildLineMatch(co
 }
 
 //-----------------------------------------------------------------------------
-KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildPlaneMatch(const KDTree& previousPlanes, const Point& p)
+KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildPlaneMatch(const RollingGridPtr previousPlanes, const Point& p)
 {
   // At least 3 points are needed to fit a plane model
   if (this->Params.PlaneNbNeighbors < 3)
@@ -208,7 +208,7 @@ KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildPlaneMatch(c
 
   std::vector<int> knnIndices;
   std::vector<float> knnSqDist;
-  unsigned int neighborhoodSize = previousPlanes.KnnSearch(worldPoint.data(), this->Params.PlaneNbNeighbors, knnIndices, knnSqDist);
+  unsigned int neighborhoodSize = previousPlanes->KnnSearch(worldPoint.data(), this->Params.PlaneNbNeighbors, knnIndices, knnSqDist);
 
   // It means that there is not enough keypoints in the neighborhood
   if (neighborhoodSize < this->Params.PlaneNbNeighbors)
@@ -228,7 +228,7 @@ KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildPlaneMatch(c
   Eigen::Vector3d mean;
   Eigen::Vector3d eigVals;
   Eigen::Matrix3d eigVecs;
-  Utils::ComputeMeanAndPCA(*previousPlanes.GetInputCloud(), knnIndices, mean, eigVecs, eigVals);
+  Utils::ComputeMeanAndPCA(*previousPlanes->GetKdTreePcl(), knnIndices, mean, eigVecs, eigVals);
 
   // If the second eigen value is close to the highest one and bigger than the
   // smallest one, it means that the points are distributed along a plane.
@@ -275,7 +275,7 @@ KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildPlaneMatch(c
 }
 
 //-----------------------------------------------------------------------------
-KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildBlobMatch(const KDTree& previousBlobs, const Point& p)
+KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildBlobMatch(const RollingGridPtr previousBlobs, const Point& p)
 {
   // At least 4 points are needed to fit an ellipsoid model
   if (this->Params.BlobNbNeighbors < 4)
@@ -294,7 +294,7 @@ KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildBlobMatch(co
 
   std::vector<int> knnIndices;
   std::vector<float> knnSqDist;
-  unsigned int neighborhoodSize = previousBlobs.KnnSearch(worldPoint.data(), this->Params.BlobNbNeighbors, knnIndices, knnSqDist);
+  unsigned int neighborhoodSize = previousBlobs->KnnSearch(worldPoint.data(), this->Params.BlobNbNeighbors, knnIndices, knnSqDist);
 
   // It means that there is not enough keypoints in the neighborhood
   if (neighborhoodSize < this->Params.BlobNbNeighbors)
@@ -314,7 +314,7 @@ KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildBlobMatch(co
   Eigen::Vector3d mean;
   Eigen::Vector3d eigVals;
   Eigen::Matrix3d eigVecs;
-  Utils::ComputeMeanAndPCA(*previousBlobs.GetInputCloud(), knnIndices, mean, eigVecs, eigVals);
+  Utils::ComputeMeanAndPCA(*previousBlobs->GetKdTreePcl(), knnIndices, mean, eigVecs, eigVals);
 
   // Check PCA structure
   if (eigVals(0) <= 0. || eigVals(1) <= 0.)
@@ -348,20 +348,20 @@ KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildBlobMatch(co
 }
 
 //-----------------------------------------------------------------------------
-void KeypointsMatcher::GetPerRingLineNeighbors(const KDTree& previousEdges, const double pos[3], unsigned int knearest,
+void KeypointsMatcher::GetPerRingLineNeighbors(const RollingGridPtr previousEdges, const double pos[3], unsigned int knearest,
                                                std::vector<int>& validKnnIndices, std::vector<float>& validKnnSqDist) const
 {
   // Get nearest neighbors of the query point
   std::vector<int> knnIndices;
   std::vector<float> knnSqDist;
-  unsigned int neighborhoodSize = previousEdges.KnnSearch(pos, knearest, knnIndices, knnSqDist);
+  unsigned int neighborhoodSize = previousEdges->KnnSearch(pos, knearest, knnIndices, knnSqDist);
 
   // If empty neighborhood, return
   if (neighborhoodSize == 0)
     return;
 
   // Shortcut to keypoints cloud
-  const PointCloud& previousEdgesPoints = *previousEdges.GetInputCloud();
+  const PointCloud& previousEdgesPoints = *previousEdges->GetKdTreePcl();
 
   // Take the closest point
   const Point& closest = previousEdgesPoints[knnIndices[0]];
@@ -407,13 +407,13 @@ void KeypointsMatcher::GetPerRingLineNeighbors(const KDTree& previousEdges, cons
 }
 
 //-----------------------------------------------------------------------------
-void KeypointsMatcher::GetRansacLineNeighbors(const KDTree& previousEdges, const double pos[3], unsigned int knearest, double maxDistInlier,
+void KeypointsMatcher::GetRansacLineNeighbors(const RollingGridPtr previousEdges, const double pos[3], unsigned int knearest, double maxDistInlier,
                                               std::vector<int>& validKnnIndices, std::vector<float>& validKnnSqDist) const
 {
   // Get nearest neighbors of the query point
   std::vector<int> knnIndices;
   std::vector<float> knnSqDist;
-  unsigned int neighborhoodSize = previousEdges.KnnSearch(pos, knearest, knnIndices, knnSqDist);
+  unsigned int neighborhoodSize = previousEdges->KnnSearch(pos, knearest, knnIndices, knnSqDist);
 
   // If neighborhood contains less than 2 neighbors
   // no line can be fitted
@@ -421,7 +421,7 @@ void KeypointsMatcher::GetRansacLineNeighbors(const KDTree& previousEdges, const
     return;
 
   // Shortcut to keypoints cloud
-  const PointCloud& previousEdgesPoints = *previousEdges.GetInputCloud();
+  const PointCloud& previousEdgesPoints = *previousEdges->GetKdTreePcl();
 
   // To avoid square root when performing comparison
   const float squaredMaxDistInlier = maxDistInlier * maxDistInlier;

@@ -173,7 +173,7 @@ float LCPEstimator(PointCloud::ConstPtr cloud,
       // Get nearest neighbor
       int nnIndex;
       float nnSqDist;
-      if (map.second->GetSubMapKdTree().KnnSearch(point.data, 1, &nnIndex, &nnSqDist))
+      if (map.second->KnnSearch(point.data, 1, &nnIndex, &nnSqDist))
       {
         if (!proba && nnSqDist < std::pow(map.second->GetLeafSize(), 2))
         {
