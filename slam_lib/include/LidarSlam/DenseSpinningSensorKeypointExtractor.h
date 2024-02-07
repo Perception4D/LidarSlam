@@ -53,11 +53,8 @@ class DenseSpinningSensorKeypointExtractor : public KeypointExtractor
 {
 public:
 
-  void SetEdgeAngleThreshold(float angle) override {this->EdgeCosAngleThreshold = std::cos(Utils::Deg2Rad(angle));};
-  void SetPlaneAngleThreshold(float angle) override {this->PlaneCosAngleThreshold = std::cos(Utils::Deg2Rad(angle));};
-  // Associated getters
-  float GetEdgeAngleThreshold() const override {return this->EdgeCosAngleThreshold;};
-  float GetPlaneAngleThreshold() const override {return this->PlaneCosAngleThreshold;};
+  void SetEdgeAngleThreshold(float angle) override;
+  void SetPlaneAngleThreshold(float angle) override;
 
   GetMacro(PatchSize, int)
   SetMacro(PatchSize, int)

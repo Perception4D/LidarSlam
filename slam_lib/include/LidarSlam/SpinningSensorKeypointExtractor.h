@@ -44,11 +44,8 @@ public:
   SetMacro(VoxelResolution, float)
 
   // Set EdgeSinAngleThreshold and PlaneSinAngleThreshold from angle in degrees
-  void SetEdgeAngleThreshold(float angle) override {this->EdgeSinAngleThreshold = std::abs(std::sin(Utils::Deg2Rad(angle)));};
-  void SetPlaneAngleThreshold(float angle) override {this->PlaneSinAngleThreshold = std::abs(std::sin(Utils::Deg2Rad(angle)));};
-  // Associated getters
-  float GetEdgeAngleThreshold() const override {return this->EdgeSinAngleThreshold;};
-  float GetPlaneAngleThreshold() const override {return this->PlaneSinAngleThreshold;};
+  void SetEdgeAngleThreshold(float angle) override;
+  void SetPlaneAngleThreshold(float angle) override;
 
   // Extract keypoints from the pointcloud. The key points
   // will be separated in two classes : Edges keypoints which

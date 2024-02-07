@@ -32,6 +32,20 @@ namespace LidarSlam
 {
 
 //-----------------------------------------------------------------------------
+void SpinningSensorKeypointExtractor::SetEdgeAngleThreshold(float angle)
+{
+  this->EdgeAngleThreshold = angle;
+  this->EdgeSinAngleThreshold = std::abs(std::sin(Utils::Deg2Rad(angle)));
+}
+
+//-----------------------------------------------------------------------------
+void SpinningSensorKeypointExtractor::SetPlaneAngleThreshold(float angle)
+{
+  this->PlaneAngleThreshold = angle;
+  this->PlaneSinAngleThreshold = std::abs(std::sin(Utils::Deg2Rad(angle)));
+}
+
+//-----------------------------------------------------------------------------
 SpinningSensorKeypointExtractor::PointCloud::Ptr SpinningSensorKeypointExtractor::GetKeypoints(Keypoint k)
 {
   if (!this->Enabled.count(k) || !this->Enabled[k])
