@@ -58,3 +58,17 @@ void vtkSpinningSensorKeypointExtractor::PrintSelf(std::ostream& os, vtkIndent i
   PrintParameter(NbLaserRings)
   PrintParameter(AzimuthalResolution)
 }
+
+//-----------------------------------------------------------------------------
+void vtkSpinningSensorKeypointExtractor::SetMode(int mode)
+{
+  vtkDebugMacro(<< this->GetClassName() << " (" << this << "): setting mode to " << mode);
+  LidarSlam::KeypointExtractorMode extractMode = static_cast<LidarSlam::KeypointExtractorMode>(mode);
+  if (this->Mode == extractMode)
+    return;
+
+  if (this->Mode != LidarSlam::DENSE)
+    this->Extractor = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
+  else
+    this->Extractor = std::make_shared<LidarSlam::DenseSpinningSensorKeypointExtractor>();
+}
