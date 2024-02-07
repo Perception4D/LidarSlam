@@ -1262,7 +1262,8 @@ Slam::PointCloud::Ptr Slam::GetKeypoints(Keypoint k, bool worldCoordinates)
 
   // Return keypoints in WORLD coordinates
   // If the keypoints have not been transformed yet to WORLD coordinates, perform transformation
-  if (this->CurrentWorldKeypoints.at(k)->header.stamp != this->CurrentUndistortedKeypoints.at(k)->header.stamp)
+  if (this->CurrentWorldKeypoints.at(k)->header.stamp != this->CurrentUndistortedKeypoints.at(k)->header.stamp ||
+      this->CurrentWorldKeypoints.at(k)->header.stamp < 1e-6) // Add check for default stamp
     this->CurrentWorldKeypoints[k] = this->TransformPointCloud(this->CurrentUndistortedKeypoints[k],
                                                                this->Tworld, this->WorldFrameId);
   return this->CurrentWorldKeypoints.at(k);
