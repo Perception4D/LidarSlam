@@ -220,7 +220,6 @@ void Slam::Reset(bool resetLog)
   // Reset point clouds
   this->CurrentFrames.clear();
   this->RegisteredFrame.reset(new PointCloud);
-  this->CurrentFrames.emplace_back(new PointCloud);
   for (auto k : this->UsableKeypoints)
   {
     this->CurrentRawKeypoints[k].reset(new PointCloud);
@@ -1292,7 +1291,7 @@ bool Slam::CheckFrames(const std::vector<PointCloud::Ptr>& frames)
   }
 
   // Skip frames if it has the same timestamp as previous ones (will induce problems in extrapolation)
-  if (frames[0]->header.stamp == this->CurrentFrames[0]->header.stamp)
+  if (!this->CurrentFrames.empty() && frames[0]->header.stamp == this->CurrentFrames.front()->header.stamp)
   {
     PRINT_ERROR("SLAM frames have the same timestamp (" << frames[0]->header.stamp << ") as previous ones : frames ignored.");
     return false;
