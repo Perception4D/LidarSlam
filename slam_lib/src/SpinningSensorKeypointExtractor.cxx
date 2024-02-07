@@ -452,10 +452,8 @@ void SpinningSensorKeypointExtractor::ComputePlanes()
 void SpinningSensorKeypointExtractor::ComputeEdges()
 {
   this->AddKptsUsingCriterion(Keypoint::EDGE, this->DepthGap, this->EdgeDepthGapThreshold, false, 1);
-  if (this->Keypoints[Keypoint::EDGE].Size() < this->MaxPoints)
-    this->AddKptsUsingCriterion(Keypoint::EDGE, this->Angles, this->EdgeSinAngleThreshold, false, 2);
-  if (this->Keypoints[Keypoint::EDGE].Size() < this->MaxPoints)
-    this->AddKptsUsingCriterion(Keypoint::EDGE, this->SpaceGap, this->EdgeDepthGapThreshold, false, 3);
+  this->AddKptsUsingCriterion(Keypoint::EDGE, this->Angles, this->EdgeSinAngleThreshold, false, 2);
+  this->AddKptsUsingCriterion(Keypoint::EDGE, this->SpaceGap, this->EdgeDepthGapThreshold, false, 3);
 }
 
 //-----------------------------------------------------------------------------
