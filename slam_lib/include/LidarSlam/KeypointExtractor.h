@@ -18,9 +18,6 @@
 
 #pragma once
 
-#ifndef KEYPOINT_EXTRACTOR_H
-#define KEYPOINT_EXTRACTOR_H
-
 #include "Utilities.h"
 #include "LidarPoint.h"
 #include "Enums.h"
@@ -268,5 +265,3 @@ protected:
 
 };
 } // end of namespace LidarSlam
-
-#endif // KEYPOINT_EXTRACTOR_H
