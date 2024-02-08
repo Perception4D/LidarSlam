@@ -434,7 +434,11 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
   auto registeredPoints = vtkSmartPointer<vtkPoints>::New();
   registeredPoints->SetNumberOfPoints(nbPoints);
   slamFrame->SetPoints(registeredPoints);
-  if (allPointsAreValid)
+  if (worldFrame->empty())
+  {
+    vtkWarningMacro(<< "Registered frame is empty");
+  }
+  else if (allPointsAreValid)
   {
     for (vtkIdType i = 0; i < nbPoints; i++)
       registeredPoints->SetPoint(i, worldFrame->at(i).data);

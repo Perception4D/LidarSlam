@@ -33,6 +33,7 @@ vtkSpinningSensorKeypointExtractor::vtkSpinningSensorKeypointExtractor()
     this->Extractor = std::make_shared<LidarSlam::DenseSpinningSensorKeypointExtractor>();
 }
 
+//-----------------------------------------------------------------------------
 void vtkSpinningSensorKeypointExtractor::PrintSelf(std::ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
@@ -49,14 +50,25 @@ void vtkSpinningSensorKeypointExtractor::PrintSelf(std::ostream& os, vtkIndent i
   PrintParameter(MinDistanceToSensor)
   PrintParameter(AzimuthMin)
   PrintParameter(AzimuthMax)
-
   PrintParameter(PlaneAngleThreshold)
-
   PrintParameter(EdgeAngleThreshold)
   PrintParameter(EdgeDepthGapThreshold)
   PrintParameter(EdgeIntensityGapThreshold)
   PrintParameter(EdgeNbGapPoints)
-
   PrintParameter(NbLaserRings)
   PrintParameter(AzimuthalResolution)
+}
+
+//-----------------------------------------------------------------------------
+void vtkSpinningSensorKeypointExtractor::SetMode(int mode)
+{
+  vtkDebugMacro(<< this->GetClassName() << " (" << this << "): setting mode to " << mode);
+  LidarSlam::KeypointExtractorMode extractMode = static_cast<LidarSlam::KeypointExtractorMode>(mode);
+  if (this->Mode == extractMode)
+    return;
+
+  if (this->Mode != LidarSlam::DENSE)
+    this->Extractor = std::make_shared<LidarSlam::SpinningSensorKeypointExtractor>();
+  else
+    this->Extractor = std::make_shared<LidarSlam::DenseSpinningSensorKeypointExtractor>();
 }
