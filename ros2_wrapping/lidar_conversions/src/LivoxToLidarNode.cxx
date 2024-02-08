@@ -67,9 +67,6 @@ void LivoxToLidarNode::PointCloud2Callback(const Pcl2_msg& msg_received)
   // Copy pointcloud metadata
   Utils::CopyPointCloudMetadata(cloudL, cloudS);
 
-  // Helper to estimate frameAdvancement in case time field is invalid
-  Utils::SpinningFrameAdvancementEstimator frameAdvancementEstimator;
-
   // Build SLAM pointcloud
   double prevTime = -0.1;
   for (const PointL& livoxPoint : cloudL)
