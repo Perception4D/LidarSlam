@@ -32,6 +32,20 @@ namespace LidarSlam
 {
 
 //-----------------------------------------------------------------------------
+void SpinningSensorKeypointExtractor::SetEdgeAngleThreshold(float angle)
+{
+  this->EdgeAngleThreshold = angle;
+  this->EdgeSinAngleThreshold = std::abs(std::sin(Utils::Deg2Rad(angle)));
+}
+
+//-----------------------------------------------------------------------------
+void SpinningSensorKeypointExtractor::SetPlaneAngleThreshold(float angle)
+{
+  this->PlaneAngleThreshold = angle;
+  this->PlaneSinAngleThreshold = std::abs(std::sin(Utils::Deg2Rad(angle)));
+}
+
+//-----------------------------------------------------------------------------
 SpinningSensorKeypointExtractor::PointCloud::Ptr SpinningSensorKeypointExtractor::GetKeypoints(Keypoint k)
 {
   if (!this->Enabled.count(k) || !this->Enabled[k])
@@ -438,10 +452,8 @@ void SpinningSensorKeypointExtractor::ComputePlanes()
 void SpinningSensorKeypointExtractor::ComputeEdges()
 {
   this->AddKptsUsingCriterion(Keypoint::EDGE, this->DepthGap, this->EdgeDepthGapThreshold, false, 1);
-  if (this->Keypoints[Keypoint::EDGE].Size() < this->MaxPoints)
-    this->AddKptsUsingCriterion(Keypoint::EDGE, this->Angles, this->EdgeSinAngleThreshold, false, 2);
-  if (this->Keypoints[Keypoint::EDGE].Size() < this->MaxPoints)
-    this->AddKptsUsingCriterion(Keypoint::EDGE, this->SpaceGap, this->EdgeDepthGapThreshold, false, 3);
+  this->AddKptsUsingCriterion(Keypoint::EDGE, this->Angles, this->EdgeSinAngleThreshold, false, 2);
+  this->AddKptsUsingCriterion(Keypoint::EDGE, this->SpaceGap, this->EdgeDepthGapThreshold, false, 3);
 }
 
 //-----------------------------------------------------------------------------

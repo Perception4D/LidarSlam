@@ -18,9 +18,6 @@
 
 #pragma once
 
-#ifndef KEYPOINT_EXTRACTOR_H
-#define KEYPOINT_EXTRACTOR_H
-
 #include "Utilities.h"
 #include "LidarPoint.h"
 #include "Enums.h"
@@ -102,6 +99,12 @@ public:
   GetMacro(VoxelResolution, float)
   SetMacro(VoxelResolution, float)
 
+  GetMacro(EdgeAngleThreshold, float)
+  virtual void SetEdgeAngleThreshold (float thresh) { EdgeAngleThreshold = thresh; }
+
+  GetMacro(PlaneAngleThreshold, float)
+  virtual void SetPlaneAngleThreshold (float thresh) { PlaneAngleThreshold = thresh; }
+
   GetMacro(NbLaserRings, unsigned int)
 
   void SetAzimuthMin(float angle)
@@ -132,13 +135,6 @@ public:
     this->MinBeamSurfaceAngle = std::cos(Utils::Deg2Rad(angle));
   };
   GetMacro(MinBeamSurfaceAngle, float)
-
-  // Methods to set sin or cos threshold, depending on the extractor
-  virtual void SetEdgeAngleThreshold(float angle) = 0;
-  virtual void SetPlaneAngleThreshold(float angle) = 0;
-  // Associated getters
-  virtual float GetEdgeAngleThreshold() const = 0;
-  virtual float GetPlaneAngleThreshold() const = 0;
 
   // Select the keypoint types to extract
   // This function resets the member map "Enabled"
@@ -245,7 +241,11 @@ protected:
 
   // Size of a voxel used to downsample the keypoints
   // It corresponds approx to the mean distance between closest neighbors in the output keypoints cloud.
-  float VoxelResolution = 0.1; // [m]
+  float VoxelResolution = 0.1f; // [m]
+
+  // Angle thresholds to consider a point is a plane or an edge
+  float EdgeAngleThreshold = 120.f;  // [°]
+  float PlaneAngleThreshold = 150.f; // [°]
 
   // ---------------------------------------------------------------------------
   //   Internal variables
@@ -265,5 +265,3 @@ protected:
 
 };
 } // end of namespace LidarSlam
-
-#endif // KEYPOINT_EXTRACTOR_H
