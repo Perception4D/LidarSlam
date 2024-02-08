@@ -12,6 +12,10 @@ set(subdir_sources
   sqButtonPausePropertyWidget.h
   sqInitializeDialogReaction.cxx
   sqInitializeDialogReaction.h
+  sqPresetDialog.cxx
+  sqPresetDialog.h
+  sqPresetDialogReaction.cxx
+  sqPresetDialogReaction.h
   sqSlamManager.cxx
   sqSlamManager.h
   sqSlamStarter.cxx

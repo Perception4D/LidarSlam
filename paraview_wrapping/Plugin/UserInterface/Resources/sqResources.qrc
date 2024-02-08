@@ -1,5 +1,17 @@
 <RCC>
     <qresource prefix="/sqResources">
+        <file>Presets/Environment/City.xml</file>
+        <file>Presets/Environment/Forest.xml</file>
+        <file>Presets/Environment/Indoor.xml</file>
+        <file>Presets/Environment/Tunnel.xml</file>
+        <file>Presets/LidarModel/VLP16.xml</file>
+        <file>Presets/LidarModel/VLP32.xml</file>
+        <file>Presets/LidarModel/VLS128.xml</file>
+        <file>Presets/LidarModel/Mid360.xml</file>
+        <file>Presets/LidarModel/HAP.xml</file>
+        <file>Presets/LidarModel/C16.xml</file>
+        <file>Presets/LidarModel/C32.xml</file>
+        <file>Presets/LidarModel/PandarXT32.xml</file>
         <file>Icons/sqAdd.svg</file>
         <file>Icons/sqAddExternalSensor.svg</file>
         <file>Icons/sqInitialize.svg</file>

@@ -60,18 +60,26 @@
         </column>
         <item>
          <property name="text">
-          <string>Standard Presets</string>
+          <string>Environment</string>
          </property>
          <property name="flags">
-          <set>ItemIsDragEnabled|ItemIsDropEnabled|ItemIsUserCheckable|ItemIsEnabled</set>
+          <set>ItemIsDragEnabled|ItemIsDropEnabled|ItemIsEnabled</set>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Custom Presets</string>
+          <string>LiDAR Model</string>
          </property>
          <property name="flags">
-          <set>ItemIsDragEnabled|ItemIsDropEnabled|ItemIsUserCheckable|ItemIsEnabled</set>
+          <set>ItemIsDragEnabled|ItemIsDropEnabled|ItemIsEnabled</set>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>User Custom</string>
+         </property>
+         <property name="flags">
+          <set>ItemIsDragEnabled|ItemIsDropEnabled|ItemIsEnabled</set>
          </property>
         </item>
        </widget>

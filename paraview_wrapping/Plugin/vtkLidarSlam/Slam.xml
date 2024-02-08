@@ -902,6 +902,7 @@
           with *EigenValue2 >= EigenValue1 >= EigenValue0*
 
           The thickness of the plane can be checked with the max model error.
+          Note : eigenvalues have m^2 unit.
         </Documentation>
         <Hints>
           <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Use planes" value="1" />
@@ -1093,6 +1094,7 @@
           with *EigenValue2 >= EigenValue1 >= EigenValue0*
 
           The thickness of the plane can be checked with the max model error.
+          Note : eigenvalues have m^2 unit.
         </Documentation>
         <Hints>
           <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Use planes" value="1" />
@@ -2370,6 +2372,7 @@
           with *EigenValue2 >= EigenValue1 >= EigenValue0*
 
           The thickness of the plane can be checked with the max model error.
+          Note : eigenvalues have m^2 unit.
         </Documentation>
         <Hints>
           <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Use planes" value="1" />
