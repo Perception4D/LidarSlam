@@ -139,7 +139,8 @@ external_sensors:
     saturation_distance: 0.5 # [m] Spatial distance threshold to discard the measurement in SLAM optimization
     reference: [0., 0., 0.]  # [m, m, m] Reference point for the odometry measure
                              # Do not set if relative mode is true, [0.,0.,0.] deactivates the feature
-    direction: [0., 0., 0.]  # [m, m, m] Direction on which the odometry is measured
+    direction: [0., 0., 0.]  # [m, m, m] Direction on which the odometry is measured in world frame
+                                 # This applies only if the direction is fixed in time, i.e. the trajectory is a straight line
                              # [0.,0.,0.] deactivates the feature: the residual will be 1D
   imu:
     enable: false            # [bool] To receive and use a imu sensor

@@ -171,15 +171,15 @@ At any time, the SLAM state can be reset meaning the maps, the trajectory and th
 ##### Map update modes
 
 At any time, commands `lidar_slam/SlamCommand/DISABLE_SLAM_MAP_UPDATE`, `lidar_slam/SlamCommand/ENABLE_SLAM_MAP_EXPANSION` and `lidar_slam/SlamCommand/ENABLE_SLAM_MAP_UPDATE` can be published to '*slam_command*' topic to change SLAM map update mode.
-- `DISABLE_SLAM_MAP_UPDATE` : when an initial map is loaded, it is kept untouched through the SLAM process.
-- `ENABLE_SLAM_MAP_EXPANSION` : when an initial map is loaded, its points are remained untouched but new points can be added if they lay in an unexplored area
-- `ENABLE_SLAM_MAP_UPDATE` : the map is updated at any time
+- 8 : `DISABLE_SLAM_MAP_UPDATE` : when an initial map is loaded, it is kept untouched through the SLAM process.
+- 9 : `ENABLE_SLAM_MAP_EXPANSION` : when an initial map is loaded, its points are remained untouched but new points can be added if they lay in an unexplored area
+- 10 : `ENABLE_SLAM_MAP_UPDATE` : the map is updated at any time
 
 _NOTE_ : if no initial map is loaded, ENABLE_SLAM_MAP_EXPANSION and ENABLE_SLAM_MAP_UPDATE will have the same effect.
 
-Example :
+Example to disable map update:
 ```bash
-rostopic pub -1 /slam_command lidar_slam/SlamCommand "command: 9"
+rostopic pub -1 /slam_command lidar_slam/SlamCommand "command: 8"
 ```
 
 ##### Reset the trajectory
@@ -494,7 +494,7 @@ Camera constraint added
 
 ### Optional wheel encoder use
 
-If wheel encoder use is enabled, *LidarSlamNode* subscribes to odometer messages (std::msgs::Float64) in the topic called "wheel_odom".
+If wheel encoder is enabled (wheel_encoder/enable: true), *LidarSlamNode* subscribes to odometer messages (std::msgs::Float64) in the topic called **wheel_odom**.
 The wheel encoder measurement can be used in the slam front end optimization to solve some degree of liberty (e.g. in corridors). The calibration (i.e. the transform between the frame **wheel** and the tracking frame which is **base_link** by default) must be sent to the TF tree to be able to receive any data.
 
 ***WARNING***: As the message does not contain time, the message reception time is used to synchronize with LiDAR data. Therefore, *use_header_time* must be turned to false.
