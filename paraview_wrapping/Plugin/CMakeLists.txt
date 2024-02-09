@@ -1,13 +1,27 @@
 set(interfaces)
 set(sources)
+set(ui_files
+  UserInterface/Resources/UI/sqPresetDialog.ui
+  UserInterface/Resources/UI/sqSlamToolbar.ui
+)
 
 set(subdir_sources
+  sqAddSlamReaction.cxx
+  sqAddSlamReaction.h
   sqButtonPausePropertyWidget.cxx
   sqButtonPausePropertyWidget.h
+  sqInitializeDialogReaction.cxx
+  sqInitializeDialogReaction.h
   sqSlamManager.cxx
   sqSlamManager.h
   sqSlamStarter.cxx
   sqSlamStarter.h
+  sqSlamToolbar.cxx
+  sqSlamToolbar.h
+  sqSubsetPropertiesDialog.cxx
+  sqSubsetPropertiesDialog.h
+  sqTriggerSlamCommandReaction.cxx
+  sqTriggerSlamCommandReaction.h
 )
 
 foreach(filename ${subdir_sources})
@@ -33,14 +47,28 @@ paraview_plugin_add_auto_start(
   INTERFACES autostart_interface
   SOURCES autostart_sources)
 
+paraview_plugin_add_toolbar(
+  CLASS_NAME sqSlamToolbar
+  INTERFACES toolbar_interfaces
+  SOURCES toolbar_sources)
+
 list(APPEND interfaces
   ${autostart_interface}
   ${pause_widget_interfaces}
+  ${toolbar_interfaces}
 )
 list(APPEND sources
   ${autostart_sources}
   ${pause_widget_sources}
+  ${toolbar_sources}
 )
+
+set(qrc_files
+  UserInterface/Resources/sqResources.qrc
+)
+
+list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS
+  "${CMAKE_CURRENT_SOURCE_DIR}/UserInterface/Resources/UI")
 
 # Create Plugin
 set(CMAKE_PROJECT_VERSION ${LidarSlam_VERSION})
@@ -48,6 +76,8 @@ paraview_add_plugin(LidarSlamPlugin
   REQUIRED_ON_CLIENT
   REQUIRED_ON_SERVER
   VERSION ${CMAKE_PROJECT_VERSION}
+  UI_RESOURCES ${qrc_files}
+  UI_FILES ${ui_files}
   UI_INTERFACES ${interfaces}
   SOURCES ${sources}
   MODULES

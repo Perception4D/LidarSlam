@@ -2026,6 +2026,9 @@
 
            (1) Teaserpp: look for similar structure as current frame in previous map using teaserpp .
         </Documentation>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Use loop closure constraint" value="1" />
+        </Hints>
       </IntVectorProperty>
 
       <StringVectorProperty name="Load loop indices"
@@ -2049,7 +2052,12 @@
           with a header "queryIdx,revisitedIdx"
         </Documentation>
         <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="0" />
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="and">
+              <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="0" />
+              <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Use loop closure constraint" value="1" />
+            </Expression>
+          </PropertyWidgetDecorator>
         </Hints>
       </StringVectorProperty>
 
@@ -2061,7 +2069,12 @@
           Detect loop closure for current frame.
         </Documentation>
         <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="1" />
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="and">
+            <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="1" />
+              <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Use loop closure constraint" value="1" />
+            </Expression>
+          </PropertyWidgetDecorator>
         </Hints>
       </Property>
 
