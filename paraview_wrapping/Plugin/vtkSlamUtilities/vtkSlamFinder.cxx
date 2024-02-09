@@ -24,26 +24,24 @@
 
 #include <cstring>
 
-namespace
-{
-constexpr const char* SLAM_XML_GROUP = "filters";
-constexpr const char* SLAM_XML_NAME = "SlamOnline";
-};
-
 //----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkSlamFinder);
 
 //----------------------------------------------------------------------------
 bool vtkSlamFinder::isSlamFilter(vtkSMProxy* proxy)
 {
+  if (!proxy)
+  {
+    return false;
+  }
   return vtkSlamFinder::isSlamFilter(proxy->GetXMLGroup(), proxy->GetXMLName());
 }
 
 //----------------------------------------------------------------------------
 bool vtkSlamFinder::isSlamFilter(const char* smXMLGroup, const char* smXMLName)
 {
-  return std::strcmp(smXMLGroup, ::SLAM_XML_GROUP) == 0 &&
-    std::strcmp(smXMLName, ::SLAM_XML_NAME) == 0;
+  return std::strcmp(smXMLGroup, vtkSlamFinder::SLAM_XML_GROUP()) == 0 &&
+    std::strcmp(smXMLName, vtkSlamFinder::SLAM_XML_NAME()) == 0;
 }
 
 //----------------------------------------------------------------------------
