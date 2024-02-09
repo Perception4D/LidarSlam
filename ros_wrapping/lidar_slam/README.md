@@ -501,9 +501,11 @@ The wheel encoder measurement can be used in the slam front end optimization to 
 
 ***WARNING***: Remember to set *max_measures*, *time_threshold* to convenient values to be able to receive the measurements.
 
-Two types of constraint are allowed : relative/from reference. The relative constraint ensures the distance provided by the wheel encoder between two successive frames is the norm of the translation between those frames. For now, no direction information is used. This means that in a corridor, if the distances are small, the translation might be applied in one direction or the other.
+Two types of constraint are allowed : relative/from reference.
 
-The other constraint allows to notify a distance from a point. This can be useful for a laser measuring a distance from a target or if a wire is fixed to tracking frame with a wheel encoder to measure it. The constraint will ensure that at each new frame the translation norm from the reference point is exactly the distance measurement. A parameter allows to set the reference point relatively to the wheel encoder in the wheel encoder frame. If no reference is set but the relative mode is disabled, the first couple pose/wheel encoder measurement is used to define the reference point.
+* The relative constraint ensures the distance provided by the wheel encoder between two successive frames is the norm of the translation between those frames. In a corridor, if the distances are small, the translation might be applied in one direction or the other and the trajectory might faultly hover. Therefore, in a straight line trajectory case, a motion *direction* (3D) can be set to help the optimization choose a side. This *direction* must be represented in the world coordinates.
+
+* The other constraint allows to notify a distance from a point. This can be useful for a laser measuring a distance from a target or if a wire is fixed to tracking frame with a wheel encoder to measure it. The constraint will ensure that at each new frame the translation norm from the reference point is exactly the distance measurement. A parameter allows to set the reference point relatively to the wheel encoder in the wheel encoder frame. If no reference is set but the relative mode is disabled, the first couple pose/wheel encoder measurement is used to define the reference point.
 
 A weight is parameterizable for the new wheel encoder constraint. It represents the impact of the wheel encoder constraint with respect to all the points distance from the SLAM optimization. If 0., the feature is disabled.
 
