@@ -213,15 +213,15 @@ At any time, the SLAM state can be reset meaning the maps, the trajectory and th
 ##### Map update modes
 
 At any time, commands `lidar_slam/msg/SlamCommand/DISABLE_SLAM_MAP_UPDATE`, `lidar_slam/msg/SlamCommand/ENABLE_SLAM_MAP_EXPANSION` and `lidar_slam/msg/SlamCommand/ENABLE_SLAM_MAP_UPDATE` can be published to '*slam_command*' topic as *lidar_slam/msg/SlamCommand* to change SLAM map update mode.
-- `DISABLE_SLAM_MAP_UPDATE` : when an initial map is loaded, it is kept untouched through the SLAM process.
-- `ENABLE_SLAM_MAP_EXPANSION` : when an initial map is loaded, its points are remained untouched but new points can be added if they lay in an unexplored area
-- `ENABLE_SLAM_MAP_UPDATE` : the map is updated at any time
+- 8 :`DISABLE_SLAM_MAP_UPDATE` : when an initial map is loaded, it is kept untouched through the SLAM process.
+- 9 : `ENABLE_SLAM_MAP_EXPANSION` : when an initial map is loaded, its points are remained untouched but new points can be added if they lay in an unexplored area
+- 10 : `ENABLE_SLAM_MAP_UPDATE` : the map is updated at any time
 
 _NOTE_ : if no initial map is loaded, ENABLE_SLAM_MAP_EXPANSION and ENABLE_SLAM_MAP_UPDATE will have the same effect.
 
-Example :
+Example to disable map update:
 ```bash
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 9"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 8"
 ```
 
 ##### Reset the trajectory
@@ -535,17 +535,18 @@ Camera constraint added
 
 ### Optional wheel encoder use
 
-If wheel encoder use is enabled, *LidarSlamNode* subscribes to odometer messages (std::msgs::Float64) in the topic called "wheel_odom".
+If wheel encoder is enabled (wheel_encoder/enable: true), *LidarSlamNode* subscribes to odometer messages (std::msgs::Float64) in the topic called **wheel_odom**.
 The wheel encoder measurement can be used in the slam front end optimization to solve some degree of liberty (e.g. in corridors). The calibration (i.e. the transform between the frame **wheel** and the tracking frame which is **base_link** by default) must be sent to the TF tree to be able to receive any data.
-
 
 ***WARNING***: As the message does not contain time, the message reception time is used to synchronize with LiDAR data. Therefore, *use_header_time* must be turned to false.
 
 ***WARNING***: Remember to set *max_measures*, *time_threshold* to convenient values to be able to receive the measurements.
 
-Two types of constraint are allowed : relative/from reference. The relative constraint ensures the distance provided by the wheel encoder between two successive frames is the norm of the translation between those frames. For now, no direction information is used. This means that in a corridor, if the distances are small, the translation might be applied in one direction or the other.
+Two types of constraint are allowed : *relative*/*from reference*.
 
-The other constraint allows to notify a distance from a point. This can be useful for a laser measuring a distance from a target or if a wire is fixed to tracking frame with a wheel encoder to measure it. The constraint will ensure that at each new frame the translation norm from the reference point is exactly the distance measurement. A parameter allows to set the reference point relatively to the wheel encoder in the wheel encoder frame. If no reference is set but the relative mode is disabled, the first couple pose/wheel encoder measurement is used to define the reference point.
+* The relative constraint ensures the distance provided by the wheel encoder between two successive frames is the norm of the translation between those frames. In a corridor, if the distances are small, the translation might be applied in one direction or the other and the trajectory might faultly hover. Therefore, in a straight line trajectory case, a motion *direction* (3D) can be set to help the optimization choose a side. This *direction* must be represented in World frame.
+
+* The other constraint allows to notify a distance from a point. This can be useful for a laser measuring a distance from a target or if a wire is fixed to tracking frame with a wheel encoder to measure it. The constraint will ensure that at each new frame the translation norm from the reference point is exactly the distance measurement. A parameter allows to set the reference point relatively to the wheel encoder in the wheel encoder frame. If no reference is set but the relative mode is disabled, the first couple pose/wheel encoder measurement is used to define the reference point.
 
 A weight is parameterizable for the new wheel encoder constraint. It represents the impact of the wheel encoder constraint with respect to all the points distance from the SLAM optimization. If 0., the feature is disabled.
 
