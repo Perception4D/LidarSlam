@@ -1,11 +1,16 @@
 set(interfaces)
 set(sources)
 set(ui_files
+  UserInterface/Resources/UI/sqAboutSlamDialog.ui
   UserInterface/Resources/UI/sqPresetDialog.ui
   UserInterface/Resources/UI/sqSlamToolbar.ui
 )
 
 set(subdir_sources
+  sqAboutSlamAction.cxx
+  sqAboutSlamAction.h
+  sqAboutSlamDialog.cxx
+  sqAboutSlamDialog.h
   sqAddSlamReaction.cxx
   sqAddSlamReaction.h
   sqButtonPausePropertyWidget.cxx
@@ -44,6 +49,13 @@ paraview_plugin_add_property_widget(
   INTERFACES pause_widget_interfaces
   SOURCES  pause_widget_sources)
 
+paraview_plugin_add_action_group(
+  CLASS_NAME sqAboutSlamAction
+  GROUP_NAME "MenuBar/Help"
+  INTERFACES about_action_interfaces
+  SOURCES about_action_sources
+)
+
 paraview_plugin_add_auto_start(
   CLASS_NAME sqSlamStarter
   STARTUP onStartup
@@ -59,11 +71,13 @@ paraview_plugin_add_toolbar(
 list(APPEND interfaces
   ${autostart_interface}
   ${pause_widget_interfaces}
+  ${about_action_interfaces}
   ${toolbar_interfaces}
 )
 list(APPEND sources
   ${autostart_sources}
   ${pause_widget_sources}
+  ${about_action_sources}
   ${toolbar_sources}
 )
 
