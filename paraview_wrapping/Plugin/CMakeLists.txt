@@ -2,6 +2,8 @@ set(interfaces)
 set(sources)
 
 set(subdir_sources
+  sqButtonPausePropertyWidget.cxx
+  sqButtonPausePropertyWidget.h
   sqSlamManager.cxx
   sqSlamManager.h
   sqSlamStarter.cxx
@@ -17,16 +19,28 @@ foreach(filename ${subdir_sources})
   list(APPEND sources "${filename}")
 endforeach()
 
+paraview_plugin_add_property_widget(
+  KIND WIDGET
+  TYPE "command_pause_button"
+  CLASS_NAME sqButtonPausePropertyWidget
+  INTERFACES pause_widget_interfaces
+  SOURCES  pause_widget_sources)
+
 paraview_plugin_add_auto_start(
   CLASS_NAME sqSlamStarter
   STARTUP onStartup
   SHUTDOWN onShutdown
   INTERFACES autostart_interface
   SOURCES autostart_sources)
+
 list(APPEND interfaces
-  ${autostart_interface})
+  ${autostart_interface}
+  ${pause_widget_interfaces}
+)
 list(APPEND sources
-  ${autostart_sources})
+  ${autostart_sources}
+  ${pause_widget_sources}
+)
 
 # Create Plugin
 set(CMAKE_PROJECT_VERSION ${LidarSlam_VERSION})
