@@ -172,7 +172,7 @@ void vtkSlam::Reset()
 //-----------------------------------------------------------------------------
 void vtkSlam::RebuildMaps()
 {
-  this->SlamAlgo->UpdateMaps(this->ResetMaps);
+  this->SlamAlgo->UpdateMaps();
   PRINT_INFO("Rebuild maps finished.")
 
   // Refresh view
@@ -211,10 +211,6 @@ void vtkSlam::DetectLoop()
   }
 
   this->SetLoopDetected(true);
-  // Store detected loop closure indices
-  // Note: For now, detected loop indices are stored as long as LoopDetected is ture.
-  // A popUp window, which requires users to confirm the loop, is going to be added.
-  this->AddLoopDetection();
 
   // Refresh view
   this->ParametersModificationTime.Modified();
@@ -2067,6 +2063,16 @@ void vtkSlam::SetUsePoseGraph(bool usePoseGraph)
       vtkWarningMacro(<< "Pose graph is required but the logging timeout is null : "
                          "no pose can be used to build the graph, please increase the logging timeout.");
   }
+}
+
+//-----------------------------------------------------------------------------
+double* vtkSlam::GetLoopClosurePosition()
+{
+  Eigen::Vector3d revistedPosition = this->SlamAlgo->GetStatePosition(this->LoopIdx.RevisitedIdx);
+  this->LastLoopClosurePosition[0] = revistedPosition.x();
+  this->LastLoopClosurePosition[1] = revistedPosition.y();
+  this->LastLoopClosurePosition[2] = revistedPosition.z();
+  return this->LastLoopClosurePosition;
 }
 
 //-----------------------------------------------------------------------------

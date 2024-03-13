@@ -3,6 +3,7 @@
 if (@SLAM_PARAVIEW_PLUGIN@)
   # Workaround to avoid circular dependency between LidarSlamLib and LidarSlamPlugin
   add_library(vtkLidarSlam SHARED IMPORTED)
+  add_library(vtkSlamUtilities SHARED IMPORTED)
 endif ()
 
 include("${CMAKE_CURRENT_LIST_DIR}/LidarSlamLib-targets.cmake")

@@ -82,18 +82,6 @@
         </Documentation>
       </Property>
 
-      <IntVectorProperty name="Empty first"
-                         command="SetResetMaps"
-                         number_of_elements="1"
-                         default_values="0"
-                         panel_visibility="advanced">
-        <BooleanDomain name="bool" />
-        <Documentation>
-          If enabled, reset maps before rebuilding them with keypoints available in LogStates.
-          Otherwise, only replace recent points with LogStates keypoints.
-        </Documentation>
-      </IntVectorProperty>
-
       <Property name="Rebuild maps"
                 command="RebuildMaps"
                 panel_visibility="advanced">
@@ -434,7 +422,6 @@
 
       <PropertyGroup label="Filter inputs/outputs options">
         <Property name="Reset state" />
-        <Property name="Empty first" />
         <Property name="Rebuild maps" />
         <Property name="Clear maps" />
         <Property name="External sensors data file" />
@@ -1935,6 +1922,49 @@
       </PropertyGroup>
 
       <!-- ============================ Loop Closure ============================ -->
+
+      <IntVectorProperty name="LoopDetected"
+                         command="SetLoopDetected"
+                         number_of_elements="1"
+                         default_values="0"
+                         panel_visibility="never">
+        <BooleanDomain name="bool" />
+      </IntVectorProperty>
+
+      <IntVectorProperty information_only="1"
+                         name="LoopDetectedInfo"
+                         default_values="0"
+                         command="GetLoopDetected" >
+        <SimpleIntInformationHelper />
+      </IntVectorProperty>
+
+      <DoubleVectorProperty information_only="1"
+                            name="LoopClosurePositionInfo"
+                            number_of_elements="3"
+                            default_values="0 0 0"
+                            command="GetLoopClosurePosition" >
+        <SimpleDoubleInformationHelper />
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty information_only="1"
+                            name="LoopDetectionSizeInfo"
+                            number_of_elements="1"
+                            default_values="5"
+                            command="GetLoopRevisitedMapEndRange" >
+        <SimpleDoubleInformationHelper />
+      </DoubleVectorProperty>
+
+      <Property name="AddLoopDetectionButton"
+                command="AddLoopDetection"
+                panel_widget="command_button"
+                panel_visibility="never" />
+
+      <IntVectorProperty information_only="1"
+                         name="LoopDetectorInfo"
+                         default_values="0"
+                         command="GetLoopDetector" >
+        <SimpleIntInformationHelper />
+      </IntVectorProperty>
 
       <IntVectorProperty name="Loop closure detector"
                          command="SetLoopDetector"

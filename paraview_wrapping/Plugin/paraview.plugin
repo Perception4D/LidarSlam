@@ -14,3 +14,4 @@ REQUIRES_MODULES
   VTK::CommonTransforms
   VTK::FiltersGeneral
   VTK::FiltersSources
+  ParaView::pqComponents

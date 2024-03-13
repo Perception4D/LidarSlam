@@ -657,7 +657,7 @@ void Slam::UpdateMaps(bool resetMaps)
     this->ClearLocalMaps();
   else
   {
-    // Remove points older than the first logged state
+    // Keep points older than the first logged state and clear points newer
     for (auto k : this->UsableKeypoints)
       this->LocalMaps[k]->ClearPoints(this->LogStates.front().Time, false);
   }
@@ -1896,6 +1896,13 @@ std::vector<LidarState> Slam::GetLastStates(double freq)
   lastStates.emplace_back(last);
 
   return lastStates;
+}
+
+//-----------------------------------------------------------------------------
+Eigen::Vector3d Slam::GetStatePosition(const unsigned int stateIndex)
+{
+  auto itState = this->GetKeyStateIterator(stateIndex);
+  return itState->Isometry.translation();
 }
 
 //==============================================================================

@@ -445,6 +445,8 @@ public:
 
   // Get the logged state which is the closest to the input position
   std::list<LidarState>::const_iterator GetClosestState(const Eigen::Vector3d& position) const;
+  // Get the position of a logged state
+  Eigen::Vector3d GetStatePosition(const unsigned int stateIndex);
 
   // ---------------------------------------------------------------------------
   //   Graph parameters
