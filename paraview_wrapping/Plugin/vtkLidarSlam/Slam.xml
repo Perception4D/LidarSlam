@@ -84,6 +84,7 @@
 
       <Property name="Rebuild maps"
                 command="RebuildMaps"
+                panel_widget="command_pause_button"
                 panel_visibility="advanced">
         <Documentation>
           Rebuild maps and refresh the view.
@@ -1831,6 +1832,7 @@
 
       <Property name="Optimize Graph With IMU"
                 command="OptimizeGraphWithIMU"
+                panel_widget="command_pause_button"
                 panel_visibility="advanced">
         <Documentation>
           Use the optimized poses from the IMU/SLAM graph to update the trajectory and the maps.
@@ -1840,6 +1842,7 @@
 
       <Property name="Optimize Graph"
                 command="OptimizeGraph"
+                panel_widget="command_pause_button"
                 panel_visibility="advanced">
         <Documentation>
           Launch pose graph optimization with options below. The Logging timeout needs to be set appropriately.
@@ -2021,6 +2024,7 @@
 
       <Property name="Detect Loop"
                 command="DetectLoop"
+                panel_widget="command_pause_button"
                 panel_visibility="advanced">
         <Documentation>
           Detect loop closure for current frame with the chosen detector.
