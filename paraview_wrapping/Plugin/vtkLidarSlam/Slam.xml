@@ -370,10 +370,11 @@
       <IntVectorProperty name="Keypoints maps update step"
                          command="SetMapsUpdateStep"
                          number_of_elements="1"
-                         default_values="1"
+                         default_values="10"
                          panel_visibility="advanced">
         <Documentation>
-          SLAM filter will update keypoints maps only 1 frame over *step* to save time.
+          The maps will be updated once over **step** new frames in the filter output to save time.
+          NOTE : the maps are still updated in the SLAM internal process.
         </Documentation>
         <Hints>
           <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state" property="Keypoint maps output mode" inverse="1" value="0" />
@@ -395,7 +396,7 @@
       <IntVectorProperty name="Output current keypoints"
                          command="SetOutputCurrentKeypoints"
                          number_of_elements="1"
-                         default_values="1">
+                         default_values="0">
         <BooleanDomain name="bool" />
         <Documentation>
           If enabled, SLAM filter will output keypoints extracted from current
