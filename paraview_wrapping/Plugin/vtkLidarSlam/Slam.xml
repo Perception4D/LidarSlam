@@ -82,22 +82,19 @@
         </Documentation>
       </Property>
 
-      <Property name="Rebuild maps"
-                command="RebuildMaps"
-                panel_widget="command_pause_button"
-                panel_visibility="advanced">
+      <StringVectorProperty name="Reload trajectory"
+                            command="SetTrajectory"
+                            number_of_elements="1"
+                            animateable="0"
+                            panel_visibility="advanced">
+        <FileListDomain name="files"/>
+        <Hints>
+          <FileChooser extensions="csv" file_description="csv file format" />
+        </Hints>
         <Documentation>
-          Rebuild maps and refresh the view.
+          Reload trajectory with pose and covariance information from a LidarView trajectory file.
         </Documentation>
-      </Property>
-
-      <Property name="Clear maps"
-                command="ClearMaps"
-                panel_visibility="advanced">
-        <Documentation>
-          Clear the actual maps and the logged keypoints
-        </Documentation>
-      </Property>
+      </StringVectorProperty>
 
       <!--~~~~~~~~~~~~~~~~~~~~~~~~~ Inputs options ~~~~~~~~~~~~~~~~~~~~~~~~~~-->
 
@@ -152,20 +149,6 @@
 
           NOTE : the sensor parameters can be modified in the "External sensors" parameters section
           once the file is provided.
-        </Documentation>
-      </StringVectorProperty>
-
-      <StringVectorProperty name="Reload trajectory"
-                            command="SetTrajectory"
-                            number_of_elements="1"
-                            animateable="0"
-                            panel_visibility="advanced">
-        <FileListDomain name="files"/>
-        <Hints>
-          <FileChooser extensions="csv" file_description="csv file format" />
-        </Hints>
-        <Documentation>
-          Reload trajectory with pose and covariance information from a LidarView trajectory file.
         </Documentation>
       </StringVectorProperty>
 
@@ -383,9 +366,6 @@
 
       <PropertyGroup label="Filter inputs/outputs options">
         <Property name="Reset state" />
-        <Property name="Rebuild maps" />
-        <Property name="Clear maps" />
-        <Property name="External sensors data file" />
         <Property name="Reload trajectory" />
         <Property name="Auto detect input arrays" />
         <Property name="Time array" />
@@ -1171,6 +1151,16 @@
 
       <!-- ======================== Map Parameters ========================= -->
 
+      <Property name="Clear maps and log"
+                command="ClearMapsAndLog"
+                panel_visibility="advanced">
+        <Documentation>
+          Clear the actual maps and the logged keypoints
+          but keep the external sensor settings and the
+          actual state (pose and ego-motion).
+        </Documentation>
+      </Property>
+
       <IntVectorProperty name="Mapping mode"
                          command="SetMapUpdate"
                          number_of_elements="1"
@@ -1220,7 +1210,9 @@
           Time threshold (in seconds) to deprecate a removable keypoint.
           This allows the map to be dynamic. Warning: if no keyframe is added during this time
           (motion is null), the entire removable maps will disappear.
-          -1 to disable this feature.
+          **WARNING** : If the decay time is increased, the maps will be rebuilt to recover forgotten points.
+          This process can take some time.
+          -1 to disable this feature (infinite time).
         </Documentation>
       </DoubleVectorProperty>
 
@@ -1477,6 +1469,7 @@
       </IntVectorProperty>
 
       <PropertyGroup label="Map parameters">
+        <Property name="Clear maps and log" />
         <Property name="Mapping mode" />
         <Property name="Submap extraction mode" />
         <Property name="Decaying threshold" />

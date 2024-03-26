@@ -170,16 +170,6 @@ void vtkSlam::Reset()
 }
 
 //-----------------------------------------------------------------------------
-void vtkSlam::RebuildMaps()
-{
-  this->SlamAlgo->UpdateMaps();
-  PRINT_INFO("Rebuild maps finished.")
-
-  // Refresh view
-  this->ParametersModificationTime.Modified();
-}
-
-//-----------------------------------------------------------------------------
 void vtkSlam::OptimizeGraphWithIMU()
 {
   const std::list<LidarSlam::LidarState>& initLidarStates = this->SlamAlgo->GetLogStates();
@@ -317,9 +307,9 @@ bool vtkSlam::GetPGOConstraintExtPose()
 }
 
 //-----------------------------------------------------------------------------
-void vtkSlam::ClearMaps()
+void vtkSlam::ClearMapsAndLog()
 {
-  vtkDebugMacro(<< "Clearing the maps");
+  vtkDebugMacro(<< "Clearing the maps and the log");
   this->SlamAlgo->ClearLocalMaps();
   this->SlamAlgo->ClearLog();
   // Refresh view

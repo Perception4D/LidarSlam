@@ -117,10 +117,8 @@ public:
 
   void Reset();
   // Clear the maps and the logged trajectory
-  // but keep all other parameters
-  void ClearMaps();
-
-  void RebuildMaps();
+  // but keep all other values, notably ego-motion and external sensor info
+  void ClearMapsAndLog();
 
   // Initialization
   void SetInitialMap(const std::string& mapsPathPrefix);
@@ -643,9 +641,6 @@ private:
 
   // In case of failure, duration to come back in time to previous state
   float RecoveryTime = 1.f;
-
-  // Boolean to decide if reset the maps before rebuild the maps
-  bool ResetMaps = false;
 
   // Boolean to decide whether or not to use the pose graph
   bool UsePoseGraph = false;
