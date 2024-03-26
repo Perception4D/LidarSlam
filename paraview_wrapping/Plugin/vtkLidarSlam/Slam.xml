@@ -149,52 +149,11 @@
           If this file is not found, the calibration is set to identity.
           It is possible to automatically derive the calibration with a trajectory portion
           using the Calibrate button.
+
+          NOTE : the sensor parameters can be modified in the "External sensors" parameters section
+          once the file is provided.
         </Documentation>
       </StringVectorProperty>
-
-      <IntVectorProperty name="Planar trajectory"
-                         command="SetPlanarTrajectory"
-                         number_of_elements="1"
-                         default_values="0">
-        <BooleanDomain name="bool" />
-        <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="External sensors data file" value="" />
-        </Hints>
-        <Documentation>
-          If checked, the automatic calibration between the external sensor and the tracked frame
-          will not take the world z axis into account because of the missing degree of liberty.
-          This is used when the Calibrate button is clicked.
-        </Documentation>
-      </IntVectorProperty>
-
-      <DoubleVectorProperty name="Lever arm"
-                            command="SetLeverArm"
-                            number_of_elements="1"
-                            default_values="-1.">
-        <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="External sensors data file" value="" />
-        </Hints>
-        <Documentation>
-          Hint to perform the calibration between the external sensor and the tracked frame.
-          It represents the distance between the tracked frame position and the external sensor position in meters.
-          This is used when the Calibrate button is clicked.
-          -1. disabled the feature.
-        </Documentation>
-      </DoubleVectorProperty>
-
-      <Property name="Calibrate"
-                command="Calibrate">
-        <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="External sensors data file" value="" />
-        </Hints>
-        <Documentation>
-          Compute the calibration between the external sensor and the tracked frame (base)
-          using the external data and the current SLAM trajectory.
-          At each click, the calibration is reset to identity beforehand.
-          The trajectory used must be trustworthy and must cover the 6 degrees of liberty.
-          Please check lever arm and planar trajectory options for more information.
-        </Documentation>
-      </Property>
 
       <StringVectorProperty name="Reload trajectory"
                             command="SetTrajectory"
@@ -427,9 +386,6 @@
         <Property name="Rebuild maps" />
         <Property name="Clear maps" />
         <Property name="External sensors data file" />
-        <Property name="Planar trajectory" />
-        <Property name="Lever arm" />
-        <Property name="Calibrate" />
         <Property name="Reload trajectory" />
         <Property name="Auto detect input arrays" />
         <Property name="Time array" />
@@ -1541,6 +1497,50 @@
 
      <!-- ==================== External sensors' parameters ==================== -->
 
+     <IntVectorProperty name="Planar trajectory"
+                         command="SetPlanarTrajectory"
+                         number_of_elements="1"
+                         default_values="0">
+        <BooleanDomain name="bool" />
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="External sensors data file" value="" />
+        </Hints>
+        <Documentation>
+          If checked, the automatic calibration between the external sensor and the tracked frame
+          will not take the world z axis into account because of the missing degree of liberty.
+          This is used when the Calibrate button is clicked.
+        </Documentation>
+      </IntVectorProperty>
+
+      <DoubleVectorProperty name="Lever arm"
+                            command="SetLeverArm"
+                            number_of_elements="1"
+                            default_values="-1.">
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="External sensors data file" value="" />
+        </Hints>
+        <Documentation>
+          Hint to perform the calibration between the external sensor and the tracked frame.
+          It represents the distance between the tracked frame position and the external sensor position in meters.
+          This is used when the Calibrate button is clicked.
+          -1. disabled the feature.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <Property name="Calibrate"
+                command="Calibrate">
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" inverse="1" property="External sensors data file" value="" />
+        </Hints>
+        <Documentation>
+          Compute the calibration between the external sensor and the tracked frame (base)
+          using the external data and the current SLAM trajectory.
+          At each click, the calibration is reset to identity beforehand.
+          The trajectory used must be trustworthy and must cover the 6 degrees of liberty.
+          Please check lever arm and planar trajectory options for more information.
+        </Documentation>
+      </Property>
+
       <DoubleVectorProperty name="Wheel odom weight"
                             command="SetWheelOdomWeight"
                             number_of_elements="1"
@@ -1654,6 +1654,9 @@
       </IntVectorProperty>
 
       <PropertyGroup label="External sensors">
+        <Property name="Planar trajectory" />
+        <Property name="Lever arm" />
+        <Property name="Calibrate" />
         <Property name="Wheel odom weight" />
         <Property name="Wheel odometry relative mode" />
         <Property name="IMU gravity weight" />
