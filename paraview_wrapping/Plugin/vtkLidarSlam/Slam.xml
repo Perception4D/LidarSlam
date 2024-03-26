@@ -418,7 +418,7 @@
           undistorted if undistortion is activated.
         </Documentation>
         <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state" property="Output current keypoints" value="1" />
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Output current keypoints" value="1" />
         </Hints>
       </IntVectorProperty>
 
