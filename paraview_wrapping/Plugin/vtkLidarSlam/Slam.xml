@@ -367,6 +367,7 @@
       <PropertyGroup label="Filter inputs/outputs options">
         <Property name="Reset state" />
         <Property name="Reload trajectory" />
+        <Property name="External sensors data file" />
         <Property name="Auto detect input arrays" />
         <Property name="Time array" />
         <Property name="Intensity array" />
