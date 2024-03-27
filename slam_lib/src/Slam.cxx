@@ -482,7 +482,7 @@ void Slam::AddFrames(const std::vector<PointCloud::Ptr>& frames)
   unsigned int nbMapKpts = 0;
   for (const auto& mapKptsCloud : this->LocalMaps)
     nbMapKpts += mapKptsCloud.second->Size();
-  bool startingMap = nbMapKpts < this->MinNbMatchedKeypoints * 10;
+  bool startingMap = nbMapKpts < 10 * this->MinNbMatchedKeypoints;
 
   if (this->FailureDetectionEnabled)
   {
@@ -506,7 +506,7 @@ void Slam::AddFrames(const std::vector<PointCloud::Ptr>& frames)
   // or that is required by the tag manager and for
   // which the optimization has been performed correctly
   // (or exceptionnally when the map is initializing)
-  this->IsKeyFrame = (this->OptimizationValid || startingMap ) && this->NeedNewKeyFrame();
+  this->IsKeyFrame = startingMap || (this->OptimizationValid && this->NeedNewKeyFrame());
   if (this->IsKeyFrame)
   {
     // Notify current frame to be a new keyframe
@@ -658,7 +658,8 @@ void Slam::UpdateMaps(bool resetMaps)
     this->ClearLocalMaps();
   else
   {
-    // Remove points older than the first logged state
+    // Keep points older than the first logged state
+    // and clear points newer than the first logged state
     for (auto k : this->UsableKeypoints)
       this->LocalMaps[k]->ClearPoints(this->LogStates.front().Time, false);
   }
@@ -3787,6 +3788,7 @@ void Slam::ClearLog()
 
   this->LogStates.clear();
   this->LogStates = storeLog;
+  this->KfCounter = 2;
 }
 
 //-----------------------------------------------------------------------------
@@ -3798,8 +3800,21 @@ double Slam::GetVoxelGridDecayingThreshold() const
 //-----------------------------------------------------------------------------
 void Slam::SetVoxelGridDecayingThreshold(double decay)
 {
+  double oldDecay = this->GetVoxelGridDecayingThreshold();
+  if (std::abs(oldDecay - decay) < 1e-6)
+    return;
+
   for (auto k : this->UsableKeypoints)
     this->LocalMaps[k]->SetDecayingThreshold(decay);
+
+  // If the decay time is increased, rebuild the maps
+  // using the logged points to be able to recover the missing ones
+  if (std::abs(decay + 1) < 1e-6 ||
+      (std::abs(oldDecay + 1) > 1e-6 && decay > oldDecay))
+  {
+    this->UpdateMaps();
+    PRINT_INFO("The maps were rebuilt will all logged points.")
+  }
 }
 
 //-----------------------------------------------------------------------------
