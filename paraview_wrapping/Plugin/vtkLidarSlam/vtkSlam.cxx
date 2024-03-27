@@ -170,23 +170,13 @@ void vtkSlam::Reset()
 }
 
 //-----------------------------------------------------------------------------
-void vtkSlam::RebuildMaps()
-{
-  this->SlamAlgo->UpdateMaps();
-  PRINT_INFO("Rebuild maps finished.")
-
-  // Refresh view
-  this->ParametersModificationTime.Modified();
-}
-
-//-----------------------------------------------------------------------------
 void vtkSlam::OptimizeGraphWithIMU()
 {
   const std::list<LidarSlam::LidarState>& initLidarStates = this->SlamAlgo->GetLogStates();
   if (initLidarStates.size() < 2)
     return;
   this->SlamAlgo->UpdateTrajectoryAndMapsWithIMU();
-  // Update trajectory poses that have been optimized by the SLAM
+  // Update PV trajectory poses that have been optimized by the SLAM
   const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
   // Keep old poses that have not been optimized
   this->ResetTrajectory(lidarStates.front().Time);
@@ -239,7 +229,7 @@ void vtkSlam::OptimizeGraph()
 {
   if (!this->SlamAlgo->OptimizeGraph())
     return;
-  // Update trajectory poses that have been optimized by the SLAM
+  // Update PV trajectory poses that have been optimized by the SLAM
   const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
   // Keep old poses that have not been optimized
   this->ResetTrajectory(lidarStates.front().Time);
@@ -317,9 +307,9 @@ bool vtkSlam::GetPGOConstraintExtPose()
 }
 
 //-----------------------------------------------------------------------------
-void vtkSlam::ClearMaps()
+void vtkSlam::ClearMapsAndLog()
 {
-  vtkDebugMacro(<< "Clearing the maps");
+  vtkDebugMacro(<< "Clearing the maps and the log");
   this->SlamAlgo->ClearLocalMaps();
   this->SlamAlgo->ClearLog();
   // Refresh view
@@ -1058,7 +1048,7 @@ void vtkSlam::SetTrajectory(const std::string& fileName)
   this->SlamAlgo->ResetStatePoses(trajectoryManager);
   PRINT_INFO("Trajectory successfully loaded.");
 
-  // Update trajectory poses that have been modified by the SLAM
+  // Update PV trajectory poses that have been modified by the SLAM
   const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
   // Keep old poses that have not been modified
   this->ResetTrajectory(lidarStates.front().Time);
