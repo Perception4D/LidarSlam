@@ -14,6 +14,10 @@
 // limitations under the License.
 //==============================================================================
 
+// To enable if only a subset of properties must be saved.
+// Should be only used to generate pre-defined presets.
+#define SAVE_PROPERTIES_SUBSET 0
+
 #include "sqPresetDialog.h"
 #include "vtkSlamFinder.h"
 
@@ -21,6 +25,7 @@
 
 #include <vtkPVXMLElement.h>
 #include <vtkPVXMLParser.h>
+#include <vtkSMNamedPropertyIterator.h>
 #include <vtkSMSourceProxy.h>
 #include <vtksys/FStream.hxx>
 
@@ -46,6 +51,47 @@
 
 #include <sstream>
 #include <string>
+
+namespace
+{
+#if SAVE_PROPERTIES_SUBSET
+const std::vector<std::string> ENVIRONMENT_PROPERTIES = {
+  "Use edges",
+  "Use intensity edges",
+  "Use planes",
+  "Ego-Motion mode",
+  "Undistortion mode",
+  "Min laser beam to surface angle",
+  "Plane threshold angle",
+  "Edge threshold angle",
+  "Edge min depth gap",
+  "Edge min nb of missing points",
+  "Edge min intensity gap",
+  "Maximum keypoints number",
+  "Edge nb min filtered neighbors",
+  "Edge max model error",
+  "Plane nb of neighbors",
+  "Planarity threshold",
+  "Final saturation distance",
+  "Submap extraction mode",
+  "Keyframe distance threshold",
+  "Keyframe angle threshold",
+  "Edges map resolution",
+  "Planes map resolution",
+  "Rolling grid dimension",
+  "Rolling grid resolution",
+  "Min number of frames per voxel",
+};
+const std::vector<std::string> LIDAR_MODEL_PROPERTIES = {
+  "Mode",
+  "Min neighbors nb",
+  "Min distance to sensor",
+  "Ratio of points",
+  "Max neighbors distance",
+  "Edge nb of neighbors",
+};
+#endif
+}
 
 //-----------------------------------------------------------------------------
 struct sqPresetDialog::sqInternals
@@ -223,7 +269,16 @@ void sqPresetDialog::onSaveCurrent()
   vtkSmartPointer<vtkPVXMLElement> root = vtkSmartPointer<vtkPVXMLElement>::New();
   root->SetName("SlamPresets");
   root->AddAttribute("name", presetName.toStdString().c_str());
+#if SAVE_PROPERTIES_SUBSET
+  vtkNew<vtkSMNamedPropertyIterator> subset;
+  subset->SetProxy(proxy);
+  // Choose one:
+  subset->SetPropertyNames(::LIDAR_MODEL_PROPERTIES);
+  // subset->SetPropertyNames(::ENVIRONMENT_PROPERTIES);
+  proxy->SaveXMLState(root, subset);
+#else
   proxy->SaveXMLState(root);
+#endif
 
   sqInternals::tryCreatePresetDir();
   QString path = sqInternals::CUSTOM_PRESET_DIR() + "/" + presetName + ".xml";
