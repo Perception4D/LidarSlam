@@ -139,6 +139,10 @@ vtkSlam::vtkSlam()
                                       this->SlamAlgo->GetFailureDetectionEnabled() ?
                                       this->ConfidenceWindow :
                                       0.);
+
+  // As the user has supervision on the loop closure detection in PV,
+  // the threshold validation value is set to a minimal low value (0.1)
+  this->SlamAlgo->SetLoopEvaluationThreshold(0.1);
 }
 
 //-----------------------------------------------------------------------------
@@ -2096,6 +2100,14 @@ void vtkSlam::SetLoopDetector(int detector)
   {
     this->SlamAlgo->SetLoopDetector(loopClosureDetector);
     this->ParametersModificationTime.Modified();
+  }
+
+  // If teaser detector is enabled, the detection is performed on current frame.
+  // As there is no mid submap AFTER current frame, we force the submaps to be built upon previous frames.
+  if (loopClosureDetector == LidarSlam::LoopClosureDetector::TEASERPP)
+  {
+    this->SlamAlgo->SetLoopQueryMapEndRange(0);
+    this->SlamAlgo->SetLoopRevisitedMapEndRange(0);
   }
 }
 
