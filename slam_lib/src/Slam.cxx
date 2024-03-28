@@ -2124,17 +2124,16 @@ bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, s
   if (overlap >= this->LoopParams.EvaluationThreshold)
   {
     this->LoopDetectionTransform = queryPose;
-    PRINT_VERBOSE(1, "Loop closure is detected for frame #"
-                  << itQueryState->Index << " by teaserpp with "
-                  << 100 * overlap << "% overlap.\n"
-                  << "The revisited frame is #" << itRevisitedState->Index);
+    PRINT_INFO("A loop closure has been detected for frame #"
+                << itQueryState->Index << " at frame #" << itRevisitedState->Index
+                << " with overlap : "<< 100 * overlap << "%\n");
     return true;
   }
   else
   {
     this->LoopDetectionTransform = Eigen::Isometry3d::Identity();
-    PRINT_ERROR("Loop closure is NOT detected for frame #" << itQueryState->Index << " by teaserpp.\n"
-                 << "The detected frame (#" << itRevisitedState->Index << ") has a low overlap ("<< 100 * overlap << "%) ");
+    PRINT_ERROR("No loop closure detected for frame #" << itQueryState->Index << " by teaserpp.\n"
+                 << "The best overlap is " << 100.f * overlap << "% for frame #" << itRevisitedState->Index << " which is too low");
     return false;
   }
   #else

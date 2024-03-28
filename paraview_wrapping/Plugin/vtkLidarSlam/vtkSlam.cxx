@@ -196,7 +196,7 @@ void vtkSlam::DetectLoop()
 
   if (!this->SlamAlgo->DetectLoopClosureIndices(this->LoopIdx))
   {
-    vtkWarningMacro(<< "Loop closure is not detected automatically!");
+    vtkWarningMacro(<< "Loop closure could not be detected automatically!");
     return;
   }
 
