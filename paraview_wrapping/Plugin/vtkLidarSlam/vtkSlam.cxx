@@ -198,7 +198,7 @@ void vtkSlam::DetectLoop()
   if (lidarStates.size() < 2)
     return;
 
-  if (!this->SlamAlgo->DetectLoopClosureIndices(this->LoopIdx))
+  if (!this->SlamAlgo->DetectLoopClosureIndices(this->LastLoopInfo))
   {
     vtkWarningMacro(<< "Loop closure could not be detected automatically!");
     return;
@@ -214,7 +214,7 @@ void vtkSlam::DetectLoop()
 void vtkSlam::AddLoopDetection()
 {
   if (this->LoopDetected)
-    this->SlamAlgo->AddLoopClosureIndices(this->LoopIdx);
+    this->SlamAlgo->AddLoopClosureIndices(this->LastLoopInfo);
 
   this->SetLoopDetected(false);
 
@@ -2062,7 +2062,7 @@ void vtkSlam::SetUsePoseGraph(bool usePoseGraph)
 //-----------------------------------------------------------------------------
 double* vtkSlam::GetLoopClosurePosition()
 {
-  Eigen::Vector3d revistedPosition = this->SlamAlgo->GetStatePosition(this->LoopIdx.RevisitedIdx);
+  Eigen::Vector3d revistedPosition = this->SlamAlgo->GetStatePosition(this->LastLoopInfo.RevisitedIdx);
   this->LastLoopClosurePosition[0] = revistedPosition.x();
   this->LastLoopClosurePosition[1] = revistedPosition.y();
   this->LastLoopClosurePosition[2] = revistedPosition.z();
@@ -2148,7 +2148,7 @@ void vtkSlam::LoadLoopDetectionIndices(const std::string& fileName)
   // Process query frame indices and revisited frame indices
   for (vtkIdType i = 0; i < numLoops; ++i)
   {
-    LidarSlam::LoopClosure::LoopIndices loop(arrayQueryIdx->GetTuple1(i), arrayRevisitedIdx->GetTuple1(i), -1);
+    LidarSlam::LoopClosure::LoopInfo loop(arrayQueryIdx->GetTuple1(i), arrayRevisitedIdx->GetTuple1(i), -1);
     this->SlamAlgo->AddLoopClosureIndices(loop);
   }
 

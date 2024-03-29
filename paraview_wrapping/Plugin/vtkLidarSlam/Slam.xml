@@ -2165,7 +2165,7 @@
                          panel_visibility="advanced">
         <BooleanDomain name="bool" />
         <Documentation>
-          Enable adding an offset to pose prior when two frames of loop closure are too far.
+          Add an offset to loop closure transform prior in case of high drift during the loop.
         </Documentation>
         <Hints>
           <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Loop closure detector" value="0" />

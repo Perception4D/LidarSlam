@@ -646,7 +646,9 @@ private:
   bool LoopDetected = false;
   double LastLoopClosurePosition[3];
 
-  LidarSlam::LoopClosure::LoopIndices LoopIdx = {0, 0, -1};
+  // Storage value for loop detection information
+  // Used in loop pop up actions
+  LidarSlam::LoopClosure::LoopInfo LastLoopInfo;
 
   // Choose whether to synchronize on network packet
   // reception time or on Lidar frame header time
