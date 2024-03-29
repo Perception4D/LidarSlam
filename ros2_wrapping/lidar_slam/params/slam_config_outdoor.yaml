@@ -163,15 +163,20 @@
         ext_pose: false    # [bool] to decide whether or not to add external pose constraints into pose graph
       # Loop closure parameters
       loop_closure:
-        query_map_start_range: -15.0      # [m] Query sub map is build with frames in [frame + start range, frame + end range]
-        query_map_end_range: 15.0         # [m] Query sub map is build with frames in [frame + start range, frame + end range]
-        revisited_map_start_range: -15.0  # [m] Revisited sub map is build with frames in [frame + start range, frame + end range]
-        revisited_map_end_range: 15.0     # [m] Revisited sub map is build with frames in [frame + start range, frame + end range]
-        enable_offset: false              # [bool] To allow to add an offset to pose prior when two frames of loop closure are too far.
-        use_submap: true                  # [bool] Enable the registration between two sub maps instead of registering a single frame to a sub map.
+        # Ranges for submaps.
+        # A submap is built with frames in the range
+        # [frame_position + start_range, frame_position + end_range].
+        # Note : when using the click point feature of RVIZ, a match is searched for the current frame which has no frame after.
+        # Therefore, it is adviced to take empty post-mid-submaps (i.e. query_map_end_range = revisited_map_end_range = 0)
+        query_map_start_range: -7.0      # [m] Size (in meters) of the query pre-mid-submap.
+        query_map_end_range: 7.0         # [m] Size (in meters) of the query post-mid-submap.
+        revisited_map_start_range: -7.0  # [m] Size (in meters) of the revisited pre-mid-submap.
+        revisited_map_end_range: 7.0     # [m] Size (in meters) of the revisited post-mid-submap.
+        enable_offset: false             # [bool] Add an offset to loop closure transform prior in case of high drift during the loop.
+        use_submap: true                 # [bool] Enable the registration between two sub maps instead of registering a single frame to a sub map.
         # Optimization
-        ICP_max_iter: 100                 # [iterations] Number of ICP-optim iterations (building ICP matches then optimizing them) to perform.
-        LM_max_iter: 100                  # [iterations] Max number of iterations of the Levenberg-Marquardt optimizer to solve the ICP problem.
+        ICP_max_iter: 100                # [iterations] Number of ICP-optim iterations (building ICP matches then optimizing them) to perform.
+        LM_max_iter: 100                 # [iterations] Max number of iterations of the Levenberg-Marquardt optimizer to solve the ICP problem.
 
     logging:
       # Optional logging of computed pose, localization covariance and keypoints of each processed frame.
