@@ -139,6 +139,10 @@ vtkSlam::vtkSlam()
                                       this->SlamAlgo->GetFailureDetectionEnabled() ?
                                       this->ConfidenceWindow :
                                       0.);
+
+  // As the user has supervision on the loop closure detection in PV,
+  // the threshold validation value is set to a minimal low value (0.1)
+  this->SlamAlgo->SetLoopEvaluationThreshold(0.1);
 }
 
 //-----------------------------------------------------------------------------
@@ -194,9 +198,9 @@ void vtkSlam::DetectLoop()
   if (lidarStates.size() < 2)
     return;
 
-  if (!this->SlamAlgo->DetectLoopClosureIndices(this->LoopIdx))
+  if (!this->SlamAlgo->DetectLoopClosureIndices(this->LastLoopInfo))
   {
-    vtkWarningMacro(<< "Loop closure is not detected automatically!");
+    vtkWarningMacro(<< "Loop closure could not be detected automatically!");
     return;
   }
 
@@ -210,7 +214,7 @@ void vtkSlam::DetectLoop()
 void vtkSlam::AddLoopDetection()
 {
   if (this->LoopDetected)
-    this->SlamAlgo->AddLoopClosureIndices(this->LoopIdx);
+    this->SlamAlgo->AddLoopClosureIndices(this->LastLoopInfo);
 
   this->SetLoopDetected(false);
 
@@ -2058,7 +2062,7 @@ void vtkSlam::SetUsePoseGraph(bool usePoseGraph)
 //-----------------------------------------------------------------------------
 double* vtkSlam::GetLoopClosurePosition()
 {
-  Eigen::Vector3d revistedPosition = this->SlamAlgo->GetStatePosition(this->LoopIdx.RevisitedIdx);
+  Eigen::Vector3d revistedPosition = this->SlamAlgo->GetStatePosition(this->LastLoopInfo.RevisitedIdx);
   this->LastLoopClosurePosition[0] = revistedPosition.x();
   this->LastLoopClosurePosition[1] = revistedPosition.y();
   this->LastLoopClosurePosition[2] = revistedPosition.z();
@@ -2096,6 +2100,14 @@ void vtkSlam::SetLoopDetector(int detector)
   {
     this->SlamAlgo->SetLoopDetector(loopClosureDetector);
     this->ParametersModificationTime.Modified();
+  }
+
+  // If teaser detector is enabled, the detection is performed on current frame.
+  // As there is no mid submap AFTER current frame, we force the submaps to be built upon previous frames.
+  if (loopClosureDetector == LidarSlam::LoopClosureDetector::TEASERPP)
+  {
+    this->SlamAlgo->SetLoopQueryMapEndRange(0);
+    this->SlamAlgo->SetLoopRevisitedMapEndRange(0);
   }
 }
 
@@ -2136,7 +2148,7 @@ void vtkSlam::LoadLoopDetectionIndices(const std::string& fileName)
   // Process query frame indices and revisited frame indices
   for (vtkIdType i = 0; i < numLoops; ++i)
   {
-    LidarSlam::LoopClosure::LoopIndices loop(arrayQueryIdx->GetTuple1(i), arrayRevisitedIdx->GetTuple1(i), -1);
+    LidarSlam::LoopClosure::LoopInfo loop(arrayQueryIdx->GetTuple1(i), arrayRevisitedIdx->GetTuple1(i), -1);
     this->SlamAlgo->AddLoopClosureIndices(loop);
   }
 

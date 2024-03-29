@@ -208,7 +208,7 @@ void PoseGraphOptimizer::AddLoopClosureConstraint(const unsigned int queryFrameI
     PRINT_ERROR("Loop closure constraint could not be added to the graph");
   if (this->Verbose)
     PRINT_INFO("Add Loop closure constraint between state #" << revisitedFrameIdx
-               << " and state #" << queryFrameIdx << " are added to the graph");
+               << " and state #" << queryFrameIdx);
 }
 
 //------------------------------------------------------------------------------
@@ -390,8 +390,7 @@ bool PoseGraphOptimizer::Process(std::list<LidarState>& statesToOptimize)
   int iterations = this->Optimizer.optimize(this->NbIteration);
 
   // Print debug info if needed
-  if (this->Verbose)
-    PRINT_INFO("Pose graph optimization succeeded in " << iterations << " iterations.\n");
+  PRINT_INFO("Pose graph optimization succeeded in " << iterations << " iterations.\n");
 
   // Set the output optimized data
   for (auto& state : statesToOptimize)

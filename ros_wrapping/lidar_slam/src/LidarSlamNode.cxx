@@ -717,7 +717,7 @@ void LidarSlamNode::ClickedPointCallback(const geometry_msgs::PointStamped& poin
     return;
   }
   // Add clicked point as revisited frame of the loop which is formed with current frame
-  LidarSlam::LoopClosure::LoopIndices loop(this->LidarSlam.GetLastState().Index, itState->Index, time);
+  LidarSlam::LoopClosure::LoopInfo loop(this->LidarSlam.GetLastState().Index, itState->Index, time);
   this->LidarSlam.AddLoopClosureIndices(loop);
   if (this->LidarSlam.GetVerbosity() >= 3)
     ROS_INFO_STREAM("Loop closure point added with time "
@@ -1113,7 +1113,7 @@ void LidarSlamNode::ReadLoopIndices(const std::string& path)
       return;
     }
     // Use the first and the last frame indices as loop closure indices
-    LidarSlam::LoopClosure::LoopIndices loop(lidarStates.back().Index, lidarStates.front().Index, -1);
+    LidarSlam::LoopClosure::LoopInfo loop(lidarStates.back().Index, lidarStates.front().Index, -1);
     this->LidarSlam.AddLoopClosureIndices(loop);
     ROS_INFO_STREAM("Loop closure indices file is empty :"
                     <<" the last and the first states are used");
@@ -1122,7 +1122,7 @@ void LidarSlamNode::ReadLoopIndices(const std::string& path)
 
   for (const auto& l : lines)
   {
-    LidarSlam::LoopClosure::LoopIndices loop(std::stoi(l[0]), std::stoi(l[1]), -1);
+    LidarSlam::LoopClosure::LoopInfo loop(std::stoi(l[0]), std::stoi(l[1]), -1);
     // Add a new loop closure indices into LoopDetections
     this->LidarSlam.AddLoopClosureIndices(loop);
     ROS_INFO_STREAM("Query id #" << loop.QueryIdx << " Revisited id #" << loop.RevisitedIdx<< ".");
@@ -1388,7 +1388,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
           break;
         }
         // Use the first and the last frame indices as loop closure indices
-        LidarSlam::LoopClosure::LoopIndices loop(lidarStates.back().Index, lidarStates.front().Index, -1);
+        LidarSlam::LoopClosure::LoopInfo loop(lidarStates.back().Index, lidarStates.front().Index, -1);
         this->LidarSlam.AddLoopClosureIndices(loop);
         ROS_INFO_STREAM("No external file is provided for loop closure indices : "
                         <<"the last and the first states are used");
