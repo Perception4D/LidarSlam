@@ -256,16 +256,21 @@ struct Parameters
   };
 };
 
-struct LoopIndices
+struct LoopInfo
 {
+  LoopInfo() = default;
+  LoopInfo(unsigned int queryIdx, unsigned int revisitedIdx, double time):
+    QueryIdx(queryIdx), RevisitedIdx(revisitedIdx), Time(time) {};
   // Frame indices to indicate where the loop closure is formed.
   unsigned int QueryIdx = 0;
   unsigned int RevisitedIdx = 0;
   // The detection time
-  double Time = -1;
-  LoopIndices(unsigned int queryIdx, unsigned int revisitedIdx, double time):
-    QueryIdx(queryIdx), RevisitedIdx(revisitedIdx), Time(time) {};
+  double Time = -1.;
+  // Transform between the query frame and the revisited frame that has been found by the automatic loop detector
+  // This pose can be used as a pose prior in LoopClosureRegistration function
+  Eigen::Isometry3d Transform = Eigen::Isometry3d::Identity();
 };
+
 } // end of LoopClosure namespace
 
 class Slam
@@ -445,6 +450,8 @@ public:
 
   // Get the logged state which is the closest to the input position
   std::list<LidarState>::const_iterator GetClosestState(const Eigen::Vector3d& position) const;
+  // Get the position of a logged state
+  Eigen::Vector3d GetStatePosition(const unsigned int stateIndex);
 
   // ---------------------------------------------------------------------------
   //   Graph parameters
@@ -766,10 +773,10 @@ public:
   // ---------------------------------------------------------------------------
 
   // Detect a loop for the current frame
-  bool DetectLoopClosureIndices(LoopClosure::LoopIndices& loop);
+  bool DetectLoopClosureIndices(LoopClosure::LoopInfo& loop);
 
   // Add indices of a loop into vector LoopDetections
-  void AddLoopClosureIndices(LoopClosure::LoopIndices& loop);
+  void AddLoopClosureIndices(LoopClosure::LoopInfo& loop);
 
   // Reset LoopDetections vector
   void ClearLoopDetections();
@@ -1081,11 +1088,7 @@ private:
   LoopClosure::Parameters LoopParams;
 
   // Store the frame indices of detected loops
-  std::vector<LoopClosure::LoopIndices> LoopDetections;
-
-  // Transform between the query frame and the revisited frame that has been found by the automatic loop detector
-  // This pose can be used as a pose prior in LoopClosureRegistration step
-  Eigen::Isometry3d LoopDetectionTransform = Eigen::Isometry3d::Identity();
+  std::vector<LoopClosure::LoopInfo> LoopDetections;
 
   // ---------------------------------------------------------------------------
   //   Optimization data
@@ -1350,8 +1353,11 @@ private:
   // In this case, output the nearest neighbor keyframe iterator
   std::list<LidarState>::iterator GetKeyStateIterator(const unsigned int& frameIdx);
 
-  // Return true if a loop closure has been found and update itRevisitedState iterator, if not return false.
-  bool DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, std::list<LidarState>::iterator& itRevisitedState);
+  // Return true if a loop closure is found and update itRevisitedState iterator as well as the relative transform between two frames
+  // Otherwise return false.
+  bool DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState,
+                            std::list<LidarState>::iterator& itRevisitedState,
+                            Eigen::Isometry3d& transform);
 
   #ifdef USE_TEASERPP
   // Compute FPFH features for a input pointcloud
@@ -1366,9 +1372,10 @@ private:
                                                           pcl::PointCloud<pcl::FPFHSignature33>::Ptr targetFeatures);
   #endif
 
-  // Compute the transform between a query frame and the revisited frame
+  // Compute the transform between a query frame and the revisited frame and output it in loopClosureTransform
   // by registering query frame keypoints onto keypoints of the submap around the revisited frame.
   // revisitedFrameIdx is the frame index where the query frame meets a loop.
+  // A prior transform can be provided as input in loopClosureTransform -> it is an input/output argument.
   bool LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState,
                                std::list<LidarState>::iterator& itRevisitedState,
                                Eigen::Isometry3d& loopClosureTransform,

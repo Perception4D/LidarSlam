@@ -775,7 +775,10 @@ bool Slam::OptimizeGraph()
         auto itRevisitedState = this->GetKeyStateIterator(loop.RevisitedIdx);
         // Compute a loopClosureTransform from the revisited frame to the query frame
         // by registering the keypoints of the query frame onto the keypoints of the revisited frame
-        Eigen::Isometry3d loopClosureTransform;
+        Eigen::Isometry3d loopClosureTransform = loop.Transform.matrix().isIdentity() ?
+                                                  Eigen::Isometry3d(itQueryState->Isometry.inverse() *
+                                                                    itRevisitedState->Isometry) :
+                                                  loop.Transform;
         Eigen::Matrix6d loopClosureCovariance;
         if (this->LoopClosureRegistration(itQueryState, itRevisitedState,
                                           loopClosureTransform, loopClosureCovariance))
@@ -1899,12 +1902,19 @@ std::vector<LidarState> Slam::GetLastStates(double freq)
   return lastStates;
 }
 
+//-----------------------------------------------------------------------------
+Eigen::Vector3d Slam::GetStatePosition(const unsigned int stateIndex)
+{
+  auto itState = this->GetKeyStateIterator(stateIndex);
+  return itState->Isometry.translation();
+}
+
 //==============================================================================
 //   Loop Closure usage
 //==============================================================================
 
 //-----------------------------------------------------------------------------
-bool Slam::DetectLoopClosureIndices(LoopClosure::LoopIndices& loop)
+bool Slam::DetectLoopClosureIndices(LoopClosure::LoopInfo& loop)
 {
   PRINT_VERBOSE(2, "========== Loop closure : Detection ==========");
   bool detectionValid = false;
@@ -1921,12 +1931,14 @@ bool Slam::DetectLoopClosureIndices(LoopClosure::LoopIndices& loop)
       // It detects automatically a revisited frame idx for the current frame
       auto itQueryState = std::prev(this->LogStates.end());
       auto itRevisitedState = this->LogStates.begin();
-      detectionValid = this->DetectLoopWithTeaser(itQueryState, itRevisitedState);
+      Eigen::Isometry3d loopTransform;
+      detectionValid = this->DetectLoopWithTeaser(itQueryState, itRevisitedState, loopTransform);
       if (detectionValid)
       {
         loop.QueryIdx = itQueryState->Index;
         loop.RevisitedIdx = itRevisitedState->Index;
         loop.Time = itQueryState->Time;
+        loop.Transform = loopTransform;
       }
       break;
     }
@@ -1937,7 +1949,7 @@ bool Slam::DetectLoopClosureIndices(LoopClosure::LoopIndices& loop)
 }
 
 //-----------------------------------------------------------------------------
-void Slam::AddLoopClosureIndices(LoopClosure::LoopIndices& loop)
+void Slam::AddLoopClosureIndices(LoopClosure::LoopInfo& loop)
 {
   this->LoopDetections.emplace_back(loop);
 }
@@ -2002,7 +2014,9 @@ std::list<LidarState>::const_iterator Slam::GetClosestState(const Eigen::Vector3
 }
 
 //-----------------------------------------------------------------------------
-bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, std::list<LidarState>::iterator& itRevisitedState)
+bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState,
+                                std::list<LidarState>::iterator& itRevisitedState,
+                                Eigen::Isometry3d& transform)
 {
   #ifdef USE_TEASERPP
   if (this->LogStates.size() < 2)
@@ -2051,12 +2065,13 @@ bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, s
     this->InitSubMaps(candidateSubMaps);
     if (this->LoopParams.SampleStep < 0)
       // Use the whole map as target
-      this->BuildMaps(candidateSubMaps, itSt->Index, lastFrameIdx);
+      this->BuildMaps(candidateSubMaps, itSt->Index, lastFrameIdx, itSt->Index);
     else
       // Use the submap between RevisitedMapStartRange and RevisitedMapEndRange as target
       this->BuildMaps(candidateSubMaps,
                       this->FetchStateIndex(itSt, this->LoopParams.RevisitedMapStartRange)->Index,
-                      this->FetchStateIndex(itSt, this->LoopParams.RevisitedMapEndRange)->Index);
+                      this->FetchStateIndex(itSt, this->LoopParams.RevisitedMapEndRange)->Index,
+                      itSt->Index);
 
     // Compute FPFH features for candidate keypoints
     PointCloud::Ptr candidatePoints(new PointCloud);
@@ -2086,9 +2101,9 @@ bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, s
     candidateLCTransform.linear() = solution.rotation;
 
     // Registration evaluation
-    // Register query points in world using estimated LC transform
-    PointCloud::Ptr worldQueryPoints(new PointCloud);
-    pcl::transformPointCloud(*queryPoints, *worldQueryPoints, candidateLCTransform.matrix().cast<float>());
+    // Transform query points in revisited frame using estimated LC transform
+    PointCloud::Ptr queryPointsTransformed(new PointCloud);
+    pcl::transformPointCloud(*queryPoints, *queryPointsTransformed, candidateLCTransform.matrix().cast<float>());
 
     // Build kdtree for candidate sub maps
     for (auto k : this->UsableKeypoints)
@@ -2096,10 +2111,9 @@ bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, s
       // Build kdtree on all grid points
       candidateSubMaps[k]->BuildKdTreeOnAllPts();
     }
-
     // Compute LCP like estimator
     // (see http://geometry.cs.ucl.ac.uk/projects/2014/super4PCS/ for more info)
-    float overlapEstimation = Confidence::LCPEstimator(worldQueryPoints, candidateSubMaps,
+    float overlapEstimation = Confidence::LCPEstimator(queryPointsTransformed, candidateSubMaps,
                                                        this->GetVoxelGridLeafSize(PLANE), this->NbThreads, false);
     if (overlapEstimation > overlap)
     {
@@ -2117,18 +2131,17 @@ bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState, s
 
   if (overlap >= this->LoopParams.EvaluationThreshold)
   {
-    this->LoopDetectionTransform = queryPose;
-    PRINT_VERBOSE(1, "Loop closure is detected for frame #"
-                  << itQueryState->Index << " by teaserpp with "
-                  << 100 * overlap << "% overlap.\n"
-                  << "The revisited frame is #" << itRevisitedState->Index);
+    transform = queryPose;
+    PRINT_INFO("A loop closure has been detected for frame #"
+                << itQueryState->Index << " at frame #" << itRevisitedState->Index
+                << " with overlap : "<< 100 * overlap << "%\n");
     return true;
   }
   else
   {
-    this->LoopDetectionTransform = Eigen::Isometry3d::Identity();
-    PRINT_ERROR("Loop closure is NOT detected for frame #" << itQueryState->Index << " by teaserpp.\n"
-                 << "The detected frame (#" << itRevisitedState->Index << ") has a low overlap ("<< 100 * overlap << "%) ");
+    transform = Eigen::Isometry3d::Identity();
+    PRINT_ERROR("No loop closure detected for frame #" << itQueryState->Index << " by teaserpp.\n"
+                 << "The best overlap is " << 100.f * overlap << "% for frame #" << itRevisitedState->Index << " which is too low");
     return false;
   }
   #else
@@ -2247,28 +2260,19 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
   this->InitSubMaps(loopClosureRevisitedSubMaps);
   this->BuildMaps(loopClosureRevisitedSubMaps,
                   this->FetchStateIndex(itRevisitedState, this->LoopParams.RevisitedMapStartRange)->Index,
-                  this->FetchStateIndex(itRevisitedState, this->LoopParams.RevisitedMapEndRange)->Index);
+                  this->FetchStateIndex(itRevisitedState, this->LoopParams.RevisitedMapEndRange)->Index,
+                  itRevisitedState->Index);
   PRINT_VERBOSE(3, "Sub maps are created around revisited frame #" << itRevisitedState->Index << ".");
 
-  // Pose prior for optimization
-  Eigen::Isometry3d loopClosureTworld = itQueryState->Isometry;
-  if (!this->LoopDetectionTransform.matrix().isIdentity())
-    loopClosureTworld = this->LoopDetectionTransform;
-  else if (this->LoopParams.EnableOffset)
+  // Enable to add an offset to the pose prior when two poses are too far from each other.
+  // This only applies for external detections, no hint transform has been provided.
+  if (this->LoopParams.EnableOffset)
   {
-    // Enable to add an offset to the pose prior when two poses are too far from each other.
-    PointCloud::Ptr revisitedPlaneKeypoints(new PointCloud);
-    pcl::transformPointCloud(*(itRevisitedState->Keypoints[PLANE]->GetCloud()),
-                             *revisitedPlaneKeypoints,
-                             itRevisitedState->Isometry.matrix().cast<float>());
-    Eigen::Vector4f minPoint, maxPoint, midPoint;
-    pcl::getMinMax3D(*revisitedPlaneKeypoints, minPoint, maxPoint);
-    midPoint = 0.5 * (minPoint + maxPoint);
-    loopClosureTworld.translation() = midPoint.head<3>().cast<double>();
-    PRINT_VERBOSE(3, "An offset is added onto the query submaps.");
+    loopClosureTransform.translation() = Eigen::Vector3d::Zero();
+    PRINT_VERBOSE(3, "Submaps are aligned in translation to help ICP transform.");
   }
 
-  // If LoopClosureICPWithSubmap is enabled, create a sub map of keypoints around the query frame
+  // If this->LoopParams.ICPWithSubmap is enabled, create a submap of keypoints around the query frame
   // Otherwise, use only keypoints of query frame as query keypoints
   // loopClosureQueryKeypoints are in BASE coordinates of query frame
   std::map<Keypoint, PointCloud::Ptr> loopClosureQueryKeypoints;
@@ -2328,8 +2332,9 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
   this->LoopParams.OptParams.MatchingParams.SingleEdgePerRing = false;
   // ICP - Levenberg-Marquardt loop to estimate the pose of the current frame relatively to the close loop frame
   std::map<Keypoint, KeypointsMatcher::MatchingResults> loopMatchingResults;
+
   loopClosureUncertainty = this->EstimatePose(loopClosureQueryKeypoints, loopClosureRevisitedSubMaps,
-                                              this->LoopParams.OptParams, loopClosureTworld,
+                                              this->LoopParams.OptParams, loopClosureTransform,
                                               loopMatchingResults);
 
   IF_VERBOSE(3, Utils::Timer::StopAndDisplay("Loop closure Registration : whole ICP-LM loop"));
@@ -2353,14 +2358,6 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
     covariance(3, 3) = std::pow(defaultAngleError,    2);
     covariance(4, 4) = std::pow(defaultAngleError,    2);
   }
-  // Compute the relative transform between revisited frame and query frame
-  Eigen::Isometry3d revisitedStateInv = itRevisitedState->Isometry.inverse();
-  loopClosureTransform = revisitedStateInv * loopClosureTworld;
-  // Rotate covariance
-  // Lidar Slam gives the covariance expressed in the map frame
-  // We want the covariance expressed in the query frame to be consistent with supplied relative transform
-  Eigen::Vector6d xyzrpy = Utils::IsometryToXYZRPY(loopClosureTworld);
-  loopClosureCovariance = CeresTools::RotateCovariance(xyzrpy, covariance, revisitedStateInv, true); // new = revisitedState^-1 * loopClosureTworld
 
   // Optionally print loop closure registration optimization summary
   if (this->Verbosity >= 2)
@@ -2377,8 +2374,8 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
               << " (along [" << loopClosureUncertainty.OrientationErrorDirection.transpose() << "])"
               << std::endl;
     std::cout << "Loop closure Transform:\n"
-                 " position    = [" << loopClosureTworld.translation().transpose()                                        << "] m\n"
-                 " orientation = [" << Utils::Rad2Deg(Utils::RotationMatrixToRPY(loopClosureTworld.linear())).transpose() << "] °" << std::endl;
+                 " position    = [" << loopClosureTransform.translation().transpose()                                        << "] m\n"
+                 " orientation = [" << Utils::Rad2Deg(Utils::RotationMatrixToRPY(loopClosureTransform.linear())).transpose() << "] °" << std::endl;
 
     RESET_COUT_FIXED_PRECISION;
   }
