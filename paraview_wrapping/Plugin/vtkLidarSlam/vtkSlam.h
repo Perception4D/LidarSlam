@@ -121,7 +121,8 @@ public:
   void ClearMapsAndLog();
 
   // Initialization
-  void SetInitialMap(const std::string& mapsPathPrefix);
+  void SetInitialSlam();
+  vtkSetMacro(InitMapPrefix, std::string)
   void SetInitialPoseTranslation(double x, double y, double z);
   void SetInitialPoseRotation(double roll, double pitch, double yaw);
 

@@ -154,14 +154,7 @@ void vtkSlam::Reset()
   this->SlamAlgo->Reset(true);
 
   // Init the SLAM state (map + pose)
-  if (!this->InitMapPrefix.empty())
-    this->SlamAlgo->LoadMapsFromPCD(this->InitMapPrefix);
-  // Setting initial SLAM pose is equivalent to move odom frame
-  // so the first pose corresponds to the input in this new frame
-  // T_base = offset * T_base_new
-  // offset = T_base * T_base_new^-1
-  // T_base is identity at initialization
-  this->SlamAlgo->TransformOdom(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose).inverse());
+  this->SetInitialSlam();
 
   // Init the output SLAM trajectory
   this->ResetTrajectory();
@@ -321,15 +314,35 @@ void vtkSlam::ClearMapsAndLog()
 }
 
 //-----------------------------------------------------------------------------
-void vtkSlam::SetInitialMap(const std::string& mapsPathPrefix)
+void vtkSlam::SetInitialSlam()
 {
-  this->InitMapPrefix = mapsPathPrefix;
-  if (this->InitMapPrefix.empty())
-    return;
-  if (this->InitMapPrefix.substr(this->InitMapPrefix.find('.') + 1, this->InitMapPrefix.size()) == "pcd")
-    vtkErrorMacro(<< "Could not load the initial map : only the prefix path must be supplied (not the complete path)");
-  this->SlamAlgo->LoadMapsFromPCD(this->InitMapPrefix);
-  this->ParametersModificationTime.Modified();
+  // Check number of log states
+  const std::list<LidarSlam::LidarState>& initLidarStates = this->SlamAlgo->GetLogStates();
+  if (initLidarStates.size() <= 1)
+  {
+    // Reset slam
+    this->SlamAlgo->Reset(true);
+    // Init the output SLAM trajectory
+    this->ResetTrajectory();
+    // The log states is empty now, jump to initial pose
+    this->SlamAlgo->JumpPose(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose));
+    // Set TworldInit
+    this->SlamAlgo->SetTworldInit(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose));
+  }
+  else
+  {
+    vtkWarningMacro(<< "Could not change the initial pose because a map already exists : please reset state");
+  }
+
+  // Set initial maps for slam if they are provided
+  if (!this->InitMapPrefix.empty())
+  {
+    if (this->InitMapPrefix.substr(this->InitMapPrefix.find('.') + 1, this->InitMapPrefix.size()) == "pcd")
+      vtkErrorMacro(<< "Could not load the initial map : only the prefix path must be supplied (not the complete path)");
+    else
+      this->SlamAlgo->LoadMapsFromPCD(this->InitMapPrefix);
+  }
+
   // Refresh view
   this->ParametersModificationTime.Modified();
 }
@@ -341,10 +354,6 @@ void vtkSlam::SetInitialPoseTranslation(double x, double y, double z)
   this->InitPose.x() = x;
   this->InitPose.y() = y;
   this->InitPose.z() = z;
-  // Setting initial SLAM pose is equivalent to move odom frame
-  // so the first pose corresponds to the input in this new frame
-  this->SlamAlgo->TransformOdom(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose).inverse());
-  this->ParametersModificationTime.Modified();
 }
 
 //-----------------------------------------------------------------------------
@@ -354,10 +363,6 @@ void vtkSlam::SetInitialPoseRotation(double roll, double pitch, double yaw)
   this->InitPose(3) = roll;
   this->InitPose(4) = pitch;
   this->InitPose(5) = yaw;
-  // Setting initial SLAM pose is equivalent to move odom frame
-  // so the first pose corresponds to the input in this new frame
-  this->SlamAlgo->TransformOdom(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose).inverse());
-  this->ParametersModificationTime.Modified();
 }
 
 //-----------------------------------------------------------------------------

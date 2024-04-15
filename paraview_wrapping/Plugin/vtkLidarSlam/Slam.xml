@@ -607,11 +607,12 @@
       </PropertyGroup>
 
       <!-- ============================ Initialization ============================ -->
+
       <!-- Path prefix of SLAM maps (if empty, no map is loaded).
            The files must be pcd.
            The new maps replace the previous computed ones-->
       <StringVectorProperty name="Initial map files prefix"
-                            command="SetInitialMap"
+                            command="SetInitMapPrefix"
                             number_of_elements="1"
                             animateable="0"
                             panel_visibility="advanced">
@@ -629,8 +630,8 @@
         </Documentation>
       </StringVectorProperty>
 
-      <!-- Reset the pose of the SLAM
-           Warning: a click on the Reset button applies this pose again-->
+      <!-- Init the pose of the SLAM
+           Warning: a click on the Reset state / Init button applies this pose -->
       <DoubleVectorProperty name="Initial pose XYZ"
                             command="SetInitialPoseTranslation"
                             number_of_elements="3"
@@ -638,6 +639,7 @@
                             panel_visibility="advanced">
         <Documentation>
           Translation elements of the initial SLAM pose in format X, Y, Z
+          Warning: a click on the Reset state / Init button applies this pose
         </Documentation>
       </DoubleVectorProperty>
 
@@ -648,13 +650,24 @@
                             panel_visibility="advanced">
         <Documentation>
           Rotation elements of the initial SLAM pose in format Roll, Pitch, Yaw
+          Warning: a click on the Reset state / Init button applies this pose
         </Documentation>
       </DoubleVectorProperty>
+
+      <!-- Initialize the pose and maps of the SLAM -->
+      <Property name="Init"
+                command="SetInitialSlam"
+                panel_visibility="advanced">
+        <Documentation>
+          Apply the initialization of SLAM with the input pose and maps.
+        </Documentation>
+      </Property>
 
       <PropertyGroup label="SLAM initialization">
         <Property name="Initial map files prefix" />
         <Property name="Initial pose XYZ" />
         <Property name="Initial pose RPY" />
+        <Property name="Init" />
       </PropertyGroup>
 
       <!-- ================ Keypoints extraction Parameters ================ -->
