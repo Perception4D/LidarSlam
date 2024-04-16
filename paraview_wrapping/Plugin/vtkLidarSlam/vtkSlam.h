@@ -534,7 +534,7 @@ private:
   // ---------------------------------------------------------------------------
 
   // Identify input arrays to use
-  void IdentifyInputArrays(vtkPolyData* poly, vtkTable* calib);
+  bool IdentifyInputArrays(vtkPolyData* poly, vtkTable* calib);
 
   // Convert LiDAR calibration to laser id mapping
   std::vector<size_t> GetLaserIdMapping(vtkTable* calib);

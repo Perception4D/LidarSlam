@@ -384,7 +384,11 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
     return 0;
   }
   vtkTable* calib = vtkTable::GetData(inputVector[CALIBRATION_INPUT_PORT], 0);
-  this->IdentifyInputArrays(input, calib);
+  if (!this->IdentifyInputArrays(input, calib))
+  {
+    vtkErrorMacro(<< "Unable to identify LiDAR arrays to use.");
+    return 0;
+  }
   std::vector<size_t> laserMapping = GetLaserIdMapping(calib);
 
   auto arrayTime = input->GetPointData()->GetArray(this->TimeArrayName.c_str());
@@ -1158,7 +1162,7 @@ vtkMTimeType vtkSlam::GetMTime()
 // =============================================================================
 
 //-----------------------------------------------------------------------------
-void vtkSlam::IdentifyInputArrays(vtkPolyData* poly, vtkTable* calib)
+bool vtkSlam::IdentifyInputArrays(vtkPolyData* poly, vtkTable* calib)
 {
   // Try to auto-detect LiDAR model by checking available arrays
   if (this->AutoDetectInputArrays)
@@ -1224,7 +1228,9 @@ void vtkSlam::IdentifyInputArrays(vtkPolyData* poly, vtkTable* calib)
 
     // Failed to recognize LiDAR vendor
     else
-      vtkErrorMacro(<< "Unable to identify LiDAR arrays to use.");
+    {
+      return false;
+    }
   }
 
   // Otherwise, user needs to specify which arrays to use
@@ -1237,6 +1243,7 @@ void vtkSlam::IdentifyInputArrays(vtkPolyData* poly, vtkTable* calib)
     auto angleCalibArray = calib ? this->GetInputArrayToProcess(3, calib) : nullptr;
     this->VerticalCalibArrayName = angleCalibArray ? angleCalibArray->GetName() : "";
   }
+  return true;
 }
 
 //-----------------------------------------------------------------------------
