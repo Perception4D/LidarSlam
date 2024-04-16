@@ -2155,7 +2155,7 @@ void LidarSlamNode::SetSlamInitialState()
   if (this->PrivNh.getParam("maps/initial_pose", initialPose) && initialPose.size() == 6)
   {
     Eigen::Isometry3d initialTransform = LidarSlam::Utils::XYZRPYtoIsometry(initialPose.data());
-    this->LidarSlam.TransformOdom(initialTransform.inverse());
+    this->LidarSlam.SetInitialPose(initialTransform);
     ROS_INFO_STREAM("Setting initial SLAM pose to:\n" << initialTransform.matrix());
   }
 

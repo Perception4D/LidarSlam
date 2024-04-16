@@ -699,8 +699,66 @@
         </Documentation>
       </StringVectorProperty>
 
+      <StringVectorProperty name="Set initial pose"
+                            command="SetInitialPose"
+                            number_of_elements="1"
+                            animateable="0"
+                            panel_visibility="advanced">
+        <FileListDomain name="files"/>
+        <Hints>
+          <FileChooser extensions="mat" file_description="mat file format" />
+        </Hints>
+        <Documentation>
+          Move the reference frame of the lidar trajectory so that the first pose
+          corresponds to the input pose.
+          The file must contain the 4x4 transformation matrix representing
+          the new initial pose.
+          The file extension should be ".mat".
+
+          Example :
+
+             1 0 0 0.5
+
+             0 -1 0 2
+
+             0 0 -1 0.2
+
+             0 0 0 1
+        </Documentation>
+      </StringVectorProperty>
+
+      <StringVectorProperty name="Set current pose"
+                            command="SetCurrentPose"
+                            number_of_elements="1"
+                            animateable="0"
+                            panel_visibility="advanced">
+        <FileListDomain name="files"/>
+        <Hints>
+          <FileChooser extensions="mat" file_description="mat file format" />
+        </Hints>
+        <Documentation>
+          Move the reference frame of the lidar trajectory so that the current pose
+          corresponds to the input pose.
+          The file must contain the 4x4 transformation matrix representing
+          the new current pose.
+          The file extension should be ".mat".
+
+          Example :
+
+             1 0 0 0.5
+
+             0 -1 0 2
+
+             0 0 -1 0.2
+
+             0 0 0 1
+        </Documentation>
+      </StringVectorProperty>
+
       <PropertyGroup label="Transform tree">
         <Property name="Set BASE to Lidar transform" />
+        <Property name="Set initial pose" />
+        <Property name="Set current pose" />
       </PropertyGroup>
 
       <!-- ================ Keypoints extraction Parameters ================ -->

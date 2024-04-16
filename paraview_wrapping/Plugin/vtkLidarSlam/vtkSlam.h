@@ -315,6 +315,12 @@ public:
   // Set calibration base to lidar
   virtual void SetBaseToLidarTransform(std::string filename);
 
+  // Move odom so that the initial pose corresponds to the input pose
+  virtual void SetInitialPose(std::string filename);
+
+  // Move odom so that the current pose corresponds to the input pose
+  virtual void SetCurrentPose(std::string filename);
+
   // ---------------------------------------------------------------------------
   //   Optimization parameters
   // ---------------------------------------------------------------------------

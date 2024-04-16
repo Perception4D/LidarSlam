@@ -1790,6 +1790,58 @@ void vtkSlam::SetInterpolation(int model)
 }
 
 //-----------------------------------------------------------------------------
+void vtkSlam::SetInitialPose(std::string filename)
+{
+  if (filename.empty())
+    return;
+
+  Eigen::Isometry3d newPose;
+  this->GetCalibrationMatrix(filename, newPose);
+  vtkDebugMacro(<< "Setting Initial pose to \n" << newPose.matrix() << "\n");
+  // Move odom so the initial pose corresponds to the newPose
+  this->SlamAlgo->SetInitialPose(newPose);
+
+  // Update PV trajectory poses that have been optimized by the SLAM
+  const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
+  if (!lidarStates.empty())
+  {
+    // Only logged trajectory can be displayed after changing odom
+    this->ResetTrajectory();
+    for (auto const& state: lidarStates)
+      this->AddPoseToTrajectory(state);
+  }
+
+  // Refresh view
+  this->ParametersModificationTime.Modified();
+}
+
+//-----------------------------------------------------------------------------
+void vtkSlam::SetCurrentPose(std::string filename)
+{
+  if (filename.empty())
+    return;
+
+  Eigen::Isometry3d newPose;
+  this->GetCalibrationMatrix(filename, newPose);
+  vtkDebugMacro(<< "Setting current pose to \n" << newPose.matrix() << "\n");
+  // Move odom so the current pose corresponds to the newPose
+  this->SlamAlgo->SetCurrentPose(newPose);
+
+  // Update PV trajectory poses that have been optimized by the SLAM
+  const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
+  if (!lidarStates.empty())
+  {
+    // Only logged trajectory can be displayed after changing odom
+    this->ResetTrajectory();
+    for (auto const& state: lidarStates)
+      this->AddPoseToTrajectory(state);
+  }
+
+  // Refresh view
+  this->ParametersModificationTime.Modified();
+}
+
+//-----------------------------------------------------------------------------
 void vtkSlam::SetBaseToLidarTransform(std::string filename)
 {
   Eigen::Isometry3d baseToLidar;
