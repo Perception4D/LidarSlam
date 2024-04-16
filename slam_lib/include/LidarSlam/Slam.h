@@ -374,7 +374,7 @@ public:
   // For interpolations/extrapolations and IMU preintegration
   // WARNING : this function may break the map, a reset might be needed
   // before calling this function
-  void SetTworld(const Eigen::Isometry3d& pose);
+  void JumpPose(const Eigen::Isometry3d& pose);
 
   // Change the reference frame of the Lidar trajectory and maps
   // odom <- odom * transform

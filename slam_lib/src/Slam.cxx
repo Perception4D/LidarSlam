@@ -993,7 +993,7 @@ bool Slam::IsPGOConstraintEnabled(PGOConstraint constraint) const
 }
 
 //-----------------------------------------------------------------------------
-void Slam::SetTworld(const Eigen::Isometry3d& pose)
+void Slam::JumpPose(const Eigen::Isometry3d& pose)
 {
   // Set current pose
   this->Tworld = pose;
@@ -1006,8 +1006,7 @@ void Slam::SetTworld(const Eigen::Isometry3d& pose)
   state.Index = UINT_MAX;
   state.IsKeyFrame = false; // this will be removed as soon as it is not needed anymore
   this->LogStates.emplace_back(state);
-  // Reset TworldInit if it has changed
-  this->TworldInit = this->LogStates.front().Isometry;
+
   // Current frame keypoints are reset so that ego-motion registration is skipped for next frame if required
   for (auto k : this->UsableKeypoints)
     this->CurrentRawKeypoints[k].reset(new PointCloud);
