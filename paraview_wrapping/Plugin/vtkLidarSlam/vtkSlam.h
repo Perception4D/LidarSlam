@@ -309,13 +309,10 @@ public:
   vtkCustomSetMacro(LoopFinalSaturationDistance, double)
 
   // ---------------------------------------------------------------------------
-  //   BASE to LIDAR transform
+  //   Transform tree
   // ---------------------------------------------------------------------------
 
-  virtual void SetBaseToLidarTranslation(double x, double y, double z);
-
-  virtual void SetBaseToLidarRotation(double rx, double ry, double rz);
-
+  // Set calibration base to lidar
   virtual void SetBaseToLidarTransform(std::string filename);
 
   // ---------------------------------------------------------------------------

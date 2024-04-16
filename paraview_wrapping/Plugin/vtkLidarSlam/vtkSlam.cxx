@@ -1790,26 +1790,6 @@ void vtkSlam::SetInterpolation(int model)
 }
 
 //-----------------------------------------------------------------------------
-void vtkSlam::SetBaseToLidarTranslation(double x, double y, double z)
-{
-  vtkDebugMacro(<< "Setting BaseToLidarTranslation to " << x << " " << y << " " << z);
-  Eigen::Isometry3d baseToLidar = this->SlamAlgo->GetBaseToLidarOffset();
-  baseToLidar.translation() = Eigen::Vector3d(x, y, z);
-  this->SlamAlgo->SetBaseToLidarOffset(baseToLidar);
-  this->ParametersModificationTime.Modified();
-}
-
-//-----------------------------------------------------------------------------
-void vtkSlam::SetBaseToLidarRotation(double rx, double ry, double rz)
-{
-  vtkDebugMacro(<< "Setting BaseToLidarRotation to " << rx << " " << ry << " " << rz);
-  Eigen::Isometry3d baseToLidar = this->SlamAlgo->GetBaseToLidarOffset();
-  baseToLidar.linear() = Utils::RPYtoRotationMatrix(Utils::Deg2Rad(rx), Utils::Deg2Rad(ry), Utils::Deg2Rad(rz));
-  this->SlamAlgo->SetBaseToLidarOffset(baseToLidar);
-  this->ParametersModificationTime.Modified();
-}
-
-//-----------------------------------------------------------------------------
 void vtkSlam::SetBaseToLidarTransform(std::string filename)
 {
   Eigen::Isometry3d baseToLidar;

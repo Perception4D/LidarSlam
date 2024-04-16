@@ -670,6 +670,39 @@
         <Property name="Init" />
       </PropertyGroup>
 
+
+      <!-- ==================== Transform tree ==================== -->
+
+      <StringVectorProperty name="Set BASE to Lidar transform"
+                            command="SetBaseToLidarTransform"
+                            number_of_elements="1"
+                            animateable="0"
+                            panel_visibility="advanced">
+        <FileListDomain name="files"/>
+        <Hints>
+          <FileChooser extensions="mat" file_description="mat file format" />
+        </Hints>
+        <Documentation>
+          This calibration file must contain the 4x4 calibration matrix representing
+          the transform from Lidar sensor frame to Base frame (i.e. the tracked frame).
+          The file extension should be ".mat".
+
+          Example :
+
+             1 0 0 0.5
+
+             0 -1 0 2
+
+             0 0 -1 0.2
+
+             0 0 0 1
+        </Documentation>
+      </StringVectorProperty>
+
+      <PropertyGroup label="Transform tree">
+        <Property name="Set BASE to Lidar transform" />
+      </PropertyGroup>
+
       <!-- ================ Keypoints extraction Parameters ================ -->
 
       <SubProxy command="SetKeyPointsExtractor" label="Keypoints extractor">
@@ -697,89 +730,6 @@
           </PropertyGroup>
         </ExposedProperties>
       </SubProxy>
-
-      <!-- ==================== BASE to LIDAR transform ==================== -->
-
-      <IntVectorProperty name="Translation/Rotation format"
-                         number_of_elements="1"
-                         default_values="0"
-                         panel_visibility="advanced">
-        <BooleanDomain name="bool" />
-        <Documentation>
-          Prefer the translation (x, y, z) and rotation (roll, pitch, yaw in RPY convention)
-          instead of a calibration file
-        </Documentation>
-      </IntVectorProperty>
-
-      <DoubleVectorProperty name="Translation"
-                            command="SetBaseToLidarTranslation"
-                            number_of_elements="3"
-                            default_values="0. 0. 0."
-                            panel_visibility="advanced">
-        <Documentation>
-          Position of the LiDAR sensor in BASE coordinate system (X, Y, Z).
-
-          It is often useful to track a BASE pose instead of LiDAR sensor pose.
-          If set, this parameter transform all input pointcloud into BASE coordinate
-          system in order to output BASE trajectory.
-        </Documentation>
-        <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Translation/Rotation format" value="1" />
-        </Hints>
-      </DoubleVectorProperty>
-
-      <DoubleVectorProperty name="Rotation"
-                            command="SetBaseToLidarRotation"
-                            number_of_elements="3"
-                            default_values="0. 0. 0."
-                            panel_visibility="advanced">
-        <Documentation>
-          Rotation of the LiDAR sensor in BASE coordinate system (rX, rY, rZ, euler angles in ZYX convention, in degrees).
-
-          It is often useful to track a BASE pose instead of LiDAR sensor pose.
-          If set, this parameter transform all input pointcloud into BASE coordinate
-          system in order to output BASE trajectory.
-        </Documentation>
-        <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Translation/Rotation format" value="1" />
-        </Hints>
-      </DoubleVectorProperty>
-
-      <StringVectorProperty name="Calibration file"
-                            command="SetBaseToLidarTransform"
-                            number_of_elements="1"
-                            animateable="0"
-                            panel_visibility="advanced">
-        <FileListDomain name="files"/>
-        <Hints>
-          <FileChooser extensions="mat" file_description="mat file format" />
-        </Hints>
-        <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Translation/Rotation format" value="0" />
-        </Hints>
-        <Documentation>
-          This calibration file must contain the 4x4 calibration matrix representing
-          the transform from Lidar sensor frame to Base frame (i.e. the tracked frame).
-          The file extension should be ".mat".
-
-          Example :
-
-             1 0 0 0.5
-
-             0 -1 0 2
-
-             0 0 -1 0.2
-
-             0 0 0 1
-        </Documentation>
-      </StringVectorProperty>
-
-      <PropertyGroup label="Base to LiDAR transform">
-        <Property name="Translation/Rotation format" />
-        <Property name="Translation" />
-        <Property name="Rotation" />
-        <Property name="Calibration file" />
-      </PropertyGroup>
 
       <!-- ===================== Ego Motion Parameters ===================== -->
 
