@@ -2168,7 +2168,7 @@ void LidarSlamNode::SetSlamInitialState()
   if (this->get_parameter<std::vector<double>>("maps.initial_pose", initialPose) && initialPose.size() == 6)
   {
     Eigen::Isometry3d initialTransform = LidarSlam::Utils::XYZRPYtoIsometry(initialPose.data());
-    this->LidarSlam.TransformOdom(initialTransform.inverse());
+    this->LidarSlam.SetInitialPose(initialTransform);
     RCLCPP_INFO_STREAM(this->get_logger(), "Setting initial SLAM pose to:\n" << initialTransform.matrix());
   }
 
