@@ -1136,7 +1136,7 @@ void LidarSlamNode::SetPoseCallback(const geometry_msgs::msg::PoseWithCovariance
   {
     // Compute pose in odometry frame and set SLAM pose
     Eigen::Isometry3d poseInOdom = offset * Utils::PoseMsgToIsometry(msg.pose.pose);
-    this->LidarSlam.SetTworld(poseInOdom);
+    this->LidarSlam.JumpPose(poseInOdom);
     RCLCPP_WARN_STREAM(this->get_logger(), "SLAM pose set to :\n" << poseInOdom.matrix());
     // TODO: properly deal with covariance: rotate it, pass it to SLAM, notify trajectory jump?
   }
