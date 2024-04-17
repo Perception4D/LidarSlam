@@ -380,11 +380,21 @@ public:
   void JumpPose(const Eigen::Isometry3d& pose);
 
   // Change the reference frame of the Lidar trajectory and maps
-  // odom <- odom * transform
+  // odom <- odom * offset
   // This can allow to recenter the trajectory to origin and to limit
   // errors due to numbers precision
   // It can also be used to place the Lidar in a map initially
-  void TransformOdom(const Eigen::Isometry3d& transform);
+  void TransformOdom(const Eigen::Isometry3d& offset);
+
+  // Set initial pose is equivalent to change the reference frame of
+  // the Lidar trajectory so that the initial pose corresponds to the newPose
+  // The offset to transform odom is computed in this function
+  void SetInitialPose(const Eigen::Isometry3d& newPose);
+
+  // Set current pose is equivalent to change the reference frame of
+  // the Lidar trajectory so that the last pose corresponds to the newPose
+  // The offset to transform odom is computed in this function
+  void SetCurrentPose(const Eigen::Isometry3d& newPose);
 
   // Make TworldInit the first logged pose
   // This is useful to keep a consistent map

@@ -1061,12 +1061,33 @@ void Slam::TransformOdom(const Eigen::Isometry3d& offset)
   }
 }
 
+void Slam::SetInitialPose(const Eigen::Isometry3d& newPose)
+{
+  // Setting initial SLAM pose is equivalent to move odom frame
+  // so the first pose corresponds to the input in this new frame
+  // T_base = offset * T_base_new
+  // offset = T_base * T_base_new^-1
+  Eigen::Isometry3d offset = this->TworldInit * newPose.inverse();
+  this->TransformOdom(offset);
+}
+
+void Slam::SetCurrentPose(const Eigen::Isometry3d& newPose)
+{
+  // Setting current SLAM pose is equivalent to move odom frame
+  // so the last pose corresponds to the input in this new frame
+  // T_base = offset * T_base_new
+  // offset = T_base * T_base_new^-1
+  Eigen::Isometry3d offset = this->Tworld * newPose.inverse();
+  this->TransformOdom(offset);
+}
+
 //----------------------------------------------------------------
 void Slam::ResetTrajWithTworldInit()
 {
   // We update odom frame so Tworld becomes TworldInit in this new frame
   // offset * TworldInit = T_base
-  this->TransformOdom(this->LogStates.front().Isometry * this->TworldInit.inverse());
+  Eigen::Isometry3d offset = this->LogStates.front().Isometry * this->TworldInit.inverse();
+  this->TransformOdom(offset);
 }
 
 //-----------------------------------------------------------------------------
