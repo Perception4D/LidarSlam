@@ -2299,7 +2299,7 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
     PRINT_VERBOSE(3, "Submaps are aligned in translation to help ICP transform.");
   }
 
-  // If LoopClosureICPWithSubmap is enabled, create a sub map of keypoints around the query frame
+  // If this->LoopParams.ICPWithSubmap is enabled, create a submap of keypoints around the query frame
   // Otherwise, use only keypoints of query frame as query keypoints
   // loopClosureQueryKeypoints are in BASE coordinates of query frame
   std::map<Keypoint, PointCloud::Ptr> loopClosureQueryKeypoints;
