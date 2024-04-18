@@ -993,6 +993,13 @@ bool Slam::IsPGOConstraintEnabled(PGOConstraint constraint) const
 }
 
 //-----------------------------------------------------------------------------
+void Slam::SetTworldInit(const Eigen::Isometry3d& pose)
+{
+  // Set TworldInit
+  this->TworldInit = pose;
+}
+
+//-----------------------------------------------------------------------------
 void Slam::JumpPose(const Eigen::Isometry3d& pose)
 {
   // Set current pose

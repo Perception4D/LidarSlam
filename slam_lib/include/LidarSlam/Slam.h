@@ -370,6 +370,9 @@ public:
   // the computation time if this function is to be called on successive timestamps.
   Eigen::Isometry3d GetTworld(double time = -1., bool trackTime = false);
 
+  // Set TworldInit when initializing slam with a pose
+  void SetTworldInit(const Eigen::Isometry3d& pose);
+
   // Set current pose and notify a discontinuity in the trajectory
   // For interpolations/extrapolations and IMU preintegration
   // WARNING : this function may break the map, a reset might be needed
