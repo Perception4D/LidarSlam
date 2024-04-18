@@ -1140,7 +1140,7 @@ void LidarSlamNode::SetPoseCallback(const geometry_msgs::PoseWithCovarianceStamp
   {
     // Compute pose in odometry frame and set SLAM pose
     Eigen::Isometry3d poseInOdom = offset * Utils::PoseMsgToIsometry(msg.pose.pose);
-    this->LidarSlam.SetTworld(poseInOdom);
+    this->LidarSlam.JumpPose(poseInOdom);
     ROS_WARN_STREAM("SLAM pose set to :\n" << poseInOdom.matrix());
     // TODO: properly deal with covariance: rotate it, pass it to SLAM, notify trajectory jump?
   }
@@ -2155,7 +2155,7 @@ void LidarSlamNode::SetSlamInitialState()
   if (this->PrivNh.getParam("maps/initial_pose", initialPose) && initialPose.size() == 6)
   {
     Eigen::Isometry3d initialTransform = LidarSlam::Utils::XYZRPYtoIsometry(initialPose.data());
-    this->LidarSlam.TransformOdom(initialTransform.inverse());
+    this->LidarSlam.SetInitialPose(initialTransform);
     ROS_INFO_STREAM("Setting initial SLAM pose to:\n" << initialTransform.matrix());
   }
 

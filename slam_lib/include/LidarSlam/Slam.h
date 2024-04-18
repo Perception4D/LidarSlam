@@ -370,18 +370,31 @@ public:
   // the computation time if this function is to be called on successive timestamps.
   Eigen::Isometry3d GetTworld(double time = -1., bool trackTime = false);
 
+  // Set TworldInit when initializing slam with a pose
+  void SetTworldInit(const Eigen::Isometry3d& pose);
+
   // Set current pose and notify a discontinuity in the trajectory
   // For interpolations/extrapolations and IMU preintegration
   // WARNING : this function may break the map, a reset might be needed
   // before calling this function
-  void SetTworld(const Eigen::Isometry3d& pose);
+  void JumpPose(const Eigen::Isometry3d& pose);
 
   // Change the reference frame of the Lidar trajectory and maps
-  // odom <- odom * transform
+  // odom <- odom * offset
   // This can allow to recenter the trajectory to origin and to limit
   // errors due to numbers precision
   // It can also be used to place the Lidar in a map initially
-  void TransformOdom(const Eigen::Isometry3d& transform);
+  void TransformOdom(const Eigen::Isometry3d& offset);
+
+  // Set initial pose is equivalent to change the reference frame of
+  // the Lidar trajectory so that the initial pose corresponds to the newPose
+  // The offset to transform odom is computed in this function
+  void SetInitialPose(const Eigen::Isometry3d& newPose);
+
+  // Set current pose is equivalent to change the reference frame of
+  // the Lidar trajectory so that the last pose corresponds to the newPose
+  // The offset to transform odom is computed in this function
+  void SetCurrentPose(const Eigen::Isometry3d& newPose);
 
   // Make TworldInit the first logged pose
   // This is useful to keep a consistent map

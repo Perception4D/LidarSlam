@@ -154,14 +154,7 @@ void vtkSlam::Reset()
   this->SlamAlgo->Reset(true);
 
   // Init the SLAM state (map + pose)
-  if (!this->InitMapPrefix.empty())
-    this->SlamAlgo->LoadMapsFromPCD(this->InitMapPrefix);
-  // Setting initial SLAM pose is equivalent to move odom frame
-  // so the first pose corresponds to the input in this new frame
-  // T_base = offset * T_base_new
-  // offset = T_base * T_base_new^-1
-  // T_base is identity at initialization
-  this->SlamAlgo->TransformOdom(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose).inverse());
+  this->SetInitialSlam();
 
   // Init the output SLAM trajectory
   this->ResetTrajectory();
@@ -321,15 +314,35 @@ void vtkSlam::ClearMapsAndLog()
 }
 
 //-----------------------------------------------------------------------------
-void vtkSlam::SetInitialMap(const std::string& mapsPathPrefix)
+void vtkSlam::SetInitialSlam()
 {
-  this->InitMapPrefix = mapsPathPrefix;
-  if (this->InitMapPrefix.empty())
-    return;
-  if (this->InitMapPrefix.substr(this->InitMapPrefix.find('.') + 1, this->InitMapPrefix.size()) == "pcd")
-    vtkErrorMacro(<< "Could not load the initial map : only the prefix path must be supplied (not the complete path)");
-  this->SlamAlgo->LoadMapsFromPCD(this->InitMapPrefix);
-  this->ParametersModificationTime.Modified();
+  // Check number of log states
+  const std::list<LidarSlam::LidarState>& initLidarStates = this->SlamAlgo->GetLogStates();
+  if (initLidarStates.size() <= 1)
+  {
+    // Reset slam
+    this->SlamAlgo->Reset(true);
+    // Init the output SLAM trajectory
+    this->ResetTrajectory();
+    // The log states is empty now, jump to initial pose
+    this->SlamAlgo->JumpPose(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose));
+    // Set TworldInit
+    this->SlamAlgo->SetTworldInit(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose));
+  }
+  else
+  {
+    vtkWarningMacro(<< "Could not change the initial pose because a map already exists : please reset state");
+  }
+
+  // Set initial maps for slam if they are provided
+  if (!this->InitMapPrefix.empty())
+  {
+    if (this->InitMapPrefix.substr(this->InitMapPrefix.find('.') + 1, this->InitMapPrefix.size()) == "pcd")
+      vtkErrorMacro(<< "Could not load the initial map : only the prefix path must be supplied (not the complete path)");
+    else
+      this->SlamAlgo->LoadMapsFromPCD(this->InitMapPrefix);
+  }
+
   // Refresh view
   this->ParametersModificationTime.Modified();
 }
@@ -341,10 +354,6 @@ void vtkSlam::SetInitialPoseTranslation(double x, double y, double z)
   this->InitPose.x() = x;
   this->InitPose.y() = y;
   this->InitPose.z() = z;
-  // Setting initial SLAM pose is equivalent to move odom frame
-  // so the first pose corresponds to the input in this new frame
-  this->SlamAlgo->TransformOdom(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose).inverse());
-  this->ParametersModificationTime.Modified();
 }
 
 //-----------------------------------------------------------------------------
@@ -354,10 +363,6 @@ void vtkSlam::SetInitialPoseRotation(double roll, double pitch, double yaw)
   this->InitPose(3) = roll;
   this->InitPose(4) = pitch;
   this->InitPose(5) = yaw;
-  // Setting initial SLAM pose is equivalent to move odom frame
-  // so the first pose corresponds to the input in this new frame
-  this->SlamAlgo->TransformOdom(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose).inverse());
-  this->ParametersModificationTime.Modified();
 }
 
 //-----------------------------------------------------------------------------
@@ -1785,22 +1790,54 @@ void vtkSlam::SetInterpolation(int model)
 }
 
 //-----------------------------------------------------------------------------
-void vtkSlam::SetBaseToLidarTranslation(double x, double y, double z)
+void vtkSlam::SetInitialPose(std::string filename)
 {
-  vtkDebugMacro(<< "Setting BaseToLidarTranslation to " << x << " " << y << " " << z);
-  Eigen::Isometry3d baseToLidar = this->SlamAlgo->GetBaseToLidarOffset();
-  baseToLidar.translation() = Eigen::Vector3d(x, y, z);
-  this->SlamAlgo->SetBaseToLidarOffset(baseToLidar);
+  if (filename.empty())
+    return;
+
+  Eigen::Isometry3d newPose;
+  this->GetCalibrationMatrix(filename, newPose);
+  vtkDebugMacro(<< "Setting Initial pose to \n" << newPose.matrix() << "\n");
+  // Move odom so the initial pose corresponds to the newPose
+  this->SlamAlgo->SetInitialPose(newPose);
+
+  // Update PV trajectory poses that have been optimized by the SLAM
+  const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
+  if (!lidarStates.empty())
+  {
+    // Only logged trajectory can be displayed after changing odom
+    this->ResetTrajectory();
+    for (auto const& state: lidarStates)
+      this->AddPoseToTrajectory(state);
+  }
+
+  // Refresh view
   this->ParametersModificationTime.Modified();
 }
 
 //-----------------------------------------------------------------------------
-void vtkSlam::SetBaseToLidarRotation(double rx, double ry, double rz)
+void vtkSlam::SetCurrentPose(std::string filename)
 {
-  vtkDebugMacro(<< "Setting BaseToLidarRotation to " << rx << " " << ry << " " << rz);
-  Eigen::Isometry3d baseToLidar = this->SlamAlgo->GetBaseToLidarOffset();
-  baseToLidar.linear() = Utils::RPYtoRotationMatrix(Utils::Deg2Rad(rx), Utils::Deg2Rad(ry), Utils::Deg2Rad(rz));
-  this->SlamAlgo->SetBaseToLidarOffset(baseToLidar);
+  if (filename.empty())
+    return;
+
+  Eigen::Isometry3d newPose;
+  this->GetCalibrationMatrix(filename, newPose);
+  vtkDebugMacro(<< "Setting current pose to \n" << newPose.matrix() << "\n");
+  // Move odom so the current pose corresponds to the newPose
+  this->SlamAlgo->SetCurrentPose(newPose);
+
+  // Update PV trajectory poses that have been optimized by the SLAM
+  const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
+  if (!lidarStates.empty())
+  {
+    // Only logged trajectory can be displayed after changing odom
+    this->ResetTrajectory();
+    for (auto const& state: lidarStates)
+      this->AddPoseToTrajectory(state);
+  }
+
+  // Refresh view
   this->ParametersModificationTime.Modified();
 }
 

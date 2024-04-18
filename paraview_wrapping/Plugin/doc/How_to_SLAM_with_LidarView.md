@@ -4,9 +4,9 @@
   - [Installing LidarView or one of its derivative with SLAM support](#installing-lidarview-or-one-of-its-derivative-with-slam-support)
   - [Using SLAM in LidarView](#using-slam-in-lidarview)
   - [Main functionalities](#main-functionalities)
-    - [Reset](#reset)
-    - [Rebuild maps](#rebuild-maps)
-    - [Clear maps](#clear-maps)
+    - [Reset state](#reset-state)
+    - [Init](#init)
+    - [Clear maps and log](#clear-maps-and-log)
     - [2D mode](#2d-mode)
   - [Saving and exporting SLAM outputs](#saving-and-exporting-slam-outputs)
     - [Saving trajectory](#saving-trajectory)
@@ -100,24 +100,21 @@ Please note that your default LidarView application may not include all the vend
 
 ## Main functionalities
 
-### Reset
+### Reset state
 
 A button allows to reset the SLAM at a current frame :
-* maps are cleared and reloaded if initial maps were supplied
 * the trajectory is reset to initial pose
 * the external sensor data are cleared and refilled
 * the parameters are kept unchanged
 
-### Rebuild maps
+### Init
 
-A button allows to rebuild the maps using the logged trajectory and the view is refreshed.
-After clicking this button, the view is refreshed with the new maps without taking the decaying threshold into account.
-The old points will be removed after next frame is processed.
-If empty first is selected, the maps will be reset before being rebuilt.
+A button allows to apply an initial pose and initial maps at the beginning of the slam. If number of log states is greater than 1, a reset state is required before initialization.
 
-### Clear maps
+### Clear maps and log
 
-This button allows to clear the maps but keeps the external sensors state and the trajectory unchanged.
+A button allows to clear the acutal maps and the logged keypoints but keeps the external sensors state and the actual state (pose and ego-motion).
+
 
 ### 2D mode
 
@@ -312,9 +309,13 @@ To use loop closure constraint within pose graph optimization in LidarView:
         456,23
         343,35
         ```
-    - When choosing **Teaserpp**, click on **Detect**, loop closure will be detected for the current frame by using teaserpp registration algorithm. The detected indices will be added.
+    - When choosing **Teaserpp**, click on **Detect Loop**, loop closure will be detected for the current frame by using teaserpp registration algorithm. The detected area will be marked at the render view and a dialog is poped up to require the user how to use the detected frame.
+      - **Close loop now**: use loop closure constraint to optimize graph
+      - **Discard**: do not use this detected loo
+      - **Keep it for later**: save detected loop indice for slam to be used later
+    ![LC autostart interface](loop_closure_autostart.png)
 
-3. After adding loop closure indices, click on **Apply** and then click on the **Optimize Graph** button.
+3. **Reset loop detection** button is used to clean saved loop detections.
 
 4. Tune the loop closure parameters to fit your use case via **advanced settings**.
 

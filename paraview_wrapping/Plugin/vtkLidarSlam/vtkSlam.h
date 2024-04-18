@@ -121,7 +121,8 @@ public:
   void ClearMapsAndLog();
 
   // Initialization
-  void SetInitialMap(const std::string& mapsPathPrefix);
+  void SetInitialSlam();
+  vtkSetMacro(InitMapPrefix, std::string)
   void SetInitialPoseTranslation(double x, double y, double z);
   void SetInitialPoseRotation(double roll, double pitch, double yaw);
 
@@ -308,14 +309,17 @@ public:
   vtkCustomSetMacro(LoopFinalSaturationDistance, double)
 
   // ---------------------------------------------------------------------------
-  //   BASE to LIDAR transform
+  //   Transform tree
   // ---------------------------------------------------------------------------
 
-  virtual void SetBaseToLidarTranslation(double x, double y, double z);
-
-  virtual void SetBaseToLidarRotation(double rx, double ry, double rz);
-
+  // Set calibration base to lidar
   virtual void SetBaseToLidarTransform(std::string filename);
+
+  // Move odom so that the initial pose corresponds to the input pose
+  virtual void SetInitialPose(std::string filename);
+
+  // Move odom so that the current pose corresponds to the input pose
+  virtual void SetCurrentPose(std::string filename);
 
   // ---------------------------------------------------------------------------
   //   Optimization parameters
