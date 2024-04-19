@@ -1,5 +1,124 @@
 # SLAM changes history
 
+## *v2.2 (2024/04/18)*
+
+The main novelty for v2.2 is the availability of the ROS2 wrapper in feat/ROS2 branch.
+This release mainly brings available features from the library to the wrappers and improves the wrappers interfaces. Now, in ROS and Paraview, the loop closure is available, the loop closure detection has user supervision, IMU, GPS, external poses and wheel encoder are available and the automatic calibration is updated and fixed.
+The connexion to any driver node is improved in ROS.
+The PV wrapping is refactored to be able to add user supervision.
+In the library, the keypoints extractor is deeply refactored and a new extractor is added to be able to handle dense LiDAR sensors in the future.
+This new version also solves a lot of bugs and is more stable.
+
+The changes are summarized below.
+
+### Core lib
+
+**Major new features:**
+
+* Wheel odometer can have a calibration, a reference point and works in live (!323, !320)
+* Add a translation constraint for the wheel encoder (!336, !320)
+* Add lever arm constraint in calibration with ext trajectory (!362, !365)
+* Use sliding window to estimate the calibration matrix (!362, !365)
+
+**Feature modification:**
+
+* Rebuild map with log if the decaying threshold is increased (!416)
+
+**Refactoring and code architecture changes:**
+
+* Refactor the rolling grid (!388, !400)
+* Add new keypoint extractor for dense sensors. The output keypoints should be the same but the extractor will be updated in the future. (!324, !399, !398, !402, !403)
+
+**Bug fixes:**
+
+* Add sanity check to clear log (!281)
+* Fix loop closure and loop detection (!303, !322, !376, !377, !417, !418)
+* Fix wheel encoder constraint (!323)
+* Fix initial poses for initial maps (!338, !339, !419, !421)
+* Fix PCL transform for empty pc (!341)
+* Fix clearpoint infinite loop (!358)
+* Fix calibration for GPS (!389, !392)
+* Fix empty map bug after clearing (!416)
+
+**Compilation / CMake related changes / CI:**
+
+* Update superbuild (!295)
+* Clean docker (!301)
+* Remove bad deps from ROS jobs in CI (!301)
+* Fix big path build issue in Windows (!293)
+* Add git MR template (!335, !346)
+* Refact ROS tests (!383)
+* Fix frame dropping in ROS2 tests (!361, !380, !381)
+* Create ROS2 tests in CI (!357)
+* Upgrade dependencies (!390, !391)
+* Uniformize cmake messages (!396)
+* Build PV wrapper on docker on CI (!411)
+* Update CI doc (!413)
+
+### ROS wrapping
+
+**Major new features:**
+
+* Creation of ROS2 wrapping and multiple related fixes (!256, !279, !282, !289, !290, !292, !294, !296, !297, !305, !307, !313, !319, !309, !328, !343, !312, !352, !317, !351, !353)
+* Autocompute laser id and time when not provided (!284, !304, !311, !316, !321, !271, !385, !382)
+* Add generic converter to use any pointcloud2 as input (!302, !325)
+* Add loop closure (!326)
+* Integrate wheel encoder (!323, !331, !320, !406)
+* Add a slice extractor (!342, !347, !348, !344, !349)
+* Integrate IMU (!334, !337)
+* Allow to click in RVIZ to notify a loop closure (!360, !356)
+* Add Hesai converter (!369, !372, !379)
+* Allow to load external poses from CSV file (!374)
+
+**Minor new features:**
+
+* Handle various Velodyne drivers in ROS2 (!298, !299, !308)
+* Add reset trajectory command (!333)
+* Allow to remove aggregated points around the trajectory (!350, !363)
+* Add missing saturation interface for external poses (!366, !367)
+* Add maximum distance to sensor param in aggregation node (!368)
+
+**Feature modification**
+
+* If multi Lidars case, never use only one LiDAR frame (!272, !280, !306)
+* In multi Lidars case, remove device_id and automatically use frame_id from the pc header (!315, !327, !318)
+
+**Bug fixes:**
+
+* Handle Nan and 0 points in converters (!286, !287)
+* Fix broadcast for ROS2 nodes (!314)
+* Fix build with PCL and boost (!293)
+* Fix time in tests (!359)
+* Refact/fix ROS tests (!336, !355, !384, !397, !387)
+
+**Doc:**
+
+* Update install guide (!283)
+* Update external sensor doc (!329, !332)
+* Fix documentation (!407, !408, !310)
+
+### ParaView wrapping
+
+**Major new features:**
+
+* Provide loop closure indices as CSV file (!364)
+* Add autostart plugin (!274)
+* Add pop-up with user interaction for loop closure detection (!274)
+* Add button that also stops the record (!409)
+
+**Feature modification**
+
+* Update the calibration interface (!362)
+* Refactor interface (move parts and change default values) (!378, !414, !417)
+* Add transfrom tree section to change current pose or referential (!419)
+* Add button to initialize the SLAM process with maps and init poses (!419)
+
+**Fix**
+
+* Fix the number of threads used in kpts extractor (!371)
+* Remove subproxy (!412)
+* Fix crash if IdentifyInputArrays fails (!420)
+
 ## *v2.1 (2023/07/30)*
 
 This release mainly brings 4 new features : loop closure automatic detection, failure detection and recovery mode, calibration estimation and the handling of Livox sensors in ROS. It also contains many fixes relatively to previous version on pose graph optimization and on the build and install cmake process. The link with boost is also fixed. Performances are also improved modifying the keypoints extraction and the submap extraction. The ROS interface is improved.
