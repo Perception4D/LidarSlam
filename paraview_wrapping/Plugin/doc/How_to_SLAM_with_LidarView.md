@@ -27,21 +27,18 @@
 
 This document presents some tips on how to use SLAM algorithm in LidarView, or one of its derived distribution. Even if this SLAM is embedded in a Paraview plugin and is therefore directly usable in Paraview, we will focus on its use in LidarView (as we consider here LiDAR data, LidarView  seems a better choice for most use-cases and display).
 
-Since 2020, this SLAM plugin is natively included and available in [LidarView](https://www.paraview.org/lidarview/).
+Since 2020, this SLAM plugin is natively included and available in [LidarView](https://lidarview.kitware.com/).
 
 ## Installing LidarView or one of its derivative with SLAM support
 
-Pre-built binaries of LidarView with this SLAM plugin are available for download [here](https://drive.google.com/drive/folders/1ouNd3KD2p62a0XqRu4eJ2Tus6LJ-LBE8?usp=sharing).
+Pre-built binaries of LidarView with this SLAM plugin are available for download [here](https://gitlab.kitware.com/LidarView/lidarview/-/releases).
 
 As these binaries may not always be up-to-date with the latest SLAM release, you may want to compile LidarView with SLAM support from source.
-Follow [LidarView's Developer Guide](https://gitlab.kitware.com/LidarView/lidarview-core/-/blob/master/Documentation/LidarView_Developer_Guide.md) instructions to build LidarView on Windows or Linux.
+Follow [LidarView-Superbuild Guide](https://gitlab.kitware.com/LidarView/lidarview-superbuild/-/blob/master/README.md) instructions to build LidarView on Windows or Linux.
 
-*__IMPORTANT__: to enable SLAM support, ensure  your CMake configuration has these options set to `True` :*
+*__IMPORTANT__: to enable SLAM support, ensure your CMake configuration has these options set to `True` :*
 ```
--DENABLE_ceres=True
--DENABLE_nanoflann=True
--DENABLE_pcl=True
--DLIDARVIEW_BUILD_SLAM=True
+-DENABLE_slam=True
 ```
 
 For pose graph uses (see more details below with loop closure), g2o library is mandatory :
@@ -54,7 +51,7 @@ For IMU uses (see more details below), GTSAM library is mandatory :
 -DENABLE_gtsam=True
 ```
 
-`LidarSlamPlugin` should be automatically loaded at LidarView's startup. If not, ensure **Advanced features** are enabled (in **Help** or  **Tools** > **Debugging**), then select **Advance** > **Tools** > **Manage Plugins** > **Load New**. Browse to your LidarView install directory and select the `libLidarSlamPlugin.so` / `LidarSlamPlugin.dll` (this file can normally be found under `<lv_build>/install/lib/plugins/` on Linux or `<lv_build>/install/bin/plugins/` on Windows).
+`LidarSlamPlugin` should be automatically loaded at LidarView's startup. If not, ensure **Advanced features** are enabled (in **Help** or  **Tools** > **Debugging**), then select **Advance** > **Tools** > **Manage Plugins** > **Load New**. Browse to your LidarView install directory and select the `libLidarSlamPlugin.so` / `LidarSlamPlugin.dll` (this file can normally be found under `<lv_build>/install/lib/slam/plugins/` on Linux or `<lv_build>/install/bin/slam/plugins/` on Windows).
 
 ## Using SLAM in LidarView
 
