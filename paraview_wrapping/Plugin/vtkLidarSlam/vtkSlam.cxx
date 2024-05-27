@@ -324,10 +324,12 @@ void vtkSlam::SetInitialSlam()
     this->SlamAlgo->Reset(true);
     // Init the output SLAM trajectory
     this->ResetTrajectory();
-    // The log states is empty now, jump to initial pose
+    // There is no log states, jump to initial pose and the pose is added to log states
     this->SlamAlgo->JumpPose(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose));
     // Set TworldInit
     this->SlamAlgo->SetTworldInit(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose));
+    // Update PV trajectory
+    this->AddLastPosesToTrajectory();
   }
   else
   {
