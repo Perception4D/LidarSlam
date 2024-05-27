@@ -18,7 +18,7 @@
 #define vtkSlamInfo_h
 
 // Slam informations
-#define SLAM_VERSION "@CMAKE_PROJECT_VERSION@"
+#define SLAM_VERSION "@SLAM_VERSION_FULL@"
 #define SLAM_BUILD_TYPE "@CMAKE_BUILD_TYPE@"
 
 // Dependencies versionning
