@@ -127,7 +127,9 @@ vtkSlam::vtkSlam()
   this->SetInputArrayToProcess(1, LIDAR_FRAME_INPUT_PORT, 0, vtkDataObject::FIELD_ASSOCIATION_POINTS, vtkDataSetAttributes::SCALARS);
   this->SetInputArrayToProcess(2, LIDAR_FRAME_INPUT_PORT, 0, vtkDataObject::FIELD_ASSOCIATION_POINTS, vtkDataSetAttributes::SCALARS);
   this->SetInputArrayToProcess(3, CALIBRATION_INPUT_PORT, 0, vtkDataObject::FIELD_ASSOCIATION_ROWS,   vtkDataSetAttributes::SCALARS);
-  this->Reset();
+
+  // Init slam internal state
+  this->SlamAlgo->Reset(true);
 
   // Enable overlap computation only if required
   this->SlamAlgo->SetOverlapSamplingRatio(this->AdvancedReturnMode ||
@@ -143,6 +145,9 @@ vtkSlam::vtkSlam()
   // As the user has supervision on the loop closure detection in PV,
   // the threshold validation value is set to a minimal low value (0.1)
   this->SlamAlgo->SetLoopEvaluationThreshold(0.1);
+
+  // Init PV trajectory for SLAM trajectory output
+  this->ResetTrajectory();
 }
 
 //-----------------------------------------------------------------------------
@@ -151,13 +156,15 @@ void vtkSlam::Reset()
   if (this->SlamAlgo->IsRecovery())
     vtkWarningMacro(<< "Getting out of recovery mode");
 
+  // Reset slam internal state
   this->SlamAlgo->Reset(true);
+
+  // Init PV trajectory for SLAM trajectory output
+  // /!\ Must be done before initializing the SLAM pose/maps
+  this->ResetTrajectory();
 
   // Init the SLAM state (map + pose)
   this->SetInitialSlam();
-
-  // Init the output SLAM trajectory
-  this->ResetTrajectory();
 
   // Refill sensor managers
   this->SetSensorData(this->ExtSensorFileName);
@@ -324,10 +331,12 @@ void vtkSlam::SetInitialSlam()
     this->SlamAlgo->Reset(true);
     // Init the output SLAM trajectory
     this->ResetTrajectory();
-    // The log states is empty now, jump to initial pose
+    // There is no log states, jump to initial pose and the pose is added to log states
     this->SlamAlgo->JumpPose(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose));
     // Set TworldInit
     this->SlamAlgo->SetTworldInit(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose));
+    // Update PV trajectory
+    this->AddLastPosesToTrajectory();
   }
   else
   {
