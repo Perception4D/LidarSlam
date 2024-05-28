@@ -171,7 +171,7 @@
                             command="SetInputArrayToProcess"
                             number_of_elements="5"
                             element_types="0 0 0 0 2"
-                            default_values="0"
+                            default_values="timestamp"
                             panel_visibility="advanced">
         <ArrayListDomain attribute_type="Scalars" name="array_list">
           <RequiredProperties>
@@ -190,7 +190,7 @@
                             command="SetInputArrayToProcess"
                             number_of_elements="5"
                             element_types="0 0 0 0 2"
-                            default_values="1"
+                            default_values="intensity"
                             panel_visibility="advanced">
         <ArrayListDomain attribute_type="Scalars" name="array_list">
           <RequiredProperties>
@@ -209,7 +209,7 @@
                             command="SetInputArrayToProcess"
                             number_of_elements="5"
                             element_types="0 0 0 0 2"
-                            default_values="2"
+                            default_values="laser_id"
                             panel_visibility="advanced">
         <ArrayListDomain attribute_type="Scalars" name="array_list">
           <RequiredProperties>
@@ -223,39 +223,6 @@
           <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Auto detect input arrays" value="0" />
         </Hints>
       </StringVectorProperty>
-
-      <StringVectorProperty name="Elevation angles calibration"
-                            command="SetInputArrayToProcess"
-                            number_of_elements="5"
-                            element_types="0 0 0 0 2"
-                            default_values="3"
-                            panel_visibility="advanced">
-        <ArrayListDomain attribute_type="Scalars" name="array_list">
-          <RequiredProperties>
-            <Property function="Input" name="Calibration" />
-          </RequiredProperties>
-        </ArrayListDomain>
-        <Documentation>
-          Calibration column used to sort laser rings by ascending elevation angle
-          (the lowest/bottom laser ring should be 0, and it should increase upward).
-        </Documentation>
-        <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Auto detect input arrays" value="0" />
-        </Hints>
-      </StringVectorProperty>
-
-      <DoubleVectorProperty name="Time to seconds factor"
-                            command="SetTimeToSecondsFactorSetting"
-                            number_of_elements="1"
-                            default_values="1e-6"
-                            panel_visibility="advanced">
-        <Documentation>
-          Coefficient to apply to *Time array* values to express timestamps in seconds.
-        </Documentation>
-        <Hints>
-          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Auto detect input arrays" value="0" />
-        </Hints>
-      </DoubleVectorProperty>
 
       <!--~~~~~~~~~~~~~~~~~~~~~~~~~ Outputs options ~~~~~~~~~~~~~~~~~~~~~~~~~-->
 
@@ -374,8 +341,6 @@
         <Property name="Time array" />
         <Property name="Intensity array" />
         <Property name="Laser ring id array" />
-        <Property name="Elevation angles calibration" />
-        <Property name="Time to seconds factor" />
         <Property name="Advanced return mode" />
         <Property name="Failure detection" />
         <Property name="Keypoint maps output mode" />
