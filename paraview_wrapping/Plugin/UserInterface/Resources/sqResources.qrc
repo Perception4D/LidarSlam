@@ -12,6 +12,8 @@
         <file>Presets/LidarModel/C16.xml</file>
         <file>Presets/LidarModel/C32.xml</file>
         <file>Presets/LidarModel/PandarXT32.xml</file>
+        <file>Presets/LidarSupport/Pedestrian.xml</file>
+        <file>Presets/LidarSupport/Vehicle.xml</file>
         <file>Icons/sqAdd.svg</file>
         <file>Icons/sqAddExternalSensor.svg</file>
         <file>Icons/sqInitialize.svg</file>

@@ -23,15 +23,6 @@
         <Entry value="5" text="External OR motion extrapolation"/>
       </Domain>
     </Property>
-    <Property name="Undistortion mode" id="202535.Undistortion mode" number_of_elements="1">
-      <Element index="0" value="1"/>
-      <Domain name="enum" id="202535.Undistortion mode.enum">
-        <Entry value="0" text="Disabled"/>
-        <Entry value="1" text="Once"/>
-        <Entry value="2" text="Refined"/>
-        <Entry value="3" text="External"/>
-      </Domain>
-    </Property>
     <Property name="Min laser beam to surface angle" id="202535.Min laser beam to surface angle" number_of_elements="1">
       <Element index="0" value="10"/>
     </Property>
@@ -48,7 +39,7 @@
       <Element index="0" value="10"/>
     </Property>
     <Property name="Edge min intensity gap" id="202535.Edge min intensity gap" number_of_elements="1">
-      <Element index="0" value="50"/>
+      <Element index="0" value="100000"/>
     </Property>
     <Property name="Maximum keypoints number" id="202535.Maximum keypoints number" number_of_elements="1">
       <Element index="0" value="1000"/>
