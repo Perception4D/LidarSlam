@@ -82,6 +82,14 @@
         </item>
         <item>
          <property name="text">
+          <string>LiDAR Support</string>
+         </property>
+         <property name="flags">
+          <set>ItemIsDragEnabled|ItemIsDropEnabled|ItemIsEnabled</set>
+         </property>
+        </item>
+        <item>
+         <property name="text">
           <string>User Custom</string>
          </property>
          <property name="flags">

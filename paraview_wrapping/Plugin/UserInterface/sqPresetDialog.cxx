@@ -105,6 +105,7 @@ struct sqPresetDialog::sqInternals
   {
     ENVIRONMENT = 0,
     LIDAR_MODEL,
+    LIDAR_SUPPORT,
     USER_CUSTOM,
 
     presetTypeSize
@@ -165,6 +166,7 @@ struct sqPresetDialog::sqInternals
       {
         doDeselect[sqInternals::ENVIRONMENT] = true;
         doDeselect[sqInternals::LIDAR_MODEL] = true;
+        doDeselect[sqInternals::LIDAR_SUPPORT] = true;
       }
       else
       {
@@ -264,13 +266,13 @@ void sqPresetDialog::populateTree()
 {
   auto environmentItems = this->Internals->getTreeMainItem(sqInternals::ENVIRONMENT);
   auto lidarModelItems = this->Internals->getTreeMainItem(sqInternals::LIDAR_MODEL);
+  auto lidarSupportItems = this->Internals->getTreeMainItem(sqInternals::LIDAR_SUPPORT);
   auto customItems = this->Internals->getTreeMainItem(sqInternals::USER_CUSTOM);
-  environmentItems->setExpanded(true);
-  lidarModelItems->setExpanded(true);
   customItems->setExpanded(true);
 
   sqInternals::addItemsFromDirectory(":/sqResources/Presets/Environment", environmentItems);
   sqInternals::addItemsFromDirectory(":/sqResources/Presets/LidarModel", lidarModelItems);
+  sqInternals::addItemsFromDirectory(":/sqResources/Presets/LidarSupport", lidarSupportItems);
   sqInternals::addItemsFromDirectory(sqInternals::CUSTOM_PRESET_DIR(), customItems);
 
   this->Internals->Ui->presetTree->setCurrentItem(nullptr);
