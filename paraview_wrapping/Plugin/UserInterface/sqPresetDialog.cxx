@@ -105,7 +105,9 @@ struct sqPresetDialog::sqInternals
   {
     ENVIRONMENT = 0,
     LIDAR_MODEL,
-    USER_CUSTOM
+    USER_CUSTOM,
+
+    presetTypeSize
   };
 
   static constexpr int PRESET_COLUMN() { return 0; }
@@ -144,6 +146,72 @@ struct sqPresetDialog::sqInternals
     {
       directory.mkpath(".");
     }
+  }
+
+  void handleMultiSelection()
+  {
+    auto items = this->Ui->presetTree->selectedItems();
+    if (items.size() <= 1)
+    {
+      return;
+    }
+
+    bool doDeselect[sqInternals::presetTypeSize] = { false };
+    // Handle custom preset case
+    if (this->isCustomModelSelected())
+    {
+      // Keep the last category selected
+      if (!this->isItemOfType(sqInternals::USER_CUSTOM, items.first()))
+      {
+        doDeselect[sqInternals::ENVIRONMENT] = true;
+        doDeselect[sqInternals::LIDAR_MODEL] = true;
+      }
+      else
+      {
+        auto hasCustomModel = [this](QTreeWidgetItem* item) {
+          return this->isItemOfType(sqInternals::USER_CUSTOM, item);
+        };
+        bool allCustom = std::all_of(items.cbegin(), items.cend(), hasCustomModel);
+        doDeselect[sqInternals::USER_CUSTOM] = !allCustom;
+      }
+    }
+
+    auto changeSelection = [this, &doDeselect](QTreeWidgetItem* selected) {
+      for (unsigned int typeIdx = 0; typeIdx < sqInternals::presetTypeSize; typeIdx++)
+      {
+        auto type = static_cast<sqInternals::PresetType>(typeIdx);
+        if (this->isItemOfType(type, selected))
+        {
+          if (doDeselect[typeIdx])
+          {
+            this->Ui->presetTree->setCurrentItem(selected, 0, QItemSelectionModel::Deselect);
+          }
+          doDeselect[typeIdx] = true;
+        }
+      }
+    };
+
+    this->Ui->presetTree->blockSignals(true);
+    std::for_each(items.rbegin(), items.rend(), changeSelection);
+    // Prevent bug where the selection focus is switched to last deselected
+    this->Ui->presetTree->setCurrentItem(this->Ui->presetTree->selectedItems().last(), 0, QItemSelectionModel::Select);
+    this->Ui->presetTree->blockSignals(false);
+  }
+
+  bool isCustomModelSelected()
+  {
+    QList<QTreeWidgetItem*> items = this->Ui->presetTree->selectedItems();
+
+    auto hasCustomModel = [this](QTreeWidgetItem* item) {
+      return this->isItemOfType(sqInternals::USER_CUSTOM, item);
+    };
+    auto found = std::find_if(items.cbegin(), items.cend(), hasCustomModel);
+    return found != items.cend();
+  }
+
+  bool isItemOfType(sqInternals::PresetType type, QTreeWidgetItem* item)
+  {
+    return this->getTreeMainItem(type)->indexOfChild(item) != -1;
   }
 
   QTreeWidgetItem* getTreeMainItem(PresetType type)
@@ -355,7 +423,6 @@ void sqPresetDialog::onRemoveAll()
 //-----------------------------------------------------------------------------
 void sqPresetDialog::onApplySelected()
 {
-  auto selected = this->Internals->Ui->presetTree->selectedItems().first();
   pqPipelineFilter* filter =
     qobject_cast<pqPipelineFilter*>(pqActiveObjects::instance().activeSource());
   if (filter == nullptr)
@@ -364,30 +431,34 @@ void sqPresetDialog::onApplySelected()
   }
   vtkSMSourceProxy* proxy = filter->getSourceProxy();
 
-  QString filename =
-    selected->data(sqInternals::PRESET_COLUMN(), sqInternals::PRESET_PATH_ROLE()).toString();
-  QFile file(filename);
-  if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+  QList<QTreeWidgetItem*> items = this->Internals->Ui->presetTree->selectedItems();
+  for (auto &item : items)
   {
-    qCritical() << "Failed to open file: " << filename << ".";
-    return;
-  }
-  QByteArray byteArray = file.readAll();
-  file.close();
+    QString filename =
+      item->data(sqInternals::PRESET_COLUMN(), sqInternals::PRESET_PATH_ROLE()).toString();
+    QFile file(filename);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+      qCritical() << "Failed to open file: " << filename << ".";
+      continue;
+    }
+    QByteArray byteArray = file.readAll();
+    file.close();
 
-  vtkSmartPointer<vtkPVXMLParser> parser = vtkSmartPointer<vtkPVXMLParser>::New();
-  if (parser->Parse(byteArray.constData()) == 0)
-  {
-    qCritical() << "Invalid XML in file: " << filename << ".";
-    return;
+    vtkSmartPointer<vtkPVXMLParser> parser = vtkSmartPointer<vtkPVXMLParser>::New();
+    if (parser->Parse(byteArray.constData()) == 0)
+    {
+      qCritical() << "Invalid XML in file: " << filename << ".";
+      continue;
+    }
+    vtkPVXMLElement* xmlStream = parser->GetRootElement();
+    if (xmlStream == nullptr)
+    {
+      qCritical() << "Invalid XML in file: " << filename << ".";
+      continue;
+    }
+    proxy->LoadXMLState(xmlStream->GetNestedElement(0), nullptr);
   }
-  vtkPVXMLElement* xmlStream = parser->GetRootElement();
-  if (xmlStream == nullptr)
-  {
-    qCritical() << "Invalid XML in file: " << filename << ".";
-    return;
-  }
-  proxy->LoadXMLState(xmlStream->GetNestedElement(0), nullptr);
 
   QPushButton* applyButton = this->Internals->Ui->buttonBox->button(QDialogButtonBox::Apply);
   applyButton->setEnabled(false);
@@ -415,8 +486,8 @@ void sqPresetDialog::updateUIState()
 
   if (hasSelection)
   {
-    auto selected = this->Internals->Ui->presetTree->selectedItems().first();
-    isCustomSelected = customItem->indexOfChild(selected) != -1;
+    this->Internals->handleMultiSelection();
+    isCustomSelected = this->Internals->isCustomModelSelected();
   }
 
   applyButton->setEnabled(isSlamFilter && hasSelection);

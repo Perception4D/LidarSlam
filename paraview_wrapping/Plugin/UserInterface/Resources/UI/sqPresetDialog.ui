@@ -53,6 +53,12 @@
       </item>
       <item row="0" column="0" rowspan="5" colspan="2">
        <widget class="QTreeWidget" name="presetTree">
+        <property name="selectionMode">
+         <enum>QAbstractItemView::MultiSelection</enum>
+        </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectItems</enum>
+        </property>
         <column>
          <property name="text">
           <string>SLAM Settings Presets</string>
