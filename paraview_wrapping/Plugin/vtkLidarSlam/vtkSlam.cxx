@@ -323,7 +323,8 @@ void vtkSlam::SetInitialSlam()
 {
   // Check number of log states
   const std::list<LidarSlam::LidarState>& initLidarStates = this->SlamAlgo->GetLogStates();
-  if (initLidarStates.size() <= 1)
+  double motion = (initLidarStates.front().Isometry.translation() - initLidarStates.back().Isometry.translation()).norm();
+  if (initLidarStates.size() <= 2 || motion < this->SlamAlgo->GetKfDistanceThreshold())
   {
     // Reset slam
     this->SlamAlgo->Reset(true);
@@ -338,7 +339,8 @@ void vtkSlam::SetInitialSlam()
   }
   else
   {
-    vtkWarningMacro(<< "Could not change the initial pose because a map already exists : please reset state");
+    vtkWarningMacro(<< "Could not initialize the SLAM because a trajectory already exists : "
+                    << "please reset manually if you wish to proceed with initialization.");
   }
 
   // Set initial maps for slam if they are provided
