@@ -36,6 +36,9 @@ public:
   static bool isSlamFilter(vtkSMProxy* proxy);
   static bool isSlamFilter(const char* smXMLGroup, const char* smXMLName);
 
+  static constexpr const char* SLAM_XML_GROUP() { return "filters"; }
+  static constexpr const char* SLAM_XML_NAME() { return "SlamOnline"; }
+
 protected:
   vtkSlamFinder() = default;
   ~vtkSlamFinder() override = default;

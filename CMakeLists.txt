@@ -30,6 +30,14 @@ if(WIN32 AND MSVC)
 	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 endif()
 
+# Include cmake directory to be able to do include() on cmake files
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+# Set SLAM version variables (e.g SLAM_VERSION, SLAM_VERSION_FULL)
+include(DetermineVersion)
+find_package(Git)
+determine_version(${CMAKE_SOURCE_DIR} ${GIT_EXECUTABLE} "SLAM")
+
 #-------------------------
 #  Find dependencies
 #-------------------------

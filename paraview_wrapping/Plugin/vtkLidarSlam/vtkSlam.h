@@ -130,9 +130,6 @@ public:
   vtkGetMacro(AutoDetectInputArrays, bool)
   vtkSetMacro(AutoDetectInputArrays, bool)
 
-  vtkGetMacro(TimeToSecondsFactorSetting, double)
-  vtkSetMacro(TimeToSecondsFactorSetting, double)
-
   vtkGetMacro(AdvancedReturnMode, bool)
   virtual void SetAdvancedReturnMode(bool _arg);
 
@@ -538,10 +535,7 @@ private:
   // ---------------------------------------------------------------------------
 
   // Identify input arrays to use
-  bool IdentifyInputArrays(vtkPolyData* poly, vtkTable* calib);
-
-  // Convert LiDAR calibration to laser id mapping
-  std::vector<size_t> GetLaserIdMapping(vtkTable* calib);
+  bool IdentifyInputArrays(vtkPolyData* poly);
 
   // Create polydata with trajectory arrays and points
   vtkSmartPointer<vtkPolyData> CreateInitTrajectory();
@@ -559,8 +553,7 @@ private:
   // Convert VTK PolyData to PCL pointcloud
   // Returns true if all input points are valid (null coordinates), false otherwise
   bool PolyDataToPointCloud(vtkPolyData* poly,
-                            LidarSlam::Slam::PointCloud::Ptr pc,
-                            const std::vector<size_t>& laserIdMapping) const;
+                            LidarSlam::Slam::PointCloud::Ptr pc) const;
 
   // Convert PCL pointcloud to VTK PolyData
   void PointCloudToPolyData(LidarSlam::Slam::PointCloud::Ptr pc,
@@ -627,9 +620,7 @@ private:
   std::string TimeArrayName;           ///< Point measurement timestamp
   std::string IntensityArrayName;      ///< Point intensity/reflectivity values
   std::string LaserIdArrayName;        ///< Laser ring id
-  std::string VerticalCalibArrayName;  ///< Calibration column used to sort laser rings by elevation angle
-  double TimeToSecondsFactor;          ///< Coef to apply to TimeArray values to express time in seconds
-  double TimeToSecondsFactorSetting;   ///< Duplicated parameter used to store the value set by user
+  double TimeToSecondsFactor = 1.;     ///< Coef to apply to TimeArray values to express time in seconds
 
   // SLAM initialization
   std::string InitMapPrefix; ///< Path prefix of initial maps
