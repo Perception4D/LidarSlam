@@ -84,6 +84,9 @@ private:
   // Compute its boundary and return its area
   double ExtractSlice(double sliceWidth, double sliceMaxDist, double angleStep, CloudS& boundary);
 
+  // Extract the points belonging to a z slice defined by user
+  void ExtractZslice(const CloudS& inputCloud, CloudS& outputCloud);
+
   // ROS subscribers, publishers and services
   rclcpp::Subscription<Pcl2_msg>::SharedPtr FrameSubscriber;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr  PoseSubscriber;
@@ -102,14 +105,21 @@ private:
   // Optional positions logged to compute
   // the direction to create a slice
   std::list<Eigen::Vector3d> Positions;
-  Eigen::Vector3d CurrentPosition = {0., 0., 0.};
+  Eigen::Isometry3d CurrentPose = Eigen::Isometry3d::Identity();
   double TrajectoryMaxLength = 0.5; // 50 cm
   double SliceWidth = 0.2; // 20 cm
   double SliceMaxDist = 5.; // 5 m
   unsigned int MinSlicePtsWithoutMovObjects = 50;
-  double AlphaShapeRadius = 0.1; // 10 cm
   // Bin range for the circular histogram
   double AngleStep = 3. * M_PI / 180.; // 3°
+
+  // Z slice extraction parameters
+  bool DoExtractZslice = false;
+  bool InvertZsliceExtraction = false;
+  // Horizontal slice parameters
+  double ZsliceWidth = 0.2;
+  double ZsliceHeightPosition = -0.5;
+  double MinObstacleMarkerSize = 0.3;
 
   // Minimal distance around trajectory to remove points from the map
   double MinDistAroundTrajectory = 1.;
