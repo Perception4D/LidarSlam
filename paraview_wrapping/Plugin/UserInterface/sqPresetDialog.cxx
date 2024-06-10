@@ -114,11 +114,13 @@ struct sqPresetDialog::sqInternals
   static constexpr int PRESET_COLUMN() { return 0; }
   static constexpr int PRESET_PATH_ROLE() { return Qt::UserRole + 1; }
 
+  //-----------------------------------------------------------------------------
   static QString CUSTOM_PRESET_DIR()
   {
     return pqCoreUtilities::getParaViewUserDirectory() + "/SlamPresets";
   }
 
+  //-----------------------------------------------------------------------------
   static void addItem(QTreeWidgetItem* parent, QString text, QString filePath)
   {
     QTreeWidgetItem* item = new QTreeWidgetItem(parent);
@@ -127,6 +129,7 @@ struct sqPresetDialog::sqInternals
     item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
   }
 
+  //-----------------------------------------------------------------------------
   static void addItemsFromDirectory(QString path, QTreeWidgetItem* parent)
   {
     QDirIterator it(path, QDirIterator::Subdirectories);
@@ -140,6 +143,7 @@ struct sqPresetDialog::sqInternals
     }
   }
 
+  //-----------------------------------------------------------------------------
   static void tryCreatePresetDir()
   {
     QDir directory(sqInternals::CUSTOM_PRESET_DIR());
@@ -149,6 +153,7 @@ struct sqPresetDialog::sqInternals
     }
   }
 
+  //-----------------------------------------------------------------------------
   void handleMultiSelection()
   {
     auto items = this->Ui->presetTree->selectedItems();
@@ -200,6 +205,7 @@ struct sqPresetDialog::sqInternals
     this->Ui->presetTree->blockSignals(false);
   }
 
+  //-----------------------------------------------------------------------------
   bool isCustomModelSelected()
   {
     QList<QTreeWidgetItem*> items = this->Ui->presetTree->selectedItems();
@@ -211,11 +217,13 @@ struct sqPresetDialog::sqInternals
     return found != items.cend();
   }
 
+  //-----------------------------------------------------------------------------
   bool isItemOfType(sqInternals::PresetType type, QTreeWidgetItem* item)
   {
     return this->getTreeMainItem(type)->indexOfChild(item) != -1;
   }
 
+  //-----------------------------------------------------------------------------
   QTreeWidgetItem* getTreeMainItem(PresetType type)
   {
     return this->Ui->presetTree->topLevelItem(type);
