@@ -26,6 +26,7 @@
 #include <vtkPVXMLElement.h>
 #include <vtkPVXMLParser.h>
 #include <vtkSMNamedPropertyIterator.h>
+#include <vtkSMProperty.h>
 #include <vtkSMSourceProxy.h>
 #include <vtksys/FStream.hxx>
 
@@ -227,6 +228,31 @@ struct sqPresetDialog::sqInternals
   QTreeWidgetItem* getTreeMainItem(PresetType type)
   {
     return this->Ui->presetTree->topLevelItem(type);
+  }
+
+  //-----------------------------------------------------------------------------
+  void checkPresetValidity(vtkSMSourceProxy* proxy, vtkPVXMLElement* element)
+  {
+    unsigned int numElems = element->GetNumberOfNestedElements();
+    for (unsigned int i = 0; i < numElems; i++)
+    {
+      vtkPVXMLElement* currentElement = element->GetNestedElement(i);
+      const char* elementName = currentElement->GetName();
+      if (elementName && strcmp(elementName, "Property") == 0)
+      {
+        const char* name = currentElement->GetAttribute("name");
+        if (!name)
+        {
+          std::cerr << "Cannot load property without a name." << std::endl;
+          continue;
+        }
+        vtkSMProperty* property = proxy->GetProperty(name);
+        if (!property)
+        {
+          std::cerr << "Property " << name << " from preset does not exist in SLAM." << std::endl;
+        }
+      }
+    }
   }
 
   QScopedPointer<Ui::PresetDialog> Ui;
@@ -467,7 +493,9 @@ void sqPresetDialog::onApplySelected()
       qCritical() << "Invalid XML in file: " << filename << ".";
       continue;
     }
-    proxy->LoadXMLState(xmlStream->GetNestedElement(0), nullptr);
+    vtkPVXMLElement* root = xmlStream->GetNestedElement(0);
+    this->Internals->checkPresetValidity(proxy, root);
+    proxy->LoadXMLState(root, nullptr);
   }
 
   QPushButton* applyButton = this->Internals->Ui->buttonBox->button(QDialogButtonBox::Apply);
