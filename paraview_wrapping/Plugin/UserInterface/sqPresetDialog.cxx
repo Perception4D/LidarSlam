@@ -26,6 +26,7 @@
 #include <vtkPVXMLElement.h>
 #include <vtkPVXMLParser.h>
 #include <vtkSMNamedPropertyIterator.h>
+#include <vtkSMProperty.h>
 #include <vtkSMSourceProxy.h>
 #include <vtksys/FStream.hxx>
 
@@ -114,11 +115,13 @@ struct sqPresetDialog::sqInternals
   static constexpr int PRESET_COLUMN() { return 0; }
   static constexpr int PRESET_PATH_ROLE() { return Qt::UserRole + 1; }
 
+  //-----------------------------------------------------------------------------
   static QString CUSTOM_PRESET_DIR()
   {
     return pqCoreUtilities::getParaViewUserDirectory() + "/SlamPresets";
   }
 
+  //-----------------------------------------------------------------------------
   static void addItem(QTreeWidgetItem* parent, QString text, QString filePath)
   {
     QTreeWidgetItem* item = new QTreeWidgetItem(parent);
@@ -127,6 +130,7 @@ struct sqPresetDialog::sqInternals
     item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
   }
 
+  //-----------------------------------------------------------------------------
   static void addItemsFromDirectory(QString path, QTreeWidgetItem* parent)
   {
     QDirIterator it(path, QDirIterator::Subdirectories);
@@ -140,6 +144,7 @@ struct sqPresetDialog::sqInternals
     }
   }
 
+  //-----------------------------------------------------------------------------
   static void tryCreatePresetDir()
   {
     QDir directory(sqInternals::CUSTOM_PRESET_DIR());
@@ -149,6 +154,7 @@ struct sqPresetDialog::sqInternals
     }
   }
 
+  //-----------------------------------------------------------------------------
   void handleMultiSelection()
   {
     auto items = this->Ui->presetTree->selectedItems();
@@ -200,6 +206,7 @@ struct sqPresetDialog::sqInternals
     this->Ui->presetTree->blockSignals(false);
   }
 
+  //-----------------------------------------------------------------------------
   bool isCustomModelSelected()
   {
     QList<QTreeWidgetItem*> items = this->Ui->presetTree->selectedItems();
@@ -211,14 +218,41 @@ struct sqPresetDialog::sqInternals
     return found != items.cend();
   }
 
+  //-----------------------------------------------------------------------------
   bool isItemOfType(sqInternals::PresetType type, QTreeWidgetItem* item)
   {
     return this->getTreeMainItem(type)->indexOfChild(item) != -1;
   }
 
+  //-----------------------------------------------------------------------------
   QTreeWidgetItem* getTreeMainItem(PresetType type)
   {
     return this->Ui->presetTree->topLevelItem(type);
+  }
+
+  //-----------------------------------------------------------------------------
+  void checkPresetValidity(vtkSMSourceProxy* proxy, vtkPVXMLElement* element)
+  {
+    unsigned int numElems = element->GetNumberOfNestedElements();
+    for (unsigned int i = 0; i < numElems; i++)
+    {
+      vtkPVXMLElement* currentElement = element->GetNestedElement(i);
+      const char* elementName = currentElement->GetName();
+      if (elementName && strcmp(elementName, "Property") == 0)
+      {
+        const char* name = currentElement->GetAttribute("name");
+        if (!name)
+        {
+          std::cerr << "Cannot load property without a name." << std::endl;
+          continue;
+        }
+        vtkSMProperty* property = proxy->GetProperty(name);
+        if (!property)
+        {
+          std::cerr << "Property " << name << " from preset does not exist in SLAM." << std::endl;
+        }
+      }
+    }
   }
 
   QScopedPointer<Ui::PresetDialog> Ui;
@@ -459,7 +493,9 @@ void sqPresetDialog::onApplySelected()
       qCritical() << "Invalid XML in file: " << filename << ".";
       continue;
     }
-    proxy->LoadXMLState(xmlStream->GetNestedElement(0), nullptr);
+    vtkPVXMLElement* root = xmlStream->GetNestedElement(0);
+    this->Internals->checkPresetValidity(proxy, root);
+    proxy->LoadXMLState(root, nullptr);
   }
 
   QPushButton* applyButton = this->Internals->Ui->buttonBox->button(QDialogButtonBox::Apply);
