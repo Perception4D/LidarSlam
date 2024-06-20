@@ -2476,13 +2476,16 @@ void Slam::BuildMaps(Maps& maps, int windowStartIdx, int windowEndIdx, int idxFr
       // Keypoints are stored undistorted : because of the keyframes mechanism,
       // undistortion cannot be refined during pose graph
       // We rely on a good first estimation of the in-frame motion
-      PointCloud::Ptr undistortedKeypoints = state.Keypoints[k]->GetCloud();
-      if (!undistortedKeypoints->empty())
+      if (state.Keypoints.count(k))
       {
-        keypoints.reset(new PointCloud);
-        auto transform = idxFrame >= 0 ? currentBaseInv.matrix() * state.Isometry.matrix() : state.Isometry.matrix();
-        pcl::transformPointCloud(*undistortedKeypoints, *keypoints, transform.cast<float>());
-        maps[k]->Add(keypoints, false);
+        PointCloud::Ptr undistortedKeypoints = state.Keypoints[k]->GetCloud();
+        if (!undistortedKeypoints->empty())
+        {
+          keypoints.reset(new PointCloud);
+          auto transform = idxFrame >= 0 ? currentBaseInv.matrix() * state.Isometry.matrix() : state.Isometry.matrix();
+          pcl::transformPointCloud(*undistortedKeypoints, *keypoints, transform.cast<float>());
+          maps[k]->Add(keypoints, false);
+        }
       }
     }
   }
