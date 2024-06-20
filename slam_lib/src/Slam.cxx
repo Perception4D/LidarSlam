@@ -776,8 +776,8 @@ bool Slam::OptimizeGraph()
         // Compute a loopClosureTransform from the revisited frame to the query frame
         // by registering the keypoints of the query frame onto the keypoints of the revisited frame
         Eigen::Isometry3d loopClosureTransform = loop.Transform.matrix().isIdentity() ?
-                                                  Eigen::Isometry3d(itQueryState->Isometry.inverse() *
-                                                                    itRevisitedState->Isometry) :
+                                                  Eigen::Isometry3d(itRevisitedState->Isometry.inverse() *
+                                                                    itQueryState->Isometry) :
                                                   loop.Transform;
         Eigen::Matrix6d loopClosureCovariance;
         if (this->LoopClosureRegistration(itQueryState, itRevisitedState,
