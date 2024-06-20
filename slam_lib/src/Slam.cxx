@@ -774,7 +774,8 @@ bool Slam::OptimizeGraph()
         auto itQueryState     = this->GetKeyStateIterator(loop.QueryIdx);
         auto itRevisitedState = this->GetKeyStateIterator(loop.RevisitedIdx);
         // Compute a loopClosureTransform from the revisited frame to the query frame
-        // by registering the keypoints of the query frame onto the keypoints of the revisited frame
+        // RevisitedFrame * loopClosureTransform = QueryFrame
+        // If teaserpp is used to detect loop closure, a loopClosureTransform is provided as a hint
         Eigen::Isometry3d loopClosureTransform = loop.Transform.matrix().isIdentity() ?
                                                   Eigen::Isometry3d(itRevisitedState->Isometry.inverse() *
                                                                     itQueryState->Isometry) :
@@ -2048,7 +2049,7 @@ bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState,
   #ifdef USE_TEASERPP
   if (this->LogStates.size() < 2)
   {
-    PRINT_WARNING("Cannot detect loop closure: no enough logged states");
+    PRINT_WARNING("Cannot detect loop closure: not enough logged states");
     return false;
   }
   // Create query submap and get keypoints in BASE coordinates
@@ -2362,7 +2363,8 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
 
   loopClosureUncertainty = this->EstimatePose(loopClosureQueryKeypoints, loopClosureRevisitedSubMaps,
                                               this->LoopParams.OptParams, loopClosureTransform,
-                                              loopMatchingResults);
+                                              loopMatchingResults); // query_registered = loopClosureTransform * query
+                                                                    // revisited * loopClosureTransform = query
 
   IF_VERBOSE(3, Utils::Timer::StopAndDisplay("Loop closure Registration : whole ICP-LM loop"));
 
