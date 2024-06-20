@@ -2291,14 +2291,6 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
                   itRevisitedState->Index);
   PRINT_VERBOSE(3, "Sub maps are created around revisited frame #" << itRevisitedState->Index << ".");
 
-  // Enable to add an offset to the pose prior when two poses are too far from each other.
-  // This only applies for external detections, no hint transform has been provided.
-  if (this->LoopParams.EnableOffset)
-  {
-    loopClosureTransform.translation() = Eigen::Vector3d::Zero();
-    PRINT_VERBOSE(3, "Submaps are aligned in translation to help ICP transform.");
-  }
-
   // If this->LoopParams.ICPWithSubmap is enabled, create a submap of keypoints around the query frame
   // Otherwise, use only keypoints of query frame as query keypoints
   // loopClosureQueryKeypoints are in BASE coordinates of query frame
@@ -2359,6 +2351,14 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
   this->LoopParams.OptParams.MatchingParams.SingleEdgePerRing = false;
   // ICP - Levenberg-Marquardt loop to estimate the pose of the current frame relatively to the close loop frame
   std::map<Keypoint, KeypointsMatcher::MatchingResults> loopMatchingResults;
+
+  // Enable to add an offset to the pose prior when two poses are too far from each other.
+  // This only applies for external detections, no hint transform has been provided.
+  if (this->LoopParams.EnableOffset)
+  {
+    loopClosureTransform.translation() = Eigen::Vector3d::Zero();
+    PRINT_VERBOSE(3, "Submaps are aligned in translation to help ICP transform.");
+  }
 
   loopClosureUncertainty = this->EstimatePose(loopClosureQueryKeypoints, loopClosureRevisitedSubMaps,
                                               this->LoopParams.OptParams, loopClosureTransform,
