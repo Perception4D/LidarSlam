@@ -2373,17 +2373,17 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
   }
 
   // Get covariance
-  Eigen::Matrix6d covariance = std::pow(this->CovarianceScale, 2) * loopClosureUncertainty.Covariance;
+  loopClosureCovariance = std::pow(this->CovarianceScale, 2) * loopClosureUncertainty.Covariance;
   float defaultPositionError = 1e-2; // 1cm
   float defaultAngleError = Utils::Deg2Rad(1.f); // 1°
-  if (!Utils::isCovarianceValid(covariance))
-    covariance = Utils::CreateDefaultCovariance(defaultPositionError, defaultAngleError);
+  if (!Utils::isCovarianceValid(loopClosureCovariance))
+    loopClosureCovariance = Utils::CreateDefaultCovariance(defaultPositionError, defaultAngleError);
   // If 2D mode enabled, supply constant covariance for unevaluated variables
   if (this->TwoDMode)
   {
-    covariance(2, 2) = std::pow(defaultPositionError, 2);
-    covariance(3, 3) = std::pow(defaultAngleError,    2);
-    covariance(4, 4) = std::pow(defaultAngleError,    2);
+    loopClosureCovariance(2, 2) = std::pow(defaultPositionError, 2);
+    loopClosureCovariance(3, 3) = std::pow(defaultAngleError,    2);
+    loopClosureCovariance(4, 4) = std::pow(defaultAngleError,    2);
   }
 
   // Optionally print loop closure registration optimization summary
