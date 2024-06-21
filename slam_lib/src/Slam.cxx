@@ -774,10 +774,11 @@ bool Slam::OptimizeGraph()
         auto itQueryState     = this->GetKeyStateIterator(loop.QueryIdx);
         auto itRevisitedState = this->GetKeyStateIterator(loop.RevisitedIdx);
         // Compute a loopClosureTransform from the revisited frame to the query frame
-        // by registering the keypoints of the query frame onto the keypoints of the revisited frame
+        // RevisitedFrame * loopClosureTransform = QueryFrame
+        // If teaserpp is used to detect loop closure, a loopClosureTransform is provided as a hint
         Eigen::Isometry3d loopClosureTransform = loop.Transform.matrix().isIdentity() ?
-                                                  Eigen::Isometry3d(itQueryState->Isometry.inverse() *
-                                                                    itRevisitedState->Isometry) :
+                                                  Eigen::Isometry3d(itRevisitedState->Isometry.inverse() *
+                                                                    itQueryState->Isometry) :
                                                   loop.Transform;
         Eigen::Matrix6d loopClosureCovariance;
         if (this->LoopClosureRegistration(itQueryState, itRevisitedState,
@@ -2048,7 +2049,7 @@ bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState,
   #ifdef USE_TEASERPP
   if (this->LogStates.size() < 2)
   {
-    PRINT_WARNING("Cannot detect loop closure: no enough logged states");
+    PRINT_WARNING("Cannot detect loop closure: not enough logged states");
     return false;
   }
   // Create query submap and get keypoints in BASE coordinates
@@ -2291,14 +2292,6 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
                   itRevisitedState->Index);
   PRINT_VERBOSE(3, "Sub maps are created around revisited frame #" << itRevisitedState->Index << ".");
 
-  // Enable to add an offset to the pose prior when two poses are too far from each other.
-  // This only applies for external detections, no hint transform has been provided.
-  if (this->LoopParams.EnableOffset)
-  {
-    loopClosureTransform.translation() = Eigen::Vector3d::Zero();
-    PRINT_VERBOSE(3, "Submaps are aligned in translation to help ICP transform.");
-  }
-
   // If this->LoopParams.ICPWithSubmap is enabled, create a submap of keypoints around the query frame
   // Otherwise, use only keypoints of query frame as query keypoints
   // loopClosureQueryKeypoints are in BASE coordinates of query frame
@@ -2360,9 +2353,18 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
   // ICP - Levenberg-Marquardt loop to estimate the pose of the current frame relatively to the close loop frame
   std::map<Keypoint, KeypointsMatcher::MatchingResults> loopMatchingResults;
 
+  // Enable to add an offset to the pose prior when two poses are too far from each other.
+  // This only applies for external detections, no hint transform has been provided.
+  if (this->LoopParams.EnableOffset)
+  {
+    loopClosureTransform.translation() = Eigen::Vector3d::Zero();
+    PRINT_VERBOSE(3, "Submaps are aligned in translation to help ICP transform.");
+  }
+
   loopClosureUncertainty = this->EstimatePose(loopClosureQueryKeypoints, loopClosureRevisitedSubMaps,
                                               this->LoopParams.OptParams, loopClosureTransform,
-                                              loopMatchingResults);
+                                              loopMatchingResults); // query_registered = loopClosureTransform * query
+                                                                    // revisited * loopClosureTransform = query
 
   IF_VERBOSE(3, Utils::Timer::StopAndDisplay("Loop closure Registration : whole ICP-LM loop"));
 
@@ -2373,17 +2375,17 @@ bool Slam::LoopClosureRegistration(std::list<LidarState>::iterator& itQueryState
   }
 
   // Get covariance
-  Eigen::Matrix6d covariance = std::pow(this->CovarianceScale, 2) * loopClosureUncertainty.Covariance;
+  loopClosureCovariance = std::pow(this->CovarianceScale, 2) * loopClosureUncertainty.Covariance;
   float defaultPositionError = 1e-2; // 1cm
   float defaultAngleError = Utils::Deg2Rad(1.f); // 1°
-  if (!Utils::isCovarianceValid(covariance))
-    covariance = Utils::CreateDefaultCovariance(defaultPositionError, defaultAngleError);
+  if (!Utils::isCovarianceValid(loopClosureCovariance))
+    loopClosureCovariance = Utils::CreateDefaultCovariance(defaultPositionError, defaultAngleError);
   // If 2D mode enabled, supply constant covariance for unevaluated variables
   if (this->TwoDMode)
   {
-    covariance(2, 2) = std::pow(defaultPositionError, 2);
-    covariance(3, 3) = std::pow(defaultAngleError,    2);
-    covariance(4, 4) = std::pow(defaultAngleError,    2);
+    loopClosureCovariance(2, 2) = std::pow(defaultPositionError, 2);
+    loopClosureCovariance(3, 3) = std::pow(defaultAngleError,    2);
+    loopClosureCovariance(4, 4) = std::pow(defaultAngleError,    2);
   }
 
   // Optionally print loop closure registration optimization summary
@@ -2474,13 +2476,16 @@ void Slam::BuildMaps(Maps& maps, int windowStartIdx, int windowEndIdx, int idxFr
       // Keypoints are stored undistorted : because of the keyframes mechanism,
       // undistortion cannot be refined during pose graph
       // We rely on a good first estimation of the in-frame motion
-      PointCloud::Ptr undistortedKeypoints = state.Keypoints[k]->GetCloud();
-      if (!undistortedKeypoints->empty())
+      if (state.Keypoints.count(k))
       {
-        keypoints.reset(new PointCloud);
-        auto transform = idxFrame >= 0 ? currentBaseInv.matrix() * state.Isometry.matrix() : state.Isometry.matrix();
-        pcl::transformPointCloud(*undistortedKeypoints, *keypoints, transform.cast<float>());
-        maps[k]->Add(keypoints, false);
+        PointCloud::Ptr undistortedKeypoints = state.Keypoints[k]->GetCloud();
+        if (!undistortedKeypoints->empty())
+        {
+          keypoints.reset(new PointCloud);
+          auto transform = idxFrame >= 0 ? currentBaseInv.matrix() * state.Isometry.matrix() : state.Isometry.matrix();
+          pcl::transformPointCloud(*undistortedKeypoints, *keypoints, transform.cast<float>());
+          maps[k]->Add(keypoints, false);
+        }
       }
     }
   }
