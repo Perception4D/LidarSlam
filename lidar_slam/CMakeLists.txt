@@ -35,6 +35,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(apriltag_ros REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 find_package(cv_bridge)
 
@@ -154,6 +155,7 @@ ament_target_dependencies(aggregation_node
   std_msgs
   nav_msgs
   tf2_ros
+  visualization_msgs
 )
 target_link_libraries(aggregation_node
   ${LidarSlam_target}

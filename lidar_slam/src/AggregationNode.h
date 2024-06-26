@@ -25,6 +25,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <std_msgs/msg/float64.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 // LidarSlam
 #include <LidarSlam/LidarPoint.h>
@@ -157,6 +158,7 @@ private:
   rclcpp::Publisher<Pcl2_msg>::SharedPtr SlicePublisher;
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr SliceAreaPublisher;
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr OccupancyPublisher;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr MarkerPublisher;
   rclcpp::Service<lidar_slam::srv::SavePc>::SharedPtr SaveService;
   rclcpp::Service<lidar_slam::srv::Reset>::SharedPtr RstService;
 

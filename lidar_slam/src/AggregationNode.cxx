@@ -100,11 +100,13 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
   this->DenseMap->SetDecayingThreshold(decayTime);
   bool publishGrid;
   this->get_parameter_or<bool>("obstacle.publish_occupancy_grid", publishGrid, false);
+  this->get_parameter_or<double>("obstacle.min_marker_size", this->MinObstacleMarkerSize, 0.3);
 
   if (this->DoExtractObstacle)
   {
     if (publishGrid)
       this->OccupancyPublisher = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/obstacles/occupancy_grid", 10);
+    this->MarkerPublisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("/obstacles/bboxes", 10);
   }
 
   // Get max size in meters
@@ -150,7 +152,7 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
   {
     if (publishGrid)
       this->OccupancyPublisher = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/obstacles/occupancy_grid", 10);
-    this->MarkerPublisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("bounding_boxes", 10);
+    this->MarkerPublisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("/obstacles/bboxes", 10);
   }
 
   RCLCPP_INFO_STREAM(this->get_logger(), "Aggregation node is ready !");
@@ -248,6 +250,97 @@ void AggregationNode::Callback(const Pcl2_msg& registeredCloudMsg)
   // Publish the map
   this->Pointcloud = this->DenseMap->Get(true); // "true" to remove moving objects
   this->Pointcloud->header = registeredCloud->header;
+
+  // Publish bounding boxes of clusters
+  if (this->MarkerPublisher)
+  {
+    // Group cluster
+    std::unordered_map<int, CloudS> clusters;
+    clusters.reserve(this->NewClusterIdx);
+    for (auto& pt : *this->Pointcloud)
+    {
+      // Compute 2D coordinates
+      int i = (pt.y - this->ObstaclesGrid.Origin.y()) / this->DenseMap->GetLeafSize();
+      if (i < 0 || i >= this->ObstaclesGrid.Height)
+        continue;
+      int j = (pt.x - this->ObstaclesGrid.Origin.x()) / this->DenseMap->GetLeafSize();
+      if (j < 0 || j >= this->ObstaclesGrid.Width)
+        continue;
+
+      pt.label = this->ObstaclesGrid(i,j).ClusterIdx >= 0 ?
+                  static_cast<uint16_t>(this->ObstaclesGrid(i,j).ClusterIdx) : 0;
+      // Add point to grid
+      clusters[this->ObstaclesGrid(i,j).ClusterIdx].emplace_back(pt);
+    }
+
+    visualization_msgs::msg::MarkerArray marker_array;
+    for (auto& cluster : clusters)
+    {
+      if (cluster.first < 2)
+        continue;
+
+      if (cluster.second.size() < 5)
+        continue;
+
+      // Compute PCA
+      std::vector<int> knnIndices(cluster.second.size());
+      std::iota(knnIndices.begin(), knnIndices.end(), 0);
+      Eigen::Vector3d centroid;
+      Eigen::Vector3d eigVals;
+      Eigen::Matrix3d eigVecs;
+      LidarSlam::Utils::ComputeMeanAndPCA(cluster.second, knnIndices, centroid, eigVecs, eigVals);
+
+      // Deduce transform
+      Eigen::Isometry3d pose;
+      pose.linear() = eigVecs;
+      pose.translation() = centroid;
+
+      Eigen::Quaterniond quat(eigVecs);
+
+      // Compute box bounds
+      // Transform in object frame
+      CloudS transformedCluster;
+      pcl::transformPointCloud(cluster.second, transformedCluster, pose.inverse().matrix());
+
+      // Compute bounds
+      Eigen::Vector4f minPoint, maxPoint;
+      pcl::getMinMax3D(transformedCluster, minPoint, maxPoint);
+      Eigen::Vector3d boxDiag = (maxPoint - minPoint).head(3).cast<double>();
+      if (std::isnan(boxDiag.norm()) || boxDiag.norm() < this->MinObstacleMarkerSize)
+        continue;
+      // Compute box centroid
+      Eigen::Vector3d center = (minPoint.head(3).cast<double>() + boxDiag / 2.);
+      center = pose * center;
+
+      // Create marker
+      visualization_msgs::msg::Marker marker;
+      marker.header.frame_id = registeredCloudMsg.header.frame_id;
+      marker.header.stamp = registeredCloudMsg.header.stamp;
+      marker.lifetime = rclcpp::Duration(std::chrono::milliseconds(200)); // 0.2 second of validity
+      marker.ns = "bounding_boxes";
+      marker.id = cluster.first;
+      marker.type = visualization_msgs::msg::Marker::CUBE;
+      marker.action = visualization_msgs::msg::Marker::ADD;
+      marker.pose.position.x = center.x();
+      marker.pose.position.y = center.y();
+      marker.pose.position.z = center.z();
+      marker.pose.orientation.x = quat.x();
+      marker.pose.orientation.y = quat.y();
+      marker.pose.orientation.z = quat.z();
+      marker.pose.orientation.w = quat.w();
+      marker.scale.x = boxDiag.x();
+      marker.scale.y = boxDiag.y();
+      marker.scale.z = boxDiag.z();
+      marker.color.a = 0.5;
+      marker.color.r = 0.0;
+      marker.color.g = 1.0;
+      marker.color.b = 0.0;
+
+      marker_array.markers.push_back(marker);
+      this->MarkerPublisher->publish(marker_array);
+    }
+  }
+
   Pcl2_msg aggregatedCloudMsg;
   pcl::toROSMsg(*this->Pointcloud, aggregatedCloudMsg);
   this->PointsPublisher->publish(aggregatedCloudMsg);

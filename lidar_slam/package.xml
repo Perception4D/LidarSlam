@@ -25,6 +25,7 @@
   <depend>nav_msgs</depend>
   <depend>apriltag_ros</depend>
   <depend>cv_bridge</depend>
+  <depend>visualization_msgs</depend>
 
   <exec_depend>libpcl-common</exec_depend>
   <exec_depend>libpcl-io</exec_depend>
