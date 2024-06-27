@@ -72,6 +72,7 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
 
   // Init rolling grid with parameters
   this->DenseMap = std::make_shared<LidarSlam::RollingGrid>();
+  this->RefMap = std::make_shared<LidarSlam::RollingGrid>();
 
   // Slice parameters (needed to define the main voxel grid)
   this->get_parameter_or<double>("slice.traj_length", this->TrajectoryMaxLength, 1.);
@@ -89,21 +90,28 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
   this->get_parameter_or<double>("z_slice.height_position", this->ZsliceHeightPosition, -0.5);
   this->get_parameter_or<bool>("z_slice.invert", this->InvertZsliceExtraction, false);
 
+  // Obstacle extraction parameters
+  std::string refMapPath;
+  this->get_parameter<std::string>("obstacle.ref_map_path", refMapPath);
+
   // Get max size in meters
   double maxSize;
   this->get_parameter_or<double>("max_size", maxSize, 200.);
   // Set max size in voxels : the second dimension of
   // the rolling grid is used for the slice
   this->DenseMap->SetGridSize(maxSize / this->SliceMaxDist);
+  this->RefMap->SetGridSize(maxSize / this->SliceMaxDist);
 
   // Set the voxels' sizes
   // Set the inner voxel size
   float leafSize;
   this->get_parameter_or<float>("leaf_size", leafSize, 0.1);
   this->DenseMap->SetLeafSize(leafSize);
+  this->RefMap->SetLeafSize(leafSize);
   // Set the outer voxel size,
   // it should be greater than the inner voxel
   this->DenseMap->SetVoxelResolution(std::max(3. * leafSize, this->SliceMaxDist));
+  this->RefMap->SetVoxelResolution(std::max(3. * leafSize, this->SliceMaxDist));
   // Min number of frames seeing a voxel to extract it
   int minNbPointsPerVoxel;
   this->get_parameter_or<int>("min_points_per_voxel", minNbPointsPerVoxel, 2);
@@ -113,6 +121,17 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
   this->get_parameter_or<double>("min_dist_around_trajectory", this->MinDistAroundTrajectory, 1.);
   // Set maximal distance for input points
   this->get_parameter_or<double>("max_dist_around_trajectory", this->MaxDistAroundTrajectory, -1.);
+
+  // Load ref map
+  if (!refMapPath.empty())
+  {
+    this->LoadRefMap(refMapPath);
+    this->Pointcloud = this->RefMap->Get();
+    this->Pointcloud->header.frame_id = "odom";
+    Pcl2_msg aggregatedCloudMsg;
+    pcl::toROSMsg(*this->Pointcloud, aggregatedCloudMsg);
+    this->PointsPublisher->publish(aggregatedCloudMsg);
+  }
 
   RCLCPP_INFO_STREAM(this->get_logger(), "Aggregation node is ready !");
 }
@@ -325,6 +344,29 @@ void AggregationNode::ExtractZslice(const CloudS& inputCloud, CloudS& zSliceClou
     if (!this->InvertZsliceExtraction && distToPlane <= this->ZsliceWidth / 2. ||
         this->InvertZsliceExtraction && distToPlane > this->ZsliceWidth / 2.)
       zSliceCloud.emplace_back(inputCloud[idxPt]);
+  }
+}
+
+//-----------------------------------------------------------------------------
+void AggregationNode::LoadRefMap(const std::string& path)
+{
+  if (path.empty())
+    return;
+  CloudS::Ptr referencePoints(new CloudS);
+  if (pcl::io::loadPCDFile(path, *referencePoints) == 0)
+  {
+    this->RefMap->Add(referencePoints, true, false);
+    RCLCPP_INFO_STREAM(this->get_logger(), "Reference map successfully loaded : " << path);
+
+    // Initialize occupancy grid.
+    // The grid size and the origin depends on the reference map
+    // The resolution is the same as the dense map
+    Eigen::Vector4f minPoint, maxPoint;
+    pcl::getMinMax3D(*referencePoints, minPoint, maxPoint);
+    this->ObstaclesGrid.Origin = minPoint.head(2);
+    Eigen::Vector2f diff = maxPoint.head(2) - minPoint.head(2);
+    this->ObstaclesGrid.Height = diff.y() / this->DenseMap->GetLeafSize();
+    this->ObstaclesGrid.Width = diff.x() / this->DenseMap->GetLeafSize();
   }
 }
 

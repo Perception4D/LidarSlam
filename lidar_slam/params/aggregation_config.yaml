@@ -27,3 +27,6 @@
       height_position: -0.5 # [meters] Distance on z axis of the LiDAR frame
       width: 0.2            # [meters] Width of the slice we want to extract. It will be centered at height.
       invert: false         # Extract or reject the slice
+
+    obstacle:
+      ref_map_path: "" # Reference map to find new objects

@@ -87,6 +87,9 @@ private:
   // Extract the points belonging to a z slice defined by user
   void ExtractZslice(const CloudS& inputCloud, CloudS& outputCloud);
 
+  // Load reference map
+  void LoadRefMap(const std::string& path);
+
   // ROS subscribers, publishers and services
   rclcpp::Subscription<Pcl2_msg>::SharedPtr FrameSubscriber;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr  PoseSubscriber;
@@ -98,6 +101,7 @@ private:
 
   // Dense map containing aggregated points from all frames
   std::shared_ptr<LidarSlam::RollingGrid> DenseMap;
+  std::shared_ptr<LidarSlam::RollingGrid> RefMap;
   CloudS::Ptr Pointcloud;
 
   // Slice extraction parameters
