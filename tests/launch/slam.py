@@ -76,25 +76,12 @@ def generate_launch_description():
     params_velod_pcl["fixed_frame"]    = ""
     params_velod_pcl["use_sim_time"]   = LaunchConfiguration('use_sim_time')
 
-    velodyne_group = GroupAction(
-      actions=[
-        # Part 1
-        Node(
-          package='velodyne_driver',
-          executable='velodyne_driver_node',
-          name='velodyne_driver_node',
-          output='both',
-          parameters=[params_velod_driv],
-          condition=UnlessCondition(LaunchConfiguration("use_sim_time"))
-        ),
-        # Part 2
-        Node(
-          package='velodyne_pointcloud',
-          executable='velodyne_transform_node',
-          output='both',
-          name='velodyne_transform_node',
-          parameters=[params_velod_pcl])
-      ],
+    velodyne_driver_node = Node(
+      package='velodyne_pointcloud',
+      executable='velodyne_transform_node',
+      output='both',
+      name='velodyne_transform_node',
+      parameters=[params_velod_pcl],
       condition = IfCondition(LaunchConfiguration("velodyne_driver"))
     )
 
@@ -198,7 +185,7 @@ def generate_launch_description():
                         condition=LaunchConfigurationEquals('ref_path', ''))
   )
 
-  ld.add_action(velodyne_group)
+  ld.add_action(velodyne_driver_node)
   ld.add_action(velodyne_conversion_node)
   ld.add_action(lidar_slam_test)
   ld.add_action(slam_outdoor_node)
