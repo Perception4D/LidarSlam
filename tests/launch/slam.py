@@ -82,6 +82,7 @@ def generate_launch_description():
       output='both',
       name='velodyne_transform_node',
       parameters=[params_velod_pcl],
+      arguments=['--ros-args', '-p', f'reliability:=reliable', '-p', f'durability:=transient_local', '-p', f'history:=keep_all'],
       condition = IfCondition(LaunchConfiguration("velodyne_driver"))
     )
 
@@ -99,7 +100,8 @@ def generate_launch_description():
     executable="velodyne_conversion_node",
     name="velodyne_conversion",
     output="screen",
-    parameters=[params_conversion]
+    parameters=[params_conversion],
+    arguments=['--ros-args', '-p', f'reliability:=reliable', '-p', f'durability:=transient_local', '-p', f'history:=keep_all'],
   )
 
   # Test : catch outputs and compare with reference
@@ -120,6 +122,7 @@ def generate_launch_description():
     executable="lidar_slam_test_node",
     output="screen",
     parameters=[params_lidar_slam_test],
+    arguments=['--ros-args', '-p', f'reliability:=reliable', '-p', f'durability:=transient_local', '-p', f'history:=keep_all'],
     on_exit=GroupAction([Shutdown()],
                         condition=LaunchConfigurationNotEquals('ref_path', ''))
   )
@@ -141,6 +144,7 @@ def generate_launch_description():
     executable="lidar_slam_node",
     output="screen",
     parameters=[params_slam_out],
+    arguments=['--ros-args', '-p', f'reliability:=reliable', '-p', f'durability:=transient_local', '-p', f'history:=keep_all'],
     condition=IfCondition(LaunchConfiguration("outdoor"))
   )
 
@@ -159,6 +163,7 @@ def generate_launch_description():
     executable="lidar_slam_node",
     output="screen",
     parameters=[params_slam_in],
+    arguments=['--ros-args', '-p', f'reliability:=reliable', '-p', f'durability:=transient_local', '-p', f'history:=keep_all'],
     condition= UnlessCondition(LaunchConfiguration("outdoor"))
   )
 
@@ -168,7 +173,7 @@ def generate_launch_description():
     executable="static_transform_publisher",
     name="tf_base_to_lidar",
     #           X    Y    Z    rZ   rY   rX     FROM          TO
-    arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'velodyne'],
+    arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'velodyne', '--ros-args', '-p', f'reliability:=reliable', '-p', f'durability:=transient_local', '-p', f'history:=keep_all'],
     parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')},]
   )
 
