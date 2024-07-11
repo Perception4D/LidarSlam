@@ -1180,6 +1180,14 @@ bool vtkSlam::IdentifyInputArrays(vtkPolyData* poly)
   // Check if requested lidar scan arrays exist and set them if they are valid
   if (!this->AutoDetectInputArrays)
   {
+    for (int i = 0; i < 3; i++)
+    {
+      if (!this->GetInputArrayToProcess(i, poly))
+      {
+        vtkWarningMacro(<< "Failed to get input array to process.");
+        return false;
+      }
+    }
     this->TimeArrayName = this->GetInputArrayToProcess(0, poly)->GetName();
     this->IntensityArrayName = this->GetInputArrayToProcess(1, poly)->GetName();
     this->LaserIdArrayName = this->GetInputArrayToProcess(2, poly)->GetName();

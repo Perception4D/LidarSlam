@@ -171,7 +171,8 @@
                             command="SetInputArrayToProcess"
                             number_of_elements="5"
                             element_types="0 0 0 0 2"
-                            default_values="timestamp"
+                            default_values_delimiter=";"
+                            default_values="0;0;0;0;timestamp"
                             panel_visibility="advanced">
         <ArrayListDomain attribute_type="Scalars" name="array_list">
           <RequiredProperties>
@@ -190,7 +191,8 @@
                             command="SetInputArrayToProcess"
                             number_of_elements="5"
                             element_types="0 0 0 0 2"
-                            default_values="intensity"
+                            default_values_delimiter=";"
+                            default_values="1;0;0;0;intensity"
                             panel_visibility="advanced">
         <ArrayListDomain attribute_type="Scalars" name="array_list">
           <RequiredProperties>
@@ -209,7 +211,8 @@
                             command="SetInputArrayToProcess"
                             number_of_elements="5"
                             element_types="0 0 0 0 2"
-                            default_values="laser_id"
+                            default_values_delimiter=";"
+                            default_values="2;0;0;0;laser_id"
                             panel_visibility="advanced">
         <ArrayListDomain attribute_type="Scalars" name="array_list">
           <RequiredProperties>
