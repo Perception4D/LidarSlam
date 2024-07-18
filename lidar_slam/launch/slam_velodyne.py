@@ -4,7 +4,8 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, SetEnvironmentVariable
+from launch.actions import ExecuteProcess, RegisterEventHandler, LogInfo, DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, SetEnvironmentVariable
+from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import TextSubstitution, LaunchConfiguration
@@ -175,49 +176,60 @@ def generate_launch_description():
     condition=IfCondition(LaunchConfiguration("aggregate"))
   )
 
-  # Static TF base to velodyne LiDAR
-  tf_base_to_velodyne = Node(
-    package="tf2_ros",
-    executable="static_transform_publisher",
-    name="tf_base_to_lidar",
-    parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')},],
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "velodyne"]
+  tf_nodes = GroupAction(
+    actions=[
+      Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="tf_base_to_wheel",
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        arguments=["--x", "0", "--y", "0", "--z", "0",
+                  "--roll", "0", "--pitch", "0", "--yaw", "0",
+                  "--frame-id", "base_link", "--child-frame-id", "wheel"]
+      ),
+      Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="tf_base_to_lidar",
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')},],
+        arguments=["--x", "0", "--y", "0", "--z", "0",
+                  "--roll", "0", "--pitch", "0", "--yaw", "0",
+                  "--frame-id", "base_link", "--child-frame-id", "velodyne"]
+      ),
+      Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="tf_base_to_ext_sensor",
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        arguments=["--x", "0", "--y", "0", "--z", "0",
+                  "--roll", "0", "--pitch", "0", "--yaw", "0",
+                  "--frame-id", "base_link", "--child-frame-id", "ext_sensor"]
+      )
+    ],
   )
 
-  # Static TF base to wheel
-  tf_base_to_wheel = Node(
-    package="tf2_ros",
-    executable="static_transform_publisher",
-    name="tf_base_to_wheel",
-    parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "wheel"]
+  # Create lifecycle transition to ensure aggregation can publish a pointcloud at start
+  sleep_node = ExecuteProcess(
+    cmd=['python3', '-c', f'import time; time.sleep(2)'],
+    output='screen'
   )
 
-  # Static TF base to ext sensor
-  tf_base_to_ext_sensor = Node(
-    package="tf2_ros",
-    executable="static_transform_publisher",
-    name="tf_base_to_ext_sensor",
-    parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "ext_sensor"]
+  aggregation_event = RegisterEventHandler(
+    event_handler=OnProcessExit(
+      target_action=sleep_node,
+      on_exit= [LogInfo(msg='Starting aggregation after sleeping'), aggregation_node]
+    )
   )
 
   ld.add_action(rviz_node)
   if os.name != "nt" :
     ld.add_action(velodyne_group)
+  # TF
+  ld.add_action(tf_nodes)
   ld.add_action(velodyne_conversion_node)
   ld.add_action(slam_outdoor_node)
   ld.add_action(slam_indoor_node)
-  ld.add_action(aggregation_node)
-  # TF
-  ld.add_action(tf_base_to_velodyne)
-  ld.add_action(tf_base_to_wheel)
-  ld.add_action(tf_base_to_ext_sensor)
+  ld.add_action(sleep_node)
+  ld.add_action(aggregation_event)
 
   return (ld)
