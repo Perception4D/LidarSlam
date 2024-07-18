@@ -11,7 +11,7 @@
       - [Choosing a domain ID](#choosing-a-domain-id)
     - [More advanced usage](#more-advanced-usage)
       - [Detailed pipeline](#detailed-pipeline)
-      - [Multiple lidar sensors](#multiple-lidar-sensors)
+      - [Multiple LiDAR sensors](#multiple-lidar-sensors)
       - [Online configuration](#online-configuration)
         - [Reset state](#reset-state)
         - [Map update modes](#map-update-modes)
@@ -20,7 +20,7 @@
         - [Save maps](#save-maps)
         - [Set pose](#set-pose)
         - [Switch ON/OFF the process](#switch-onoff-the-process)
-        - [Switch ON/OFF the sensors](#switch-onoff-the-external-sensors)
+        - [Switch ON/OFF the external sensors](#switch-onoff-the-external-sensors)
         - [Calibrate with external pose sensor](#calibrate-with-external-pose-sensor)
       - [Failure detection](#failure-detection)
       - [Optional loop closure use](#optional-loop-closure-use)
@@ -35,13 +35,18 @@
       - [Local optimization](#local-optimization)
       - [Pose graph optimization](#pose-graph-optimization)
     - [Optional Camera use](#optional-camera-use)
-    - [Optional external pose use](#optional-external-pose-use)
     - [Optional wheel encoder use](#optional-wheel-encoder-use)
-    - [Optional Imu gravity use](#optional-Imu-gravity-use)
+    - [Optional external pose use](#optional-external-pose-use)
+      - [Online](#online)
+      - [Offline](#offline)
+    - [Optional IMU use](#optional-imu-use)
   - [About the published TF tree](#about-the-published-tf-tree)
 - [Points aggregation](#points-aggregation)
   - [Classic aggregation](#classic-aggregation)
   - [Advanced](#advanced)
+    - [Vertical slice extraction and analysis](#vertical-slice-extraction-and-analysis)
+    - [Horizontal slice extraction/rejection](#horizontal-slice-extractionrejection)
+    - [Obstacles detection](#obstacles-detection)
 
 Wrapping for Kitware LiDAR-only SLAM. It can also use GPS data to publish SLAM output pose as GPS coordinates, or to correct SLAM trajectory and map.
 
@@ -692,6 +697,8 @@ ros2 service call /lidar_slam/reset lidar_slam/srv/Reset
 
 ## Advanced
 
+### Vertical slice extraction and analysis
+
 One can extract a slice of points perpendicular to the trajectory locally and to create a boundary from it. An area estimation is then provided. This can be useful when exploring closed areas such than undergrounds.
 
 The area is published on the topic **/slice_area** as a [float64 std message](https://docs.ros.org/en/api/std_msgs/html/msg/Float64.html) and
@@ -705,3 +712,27 @@ The parameters relative to this feature are the following:
 *slice/width*: Width (in meters) of the slice of points
 *slice/max_dist*: Maximal distance (in meters) of the points from the trajectory position onto the slice plane.
 *slice/angle_resolution*: Resolution (in degrees) of the slice pointcloud w.r.t the trajectory position.
+
+### Horizontal slice extraction/rejection
+
+One can extract a slice of points relatively to the z axis of the base_link frame.
+**Note** : to extract/reject the ground, one has to adapt the frame base_link to be horizontal with respect to the floor. This can be done in the tf config in the launch file or changing the tracked frame in the parameters file.
+
+The parameters relative to this feature are the following:
+* *z_slice/enable*: Boolean to enable/disable the horizontal slice extraction/rejection.
+* *z_slice/height_position*: Position on the z axis (in meters) of the base_link frame (most of the time, this will be negative)
+* *z_slice/width*: Width (in meters)
+* *z_slice/invert*: To reject the slice instead of extracting it
+
+### Obstacles detection
+
+It is possible to use the aggregation node to extract the obstacles relatively to a known map.
+The idea is to map an environment with a common SLAM using classic aggregation. At the end of the mapping process, the map can be saved on disk. Then this reference map can be loaded, the objects that are now detected and which don't belong to the reference map will be extracted and outputed in the */aggregated_cloud* topic. The label field of the points will represent their cluster.
+An occupancy grid with the clusters is built during the process and sent to the topic *obstacles/occupancy_grid*. Markers are also sent on the topic */obstacles/bboxes*. Both can be displayed in rviz.
+
+The parameters relative to this feature are the following:
+* *obstacle.enable*: Boolean to enable/disable the obstacle detection.
+* *obstacle.ref_map_path:* Reference map to find new objects
+* *obstacle.decay_time*: Maximum lifetime (in seconds) of an obstacle and/or a new point
+* *obstacle.publish_occupancy_grid*: Whether or not to publish the occupancy grid as debug info. **Warning**: this can add significant computation time.
+* *min_marker_size*: Minimal diagonal size of a marker (in meters) to consider it is an obstacle
