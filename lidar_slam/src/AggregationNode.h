@@ -23,6 +23,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <pcl_conversions/pcl_conversions.h>
 #include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/occupancy_grid.hpp>
 #include <std_msgs/msg/float64.hpp>
 
 // LidarSlam
@@ -79,6 +80,62 @@ public:
 
 private:
 
+  struct Pixel
+  {
+    // Cluster id
+    int ClusterIdx = -1;
+
+    // Point indices for current frame
+    std::vector<int> CurrentPtIndices;
+
+    int SeenTimes = 0;
+    double Time = -1.;
+  };
+
+  // 2D grid to save if a grid contains obstacles points
+  struct ClusteringGrid
+  {
+    // Grid of pixels
+    std::unordered_map<int, Pixel> Data; // map because few should be occupied
+    // Grid size and origin depends on reference map
+    Eigen::Vector2f Origin = {0., 0.};
+    float Resolution = 0.1;
+
+    std::vector<signed char> Flatten() const
+    {
+      std::vector<signed char> flattenedClusterIdx;
+      flattenedClusterIdx.reserve(this->Data.size());
+      for (int i = 0; i < Height; ++i)
+      {
+        for (int j = 0; j < Width; ++j)
+        {
+          int idx = i * Width + j;
+          if (this->Data.count(idx))
+            flattenedClusterIdx.emplace_back(static_cast<signed char>(this->Data.at(idx).ClusterIdx));
+          else
+            flattenedClusterIdx.emplace_back(static_cast<signed char>(-1));
+        }
+      }
+      return flattenedClusterIdx;
+    }
+
+    bool Check(int i, int j)
+    {
+      int idx = i * Width + j;
+      return this->Data.count(idx);
+    }
+
+    Pixel& operator()(int i, int j)
+    {
+      int idx = i * Width + j;
+      return this->Data[idx];
+    }
+
+    int Height = 0;
+    int Width = 0;
+    int Size() const {return this->Data.size();}
+  };
+
   // Tool functions
   // Extract the slice of points perpendicular to the local trajectory
   // Compute its boundary and return its area
@@ -86,6 +143,9 @@ private:
 
   // Extract the points belonging to a z slice defined by user
   void ExtractZslice(const CloudS& inputCloud, CloudS& outputCloud);
+
+  // Extract the obstacle points
+  void LabelObstacle(CloudS& inputCloud, double currentTime);
 
   // Load reference map
   void LoadRefMap(const std::string& path);
@@ -96,6 +156,7 @@ private:
   rclcpp::Publisher<Pcl2_msg>::SharedPtr PointsPublisher;
   rclcpp::Publisher<Pcl2_msg>::SharedPtr SlicePublisher;
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr SliceAreaPublisher;
+  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr OccupancyPublisher;
   rclcpp::Service<lidar_slam::srv::SavePc>::SharedPtr SaveService;
   rclcpp::Service<lidar_slam::srv::Reset>::SharedPtr RstService;
 
@@ -124,6 +185,13 @@ private:
   double ZsliceWidth = 0.2;
   double ZsliceHeightPosition = -0.5;
   double MinObstacleMarkerSize = 0.3;
+
+  // Obstacle extraction parameters
+  bool DoExtractObstacle = false;
+  // 2D occupancy grid to extract clusters of obstacle
+  ClusteringGrid ObstaclesGrid;
+  // Storage for new cluster idx
+  int NewClusterIdx = 2; // 0 is default, 1 is for fixed pixel
 
   // Minimal distance around trajectory to remove points from the map
   double MinDistAroundTrajectory = 1.;

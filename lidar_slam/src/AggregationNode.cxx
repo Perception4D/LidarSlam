@@ -91,8 +91,21 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
   this->get_parameter_or<bool>("z_slice.invert", this->InvertZsliceExtraction, false);
 
   // Obstacle extraction parameters
+  this->get_parameter_or<bool>("obstacle.enable", this->DoExtractObstacle, false);
   std::string refMapPath;
   this->get_parameter<std::string>("obstacle.ref_map_path", refMapPath);
+  this->get_parameter_or<bool>("obstacle.enable", this->DoExtractObstacle, false);
+  double decayTime;
+  this->get_parameter_or<double>("obstacle.decay_time", decayTime, 1000.);
+  this->DenseMap->SetDecayingThreshold(decayTime);
+  bool publishGrid;
+  this->get_parameter_or<bool>("obstacle.publish_occupancy_grid", publishGrid, false);
+
+  if (this->DoExtractObstacle)
+  {
+    if (publishGrid)
+      this->OccupancyPublisher = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/obstacles/occupancy_grid", 10);
+  }
 
   // Get max size in meters
   double maxSize;
@@ -133,6 +146,13 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
     this->PointsPublisher->publish(aggregatedCloudMsg);
   }
 
+  if (this->DoExtractObstacle)
+  {
+    if (publishGrid)
+      this->OccupancyPublisher = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/obstacles/occupancy_grid", 10);
+    this->MarkerPublisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("bounding_boxes", 10);
+  }
+
   RCLCPP_INFO_STREAM(this->get_logger(), "Aggregation node is ready !");
 }
 
@@ -142,6 +162,10 @@ void AggregationNode::Callback(const Pcl2_msg& registeredCloudMsg)
   //Convert msg to PointCloud
   CloudS::Ptr registeredCloud = std::make_shared<CloudS>();
   pcl::fromROSMsg(registeredCloudMsg, *registeredCloud);
+  double currentTime = LidarSlam::Utils::PclStampToSec(registeredCloud->header.stamp);
+
+  // Clear old points
+  this->DenseMap->ClearPoints(currentTime);
 
   // Remove the farthest points if required
   CloudS::Ptr closest;
@@ -172,6 +196,49 @@ void AggregationNode::Callback(const Pcl2_msg& registeredCloudMsg)
   else
     preprocessedCloud = closest;
 
+  // Extract obstacle and clusters of obstacles
+  if (this->DoExtractObstacle)
+  {
+    // Label points w.r.t reference map
+    // Old points are labeled as FIXED
+    // Others are labeled as DEFAULT
+    this->RefMap->LabelNewPoints(preprocessedCloud, true);
+    // Extract new points
+    CloudS::Ptr newPoints = std::make_shared<CloudS>();
+    newPoints->reserve(preprocessedCloud->size());
+    newPoints->header = preprocessedCloud->header;
+    for (auto& pt : *preprocessedCloud)
+    {
+      if (pt.label != static_cast<uint16_t>(LidarSlam::LidarPointLabel::FIXED))
+        newPoints->emplace_back(pt);
+    }
+
+    // Label obstacles with cluster indices
+    this->LabelObstacle(*newPoints, currentTime);
+    preprocessedCloud = newPoints;
+
+    // publish occupancyGrid
+    if (this->OccupancyPublisher)
+    {
+      auto oGMsg = nav_msgs::msg::OccupancyGrid();
+      oGMsg.header.stamp = rclcpp::Clock().now();
+      oGMsg.header.frame_id = registeredCloudMsg.header.frame_id;
+      oGMsg.info.map_load_time = rclcpp::Clock().now();
+      oGMsg.info.resolution = this->DenseMap->GetLeafSize();
+      oGMsg.info.width = this->ObstaclesGrid.Width;
+      oGMsg.info.height = this->ObstaclesGrid.Height;
+      oGMsg.info.origin.position.x = this->ObstaclesGrid.Origin.x();
+      oGMsg.info.origin.position.y = this->ObstaclesGrid.Origin.y();
+      oGMsg.info.origin.position.z = this->ZsliceHeightPosition;
+      oGMsg.info.origin.orientation.x = 0.0;
+      oGMsg.info.origin.orientation.y = 0.0;
+      oGMsg.info.origin.orientation.z = 0.0;
+      oGMsg.info.origin.orientation.w = 1.0;
+      oGMsg.data = this->ObstaclesGrid.Flatten();
+      this->OccupancyPublisher->publish(oGMsg);
+    }
+  }
+
   // Add the points to the map
   // Map is not rolled because if some points are wrong or a frame is bad,
   // the whole map will be rolled and parts will be forgotten.
@@ -179,7 +246,7 @@ void AggregationNode::Callback(const Pcl2_msg& registeredCloudMsg)
   this->DenseMap->Add(preprocessedCloud, false, false);
 
   // Publish the map
-  this->Pointcloud = this->DenseMap->Get(true);
+  this->Pointcloud = this->DenseMap->Get(true); // "true" to remove moving objects
   this->Pointcloud->header = registeredCloud->header;
   Pcl2_msg aggregatedCloudMsg;
   pcl::toROSMsg(*this->Pointcloud, aggregatedCloudMsg);
@@ -344,6 +411,262 @@ void AggregationNode::ExtractZslice(const CloudS& inputCloud, CloudS& zSliceClou
     if (!this->InvertZsliceExtraction && distToPlane <= this->ZsliceWidth / 2. ||
         this->InvertZsliceExtraction && distToPlane > this->ZsliceWidth / 2.)
       zSliceCloud.emplace_back(inputCloud[idxPt]);
+  }
+}
+
+//------------------------------------------------------------------------------
+void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
+{
+  int unknownLabel = static_cast<int>(LidarSlam::LidarPointLabel::DEFAULT); // shortcut to unknown label
+
+  // Project input potential obstacle points onto grid and
+  // fill the current point indices of each pixel
+  #pragma omp parallel for num_threads(this->NbThreads)
+  for (int idxPt = 0; idxPt < inputCloud.size(); ++idxPt)
+  {
+    // Check point is not in a fixed voxel
+    if (inputCloud[idxPt].label == static_cast<std::uint16_t>(LidarSlam::LidarPointLabel::FIXED))
+      continue;
+
+    // Compute 2D coordinates
+    int i = (inputCloud[idxPt].y - this->ObstaclesGrid.Origin.y()) / this->DenseMap->GetLeafSize();
+    if (i < 0 || i >= this->ObstaclesGrid.Height)
+      continue;
+    int j = (inputCloud[idxPt].x - this->ObstaclesGrid.Origin.x()) / this->DenseMap->GetLeafSize();
+    if (j < 0 || j >= this->ObstaclesGrid.Width)
+      continue;
+
+    // Add point to grid
+    this->ObstaclesGrid(i,j).CurrentPtIndices.emplace_back(idxPt);
+  }
+
+  // Track number of frames that have seen the pixels
+  #pragma omp parallel for num_threads(this->NbThreads)
+  for (auto& el : this->ObstaclesGrid.Data)
+  {
+    Pixel& pix = el.second; // shortcut
+    // Notify it has been seen
+    if (pix.CurrentPtIndices.size() > 0)
+    {
+      ++pix.SeenTimes;
+      pix.Time = currentTime;
+    }
+  }
+
+  // Label pixels to clusterize
+  #pragma omp parallel for num_threads(this->NbThreads)
+  for (auto& el : this->ObstaclesGrid.Data)
+  {
+    Pixel& pix = el.second; // shortcut
+    // Update the cluster label of the pixel
+    // if it is not registered and
+    // if the pixel has been seen at least once
+    if (pix.SeenTimes > 0 &&
+        pix.ClusterIdx < 0)
+      pix.ClusterIdx = unknownLabel;
+  }
+
+  // Link cluster idx to grid indices to speed up search
+  std::unordered_map<int, std::vector<int>> clus2gridIndices;
+  for (auto& el : this->ObstaclesGrid.Data)
+  {
+    int pixIdx = el.first; // shortcut
+    Pixel& pix = el.second; // shortcut
+    if (pix.ClusterIdx < 2)
+      continue;
+    clus2gridIndices[pix.ClusterIdx].push_back(pixIdx);
+  }
+
+  const std::vector<Eigen::Array2i> radii = {{-1, -1}, {0, -1}, {1, -1},
+                                             {-1,  0},          {1,  0},
+                                             {-1,  1}, {0,  1}, {1,  1}};
+
+  // Grow existing regions
+  for (auto& el : clus2gridIndices)
+  {
+    auto& clusIdx = el.first; // shortcut
+    auto& indices = el.second; // shortcut
+
+    std::vector<Eigen::Array2i> clusterPixels;
+    clusterPixels.reserve(indices.size());
+    // Fill region with existing pixels
+    for (int idx : indices)
+      clusterPixels.push_back({idx / this->ObstaclesGrid.Width, idx % this->ObstaclesGrid.Width});
+
+    // Grow region
+    int idxPix = 0;
+    while (idxPix < clusterPixels.size())
+    {
+      int i = clusterPixels[idxPix](0);
+      int j = clusterPixels[idxPix](1);
+
+      // Label corresponding points
+      for (int ptIdx : this->ObstaclesGrid(i, j).CurrentPtIndices)
+        inputCloud[ptIdx].label = static_cast<std::uint16_t>(clusIdx);
+
+      // Add neighbors
+      #pragma omp parallel for num_threads(this->NbThreads)
+      for (const Eigen::Array2i& r : radii)
+      {
+        Eigen::Array2i neigh = clusterPixels[idxPix] + r;
+        // Check neighbor validity
+        if (!this->ObstaclesGrid.Check(neigh.x(), neigh.y()))
+          continue;
+
+        // If neighbor is occupied, add it to current cluster
+        int neighClusIdx = this->ObstaclesGrid(neigh.x(), neigh.y()).ClusterIdx;
+
+        if (neighClusIdx == unknownLabel)
+        {
+          // Add neighbor to cluster
+          clusterPixels.push_back({neigh.x(), neigh.y()});
+          // Update label
+          this->ObstaclesGrid(neigh.x(), neigh.y()).ClusterIdx = clusIdx;
+          continue;
+        }
+
+        // If the neighbor belongs to another existing cluster
+        if (neighClusIdx != clusIdx)
+        {
+          // Merge the new cluster to the current one
+          for (int idx : clus2gridIndices[neighClusIdx])
+          {
+            // Add to cluster
+            clusterPixels.push_back({idx / this->ObstaclesGrid.Width, idx % this->ObstaclesGrid.Width});
+            // Update label
+            this->ObstaclesGrid.Data[idx].ClusterIdx = clusIdx;
+          }
+
+          // Remove neighbor cluster from clus2gridIndices
+          // to not process it afterwards
+          clus2gridIndices.erase(neighClusIdx);
+        }
+      }
+      ++idxPix;
+    }
+  }
+
+  // Fill the potential seeds with remaining unknown pixels
+  std::vector<Eigen::Array2i> potentialSeeds;
+  #pragma omp parallel for num_threads(this->NbThreads)
+  for (auto& el : this->ObstaclesGrid.Data)
+  {
+    int idx = el.first; // shortcut
+    Pixel& pix = el.second; // shortcut
+    // Select unknown pixels which are trustworthy enough (they have been seen enough)
+    if (pix.ClusterIdx == unknownLabel &&
+        pix.SeenTimes >= this->DenseMap->GetMinFramesPerVoxel())
+      potentialSeeds.push_back({idx / this->ObstaclesGrid.Width, idx % this->ObstaclesGrid.Width});
+  }
+
+  // Grow new regions
+  for (const auto& seed : potentialSeeds)
+  {
+    // Check seed is still unknown
+    if (this->ObstaclesGrid(seed(0), seed(1)).ClusterIdx != unknownLabel)
+      continue;
+
+    this->ObstaclesGrid(seed(0), seed(1)).ClusterIdx = this->NewClusterIdx;
+
+    std::vector<Eigen::Array2i> clusterPixels;
+    clusterPixels.reserve(this->ObstaclesGrid.Size());
+    clusterPixels.emplace_back(seed);
+    int idxPix = 0;
+    while (idxPix < clusterPixels.size())
+    {
+      int i = clusterPixels[idxPix](0);
+      int j = clusterPixels[idxPix](1);
+
+      // Label corresponding 3D points
+      for (int ptIdx : this->ObstaclesGrid(i, j).CurrentPtIndices)
+        inputCloud[ptIdx].label = static_cast<std::uint16_t>(this->NewClusterIdx);
+
+      // Check neighbors
+      #pragma omp parallel for num_threads(this->NbThreads)
+      for (const Eigen::Array2i& r : radii)
+      {
+        Eigen::Array2i neigh = clusterPixels[idxPix] + r;
+        // If neighbor is occupied, add it to current cluster
+        if (this->ObstaclesGrid.Check(neigh.x(), neigh.y()) &&
+            this->ObstaclesGrid(neigh.x(), neigh.y()).ClusterIdx == unknownLabel)
+        {
+          // Add neighbor to cluster
+          clusterPixels.push_back({neigh.x(), neigh.y()});
+          // Update cluster label of pixel
+          this->ObstaclesGrid(neigh.x(), neigh.y()).ClusterIdx = this->NewClusterIdx;
+        }
+      }
+      ++idxPix;
+    }
+    ++this->NewClusterIdx;
+  }
+
+  // Clear occupancy grid
+
+  // 1. Remove old isolated pixels
+  for (auto it = this->ObstaclesGrid.Data.begin(); it != this->ObstaclesGrid.Data.end();)
+  {
+    Pixel& pix = it->second; // shortcut
+    if (pix.ClusterIdx == unknownLabel &&
+        currentTime - pix.Time > this->DenseMap->GetDecayingThreshold())
+    {
+      // Erase and return the iterator to the next element
+      it = this->ObstaclesGrid.Data.erase(it);
+      continue;
+    }
+    // Only increment if not erasing
+    ++it;
+  }
+
+  // 2. Clear pts indices in remaining pixels and reset unknown labels to -1
+  #pragma omp parallel for num_threads(this->NbThreads)
+  for (auto& el : this->ObstaclesGrid.Data)
+  {
+    Pixel& pix = el.second; // shortcut
+
+    // Clear current points of each pixel for next fill
+    pix.CurrentPtIndices.clear();
+
+    // Reset to -1 the remaining unknown pixels (for visu purposes)
+    if (pix.ClusterIdx == unknownLabel)
+      pix.ClusterIdx = -1;
+  }
+
+  // 3. Fill clus2Time to remove old clusters in 4.
+  std::unordered_map<int,double> clus2Time;
+  for (auto& el : this->ObstaclesGrid.Data)
+  {
+    int idx = el.first; // shortcut
+    Pixel& pix = el.second; // shortcut
+
+    if (pix.ClusterIdx < 0)
+      continue;
+
+    if (!clus2Time.count(pix.ClusterIdx) ||
+        pix.Time > clus2Time[pix.ClusterIdx])
+      clus2Time[pix.ClusterIdx] = pix.Time;
+  }
+
+  // 4. Remove too old clusters
+  for (auto& c2t : clus2Time)
+  {
+    int clusIdx = c2t.first; // shortcut
+    double& time = c2t.second; // shortcut
+    // Check time
+    if (currentTime - time > this->DenseMap->GetDecayingThreshold())
+    {
+      // Remove old cluster
+      for (auto it = this->ObstaclesGrid.Data.begin(); it != this->ObstaclesGrid.Data.end();)
+      {
+        Pixel& pix = it->second; // shortcut
+        if (pix.ClusterIdx == clusIdx)
+          // Erase and return the iterator to the next element
+          it = this->ObstaclesGrid.Data.erase(it);
+        else
+          // Only increment if not erasing
+          ++it;
+      }
+    }
   }
 }
 
