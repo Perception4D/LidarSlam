@@ -745,6 +745,43 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /clicked_point
       Value: true
+    - Class: rviz_common/Group
+      Displays:
+        - Alpha: 0.699999988079071
+          Class: rviz_default_plugins/Map
+          Color Scheme: map
+          Draw Behind: false
+          Enabled: true
+          Name: Occupancy_grid
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /obstacles/occupancy_grid
+          Update Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /obstacles/occupancy_grid_updates
+          Use Timestamp: false
+          Value: true
+        - Class: rviz_default_plugins/MarkerArray
+          Enabled: true
+          Name: Bboxes
+          Namespaces:
+            {}
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /obstacles/bboxes
+          Value: true
+      Enabled: true
+      Name: Obstacles
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
