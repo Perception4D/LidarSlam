@@ -1,4 +1,4 @@
-# Livox costom pointcloud format.
+# Livox custom pointcloud format.
 
 uint32 offset_time      # offset time relative to the base time
 float32 x               # X axis, unit:m
