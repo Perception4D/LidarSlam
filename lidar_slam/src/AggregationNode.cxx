@@ -337,8 +337,8 @@ void AggregationNode::Callback(const Pcl2_msg& registeredCloudMsg)
       marker.color.b = 0.0;
 
       marker_array.markers.push_back(marker);
-      this->MarkerPublisher->publish(marker_array);
     }
+    this->MarkerPublisher->publish(marker_array);
   }
 
   Pcl2_msg aggregatedCloudMsg;
