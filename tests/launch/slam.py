@@ -28,6 +28,7 @@ def generate_launch_description():
     DeclareLaunchArgument("verbose",         default_value="false", description="If true, print the difference with reference during the comparison"),
     DeclareLaunchArgument("domain_id", default_value="0", description="Set to different value to avoid interference when several computers running ROS2 on the same network."),
     SetEnvironmentVariable(name='ROS_DOMAIN_ID',value=LaunchConfiguration('domain_id')),
+    SetEnvironmentVariable(name='ROS_LOCALHOST_ONLY', value='1'),
 
     # Velodyne arguments
     DeclareLaunchArgument("calibration_file_path", default_value=os.path.join(get_package_share_directory('velodyne_pointcloud'), 'params', 'VLP16db.yaml'), description="calibration file path"),
