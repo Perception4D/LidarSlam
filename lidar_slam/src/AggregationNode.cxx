@@ -100,6 +100,7 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
   this->DenseMap->SetDecayingThreshold(decayTime);
   bool publishGrid;
   this->get_parameter_or<bool>("obstacle.publish_occupancy_grid", publishGrid, false);
+  this->get_parameter_or<float>("obstacle.merge_dist", this->MergeDist, 0.5);
   this->get_parameter_or<double>("obstacle.min_marker_size", this->MinObstacleMarkerSize, 0.3);
 
   if (this->DoExtractObstacle)
@@ -311,6 +312,8 @@ void AggregationNode::Callback(const Pcl2_msg& registeredCloudMsg)
       // Compute box centroid
       Eigen::Vector3d center = (minPoint.head(3).cast<double>() + boxDiag / 2.);
       center = pose * center;
+      this->ObstaclesBBox[cluster.first].Center = center;
+      this->ObstaclesBBox[cluster.first].Diagonal = pose * boxDiag;
 
       // Create marker
       visualization_msgs::msg::Marker marker;
@@ -588,6 +591,9 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
 
     // Grow region
     int idxPix = 0;
+    // To avoid additional computation
+    std::unordered_map<int, bool> hasCheckedNeighbor;
+    hasCheckedNeighbor.reserve(clus2gridIndices.size());
     while (idxPix < clusterPixels.size())
     {
       int i = clusterPixels[idxPix](0);
@@ -619,8 +625,23 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
         }
 
         // If the neighbor belongs to another existing cluster
-        if (neighClusIdx != clusIdx)
+        // Check the sizes and the distance between two clusters
+        if (neighClusIdx != clusIdx && !hasCheckedNeighbor.count(neighClusIdx))
         {
+          hasCheckedNeighbor[neighClusIdx] = true;
+          if (!this->ObstaclesBBox.count(neighClusIdx) || !this->ObstaclesBBox.count(clusIdx))
+            continue;
+
+          // If clusters are big, do not merge them
+          if (this->ObstaclesBBox[neighClusIdx].Diagonal.norm() > this->MergeDist &&
+              this->ObstaclesBBox[clusIdx].Diagonal.norm() > this->MergeDist)
+            continue;
+
+          // Otherwise, if clusters are far from each other, do not merge them
+          if ((this->ObstaclesBBox[neighClusIdx].Center -
+               this->ObstaclesBBox[clusIdx].Center).norm() > this->MergeDist)
+            continue;
+
           // Merge the new cluster to the current one
           for (int idx : clus2gridIndices[neighClusIdx])
           {
@@ -780,6 +801,7 @@ void AggregationNode::LoadRefMap(const std::string& path)
     Eigen::Vector4f minPoint, maxPoint;
     pcl::getMinMax3D(*referencePoints, minPoint, maxPoint);
     this->ObstaclesGrid.Origin = minPoint.head(2);
+    this->ObstaclesGrid.Resolution = this->DenseMap->GetLeafSize();
     Eigen::Vector2f diff = maxPoint.head(2) - minPoint.head(2);
     this->ObstaclesGrid.Height = diff.y() / this->DenseMap->GetLeafSize();
     this->ObstaclesGrid.Width = diff.x() / this->DenseMap->GetLeafSize();

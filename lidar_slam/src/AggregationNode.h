@@ -137,6 +137,12 @@ private:
     int Size() const {return this->Data.size();}
   };
 
+  struct BBox
+  {
+    Eigen::Vector3d Center = {0., 0., 0.};
+    Eigen::Vector3d Diagonal = {0., 0., 0.};
+  };
+
   // Tool functions
   // Extract the slice of points perpendicular to the local trajectory
   // Compute its boundary and return its area
@@ -192,6 +198,10 @@ private:
   bool DoExtractObstacle = false;
   // 2D occupancy grid to extract clusters of obstacle
   ClusteringGrid ObstaclesGrid;
+  // Oriented bounding box of obstacles
+  std::unordered_map<int, BBox> ObstaclesBBox;
+  // Maximum distance between two clusters to merge them
+  float MergeDist = 0.5;
   // Storage for new cluster idx
   int NewClusterIdx = 2; // 0 is default, 1 is for fixed pixel
 
