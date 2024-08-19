@@ -202,6 +202,8 @@ private:
   std::unordered_map<int, BBox> ObstaclesBBox;
   // Maximum distance between two clusters to merge them
   float MergeDist = 0.5;
+  // Distance of the field of view
+  float FOVDist = 20.;
   // Storage for new cluster idx
   int NewClusterIdx = 2; // 0 is default, 1 is for fixed pixel
 

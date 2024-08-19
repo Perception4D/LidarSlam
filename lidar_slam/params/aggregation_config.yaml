@@ -33,6 +33,7 @@
       ref_map_path: ""  # Reference map to find new objects
       decay_time: 1000. # [seconds] Maximum lifetime of an obstacle and/or a new point
       merge_dist: 0.5   # [meters] Maximum distance to merge two clusters
+      fov_dist: 20.     # [meters] Maximum distance of field of view from the sensor to forget points
       publish_occupancy_grid: false # Whether or not to publish the occupancy grid as debug info.
                                     # This can add significant computation time
       min_marker_size: 0.3 # [meters] Minimal diagonal size of a marker to consider it is an obstacle

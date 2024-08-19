@@ -97,6 +97,7 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
   this->get_parameter_or<bool>("obstacle.enable", this->DoExtractObstacle, false);
   double decayTime;
   this->get_parameter_or<double>("obstacle.decay_time", decayTime, 1000.);
+  this->get_parameter_or<float>("obstacle.fov_dist", this->FOVDist, 50.);
   this->DenseMap->SetDecayingThreshold(decayTime);
   bool publishGrid;
   this->get_parameter_or<bool>("obstacle.publish_occupancy_grid", publishGrid, false);
@@ -760,8 +761,25 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
         pix.Time > clus2Time[pix.ClusterIdx])
       clus2Time[pix.ClusterIdx] = pix.Time;
   }
+  // Do not check clusters which are out of the current fov
+  for (auto it = clus2Time.begin(); it != clus2Time.end();)
+  {
+    auto& clusIdx = it->first;
+    if (!this->ObstaclesBBox.count(clusIdx))
+    {
+      ++it;
+      continue;
+    }
+    Eigen::Vector3d minPoint = this->ObstaclesBBox[clusIdx].Center - 0.5 * this->ObstaclesBBox[clusIdx].Diagonal;
+    Eigen::Vector3d maxPoint = this->ObstaclesBBox[clusIdx].Center + 0.5 * this->ObstaclesBBox[clusIdx].Diagonal;
+    if ((minPoint - this->CurrentPose.translation().head(3)).norm() > this->FOVDist &&
+        (maxPoint - this->CurrentPose.translation().head(3)).norm() > this->FOVDist)
+      it = clus2Time.erase(it);
+    else
+      ++it;
+  }
 
-  // 4. Remove too old clusters
+  // 4. Remove too old clusters in the current fov
   for (auto& c2t : clus2Time)
   {
     int clusIdx = c2t.first; // shortcut
@@ -780,6 +798,7 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
           // Only increment if not erasing
           ++it;
       }
+      this->ObstaclesBBox.erase(clusIdx);
     }
   }
 }
