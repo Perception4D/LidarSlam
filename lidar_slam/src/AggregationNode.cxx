@@ -747,22 +747,24 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
       pix.ClusterIdx = -1;
   }
 
-  // 3. Fill clus2Time to remove old clusters in 4.
-  std::unordered_map<int,double> clus2Time;
+  // 3. Fill clus2DecayTime to remove old clusters and compute standard deviation of time in 4.
+  std::unordered_map<int, std::vector<double>> clus2DecayTime;
+  std::unordered_map<int, std::vector<int>> clus2PixelIndices;
   for (auto& el : this->ObstaclesGrid.Data)
   {
     int idx = el.first; // shortcut
     Pixel& pix = el.second; // shortcut
 
-    if (pix.ClusterIdx < 0)
+    if (pix.ClusterIdx <= 0)
       continue;
 
-    if (!clus2Time.count(pix.ClusterIdx) ||
-        pix.Time > clus2Time[pix.ClusterIdx])
-      clus2Time[pix.ClusterIdx] = pix.Time;
+    // Fill decay time array for each cluster
+    clus2DecayTime[pix.ClusterIdx].emplace_back(currentTime - pix.Time);
+    // Fill pixel indices for each cluster
+    clus2PixelIndices[pix.ClusterIdx].emplace_back(idx);
   }
   // Do not check clusters which are out of the current fov
-  for (auto it = clus2Time.begin(); it != clus2Time.end();)
+  for (auto it = clus2DecayTime.begin(); it != clus2DecayTime.end();)
   {
     auto& clusIdx = it->first;
     if (!this->ObstaclesBBox.count(clusIdx))
@@ -774,18 +776,18 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
     Eigen::Vector3d maxPoint = this->ObstaclesBBox[clusIdx].Center + 0.5 * this->ObstaclesBBox[clusIdx].Diagonal;
     if ((minPoint - this->CurrentPose.translation().head(3)).norm() > this->FOVDist &&
         (maxPoint - this->CurrentPose.translation().head(3)).norm() > this->FOVDist)
-      it = clus2Time.erase(it);
+      it = clus2DecayTime.erase(it);
     else
       ++it;
   }
 
-  // 4. Remove too old clusters in the current fov
-  for (auto& c2t : clus2Time)
+  // 4. Remove too old clusters and separate static and moving objects in a cluster
+  for (auto& c2t : clus2DecayTime)
   {
     int clusIdx = c2t.first; // shortcut
-    double& time = c2t.second; // shortcut
+    double time = *std::min_element(c2t.second.begin(), c2t.second.end());
     // Check time
-    if (currentTime - time > this->DenseMap->GetDecayingThreshold())
+    if (time > this->DenseMap->GetDecayingThreshold())
     {
       // Remove old cluster
       for (auto it = this->ObstaclesGrid.Data.begin(); it != this->ObstaclesGrid.Data.end();)
@@ -799,7 +801,176 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
           ++it;
       }
       this->ObstaclesBBox.erase(clusIdx);
+      continue;
     }
+
+    // Check whether or not a big cluster need to be separated
+    if (!this->ObstaclesBBox.count(clusIdx) || this->ObstaclesBBox[clusIdx].Diagonal.norm() < 2 * this->MergeDist )
+      continue;
+
+    // Check standard deviation of decay time
+    double mean = std::accumulate(c2t.second.begin(), c2t.second.end(), 0.0) / c2t.second.size();
+    double stdDev = 0;
+    for (const auto& t : c2t.second)
+      stdDev += std::pow(t - mean, 2.0);
+    stdDev /= c2t.second.size();
+    stdDev = std::sqrt(stdDev);
+    if (stdDev < 2. ) // 2 seconds
+      continue;
+
+    // Divide pixels into recent part and old part by decay time
+    std::vector<Eigen::Array2i> recentPixels;
+    std::vector<Eigen::Array2i> oldPixels;
+    recentPixels.reserve(clus2PixelIndices[clusIdx].size());
+    oldPixels.reserve(clus2PixelIndices[clusIdx].size());
+    for (int i = 0; i < clus2PixelIndices[clusIdx].size(); i++)
+    {
+      auto& id = clus2PixelIndices[clusIdx][i];
+      if (c2t.second[i] < mean)
+        recentPixels.push_back({id / this->ObstaclesGrid.Width, id % this->ObstaclesGrid.Width});
+      else
+        oldPixels.push_back({id / this->ObstaclesGrid.Width, id % this->ObstaclesGrid.Width});
+    }
+    if (recentPixels.empty() || oldPixels.empty())
+      continue;
+
+    // Check whether or not recentPixels can be separated into sub clusters
+    std::vector<std::vector<Eigen::Array2i>> subClusters;
+    std::vector<int> subClusId;
+    // Label old pixels as unknownLabel to re-grow region
+    for (const auto& pix : oldPixels)
+      this->ObstaclesGrid(pix(0), pix(1)).ClusterIdx = unknownLabel;
+    for (const auto& seed : recentPixels)
+    {
+      // Check cluster id has changed
+      if (this->ObstaclesGrid(seed(0), seed(1)).ClusterIdx != clusIdx)
+        continue;
+
+      this->ObstaclesGrid(seed(0), seed(1)).ClusterIdx = this->NewClusterIdx;
+
+      std::vector<Eigen::Array2i> clusterPixels;
+      clusterPixels.reserve(clus2PixelIndices[clusIdx].size());
+      clusterPixels.emplace_back(seed);
+      int idxPix = 0;
+      while (idxPix < clusterPixels.size())
+      {
+        int i = clusterPixels[idxPix](0);
+        int j = clusterPixels[idxPix](1);
+
+        // Check neighbors
+        #pragma omp parallel for num_threads(this->NbThreads)
+        for (const Eigen::Array2i& r : radii)
+        {
+          Eigen::Array2i neigh = clusterPixels[idxPix] + r;
+          if (this->ObstaclesGrid.Check(neigh.x(), neigh.y()) &&
+              this->ObstaclesGrid(neigh.x(), neigh.y()).ClusterIdx == clusIdx)
+          {
+            // Add neighbor to cluster
+            clusterPixels.push_back({neigh.x(), neigh.y()});
+            // Update cluster label of pixel
+            this->ObstaclesGrid(neigh.x(), neigh.y()).ClusterIdx = this->NewClusterIdx;
+          }
+        }
+        ++idxPix;
+      }
+      subClusters.emplace_back(clusterPixels);
+      subClusId.emplace_back(this->NewClusterIdx);
+      ++this->NewClusterIdx;
+    }
+    // Recover the cluster index if recentPixels cannot be separated into sub clusters
+    if (subClusters.size() == 1)
+    {
+      for (const auto& pix : recentPixels)
+        this->ObstaclesGrid(pix(0), pix(1)).ClusterIdx = clusIdx;
+      for (const auto& pix : oldPixels)
+        this->ObstaclesGrid(pix(0), pix(1)).ClusterIdx = clusIdx;
+      --this->NewClusterIdx;
+      continue;
+    }
+    // Otherwise, re-label points in recent pixels with new cluster indices
+    for (int i = 0; i< subClusters.size(); i++)
+    {
+      int& newClusId = subClusId[i];
+      for (auto& pix : subClusters[i])
+      {
+        for (int ptIdx : this->ObstaclesGrid(pix(0), pix(1)).CurrentPtIndices)
+          inputCloud[ptIdx].label = static_cast<std::uint16_t>(newClusId);
+      }
+    }
+
+    // Grow region for old pixels in the cluster
+    // Remove old pixels which split the clusters and
+    // relabel the old pixels which connect with a recent sub cluster
+    std::vector<std::vector<Eigen::Array2i>> oldSubClusters;
+    std::vector<std::set<int>> oldSubClusNeighId;
+    for (const auto& seed : oldPixels)
+    {
+      // Check cluster id has changed
+      if (this->ObstaclesGrid(seed(0), seed(1)).ClusterIdx != unknownLabel)
+        continue;
+
+      this->ObstaclesGrid(seed(0), seed(1)).ClusterIdx = this->NewClusterIdx;
+
+      std::vector<Eigen::Array2i> clusterPixels;
+      std::set<int> neighborClusId;
+      clusterPixels.reserve(clus2PixelIndices[clusIdx].size());
+      clusterPixels.emplace_back(seed);
+      int idxPix = 0;
+      while (idxPix < clusterPixels.size())
+      {
+        int i = clusterPixels[idxPix](0);
+        int j = clusterPixels[idxPix](1);
+
+        // Check neighbors
+        for (const Eigen::Array2i& r : radii)
+        {
+          Eigen::Array2i neigh = clusterPixels[idxPix] + r;
+          // Check neighbor validity
+          if (!this->ObstaclesGrid.Check(neigh.x(), neigh.y()))
+            continue;
+
+          int neighClusIdx = this->ObstaclesGrid(neigh.x(), neigh.y()).ClusterIdx;
+          if (neighClusIdx == unknownLabel)
+          {
+            // Add neighbor to cluster
+            clusterPixels.push_back({neigh.x(), neigh.y()});
+            // Update cluster label of pixel
+            this->ObstaclesGrid(neigh.x(), neigh.y()).ClusterIdx = this->NewClusterIdx;
+          }
+          else if (std::find(subClusId.begin(), subClusId.end(), neighClusIdx) != subClusId.end())
+          {
+            neighborClusId.insert(neighClusIdx);
+          }
+        }
+        ++idxPix;
+      }
+      oldSubClusters.emplace_back(clusterPixels);
+      oldSubClusNeighId.emplace_back(neighborClusId);
+      ++this->NewClusterIdx;
+    }
+    // Remove or re-label old pixels
+    for (int i = 0; i < oldSubClusters.size(); i++)
+    {
+      // Remove old pixels if they are connected with more than one part of recent pixels
+      if (oldSubClusNeighId[i].size() > 1)
+      {
+        for (auto& pix : oldSubClusters[i])
+          this->ObstaclesGrid.Data.erase(pix(0) * this->ObstaclesGrid.Width + pix(1));
+      }
+      // Otherwise, re-label old pixels with its neighbor cluster id
+      else
+      {
+        for (auto& pix : oldSubClusters[i])
+        {
+          int neighClusId = oldSubClusNeighId[i].size() > 0 ? *oldSubClusNeighId[i].begin() : clusIdx;
+          this->ObstaclesGrid(pix(0), pix(1)).ClusterIdx = neighClusId;
+          for (int ptIdx : this->ObstaclesGrid(pix(0), pix(1)).CurrentPtIndices)
+            inputCloud[ptIdx].label = static_cast<std::uint16_t>(neighClusId);
+        }
+      }
+    }
+    // Recover the cluster id counter
+    this->NewClusterIdx -= oldSubClusters.size();
   }
 }
 
