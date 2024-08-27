@@ -733,21 +733,7 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
     ++it;
   }
 
-  // 2. Clear pts indices in remaining pixels and reset unknown labels to -1
-  #pragma omp parallel for num_threads(this->NbThreads)
-  for (auto& el : this->ObstaclesGrid.Data)
-  {
-    Pixel& pix = el.second; // shortcut
-
-    // Clear current points of each pixel for next fill
-    pix.CurrentPtIndices.clear();
-
-    // Reset to -1 the remaining unknown pixels (for visu purposes)
-    if (pix.ClusterIdx == unknownLabel)
-      pix.ClusterIdx = -1;
-  }
-
-  // 3. Fill clus2DecayTime to remove old clusters and compute standard deviation of time in 4.
+  // 2. Fill clus2DecayTime to remove old clusters and compute standard deviation of time in 3.
   std::unordered_map<int, std::vector<double>> clus2DecayTime;
   std::unordered_map<int, std::vector<int>> clus2PixelIndices;
   for (auto& el : this->ObstaclesGrid.Data)
@@ -781,7 +767,7 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
       ++it;
   }
 
-  // 4. Remove too old clusters and separate static and moving objects in a cluster
+  // 3. Remove too old clusters and separate static and moving objects in a cluster
   for (auto& c2t : clus2DecayTime)
   {
     int clusIdx = c2t.first; // shortcut
@@ -971,6 +957,20 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
     }
     // Recover the cluster id counter
     this->NewClusterIdx -= oldSubClusters.size();
+  }
+
+  // 4. Clear pts indices in remaining pixels and reset unknown labels to -1
+  #pragma omp parallel for num_threads(this->NbThreads)
+  for (auto& el : this->ObstaclesGrid.Data)
+  {
+    Pixel& pix = el.second; // shortcut
+
+    // Clear current points of each pixel for next fill
+    pix.CurrentPtIndices.clear();
+
+    // Reset to -1 the remaining unknown pixels (for visu purposes)
+    if (pix.ClusterIdx == unknownLabel)
+      pix.ClusterIdx = -1;
   }
 }
 
