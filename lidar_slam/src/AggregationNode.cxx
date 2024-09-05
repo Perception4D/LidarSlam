@@ -104,13 +104,6 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
   this->get_parameter_or<float>("obstacle.merge_dist", this->MergeDist, 0.5);
   this->get_parameter_or<double>("obstacle.min_marker_size", this->MinObstacleMarkerSize, 0.3);
 
-  if (this->DoExtractObstacle)
-  {
-    if (publishGrid)
-      this->OccupancyPublisher = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/obstacles/occupancy_grid", 10);
-    this->MarkerPublisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("/obstacles/bboxes", 10);
-  }
-
   // Get max size in meters
   double maxSize;
   this->get_parameter_or<double>("max_size", maxSize, 200.);
