@@ -17,6 +17,7 @@ find_package(rclcpp REQUIRED)
 find_package(lidar_slam REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 ###########
 ## Build ##
