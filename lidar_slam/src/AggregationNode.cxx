@@ -717,6 +717,13 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
   }
 
   // Clear occupancy grid
+  this->ClearObstaclesGrid(inputCloud, currentTime);
+}
+
+//-----------------------------------------------------------------------------
+void AggregationNode::ClearObstaclesGrid(CloudS& inputCloud, double currentTime)
+{
+  int unknownLabel = static_cast<int>(LidarSlam::LidarPointLabel::DEFAULT); // shortcut to unknown label
 
   // 1. Remove old isolated pixels
   for (auto it = this->ObstaclesGrid.Data.begin(); it != this->ObstaclesGrid.Data.end();)
@@ -826,6 +833,9 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
     // Label old pixels as unknownLabel to re-grow region
     for (const auto& pix : oldPixels)
       this->ObstaclesGrid(pix(0), pix(1)).ClusterIdx = unknownLabel;
+    const std::vector<Eigen::Array2i> radii = {{-1, -1}, {0, -1}, {1, -1},
+                                               {-1,  0},          {1,  0},
+                                               {-1,  1}, {0,  1}, {1,  1}};
     for (const auto& seed : recentPixels)
     {
       // Check cluster id has changed

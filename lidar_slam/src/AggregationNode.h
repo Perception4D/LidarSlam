@@ -157,6 +157,9 @@ private:
   // Load reference map
   void LoadRefMap(const std::string& path);
 
+  // Clear obstacles grid after growing region
+  void ClearObstaclesGrid(CloudS& inputCloud, double currentTime);
+
   // ROS subscribers, publishers and services
   rclcpp::Subscription<Pcl2_msg>::SharedPtr FrameSubscriber;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr  PoseSubscriber;
