@@ -194,8 +194,10 @@ void GenericConversionNode::Callback(const sensor_msgs::PointCloud2& msg_receive
   bool timeIsValid = false;
   if (!times.empty())
   {
-    double duration = times.back() - times.front();
+    auto minmaxTime = std::minmax_element(times.begin(), times.end());
+    double duration = *minmaxTime.second - *minmaxTime.first;
     double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
+    duration *= factor;
     timeIsValid = duration > 1e-8 && duration < 2. * this->RotationDuration;
     if (!timeIsValid)
       ROS_WARN_STREAM("Invalid 'time' field, it will be built from azimuth advancement.");

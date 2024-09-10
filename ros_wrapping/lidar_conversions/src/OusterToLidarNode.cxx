@@ -100,8 +100,11 @@ void OusterToLidarNode::Callback(const CloudO& cloudO)
   }
 
   // Check if time field looks properly set
-  double duration = cloudO.back().t - cloudO.front().t;
+  auto minmaxTime = std::minmax_element(cloudO.points.begin(), cloudO.points.end(),
+                    [](const PointO& lhs, const PointO& rhs) { return lhs.t < rhs.t; });
+  double duration = minmaxTime.second->t - minmaxTime.first->t;
   double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
+  duration *= factor;
 
   bool isTimeValid = duration > 1e-8 && duration < 2. * this->RotationDuration;
 

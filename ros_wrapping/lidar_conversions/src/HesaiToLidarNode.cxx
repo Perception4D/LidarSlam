@@ -103,8 +103,11 @@ void HesaiToLidarNode::Callback(const CloudH& cloudH)
   }
 
   // Check if time field looks properly set
-  double duration = cloudH.back().timestamp - cloudH.front().timestamp;
+  auto minmaxTime = std::minmax_element(cloudH.points.begin(), cloudH.points.end(),
+                    [](const PointH& lhs, const PointH& rhs) { return lhs.timestamp < rhs.timestamp; });
+  double duration = minmaxTime.second->timestamp - minmaxTime.first->timestamp;
   double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
+  duration *= factor;
 
   // Check if time field looks properly set
   // If first and last points have same timestamps, this is not normal
