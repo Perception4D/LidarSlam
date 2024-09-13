@@ -114,7 +114,7 @@ void VelodyneToLidarNode::Callback(const CloudV& cloudV)
   if (!isTimeValid)
     ROS_WARN_STREAM("Invalid 'time' field, it will be built from azimuth advancement.");
 
-  Eigen::Vector2d firstPoint = {cloudV[0].x, cloudV[0].y};
+  Eigen::Vector2d firstPoint = Utils::GetFirstValidPoint(cloudV);
 
   // Build SLAM pointcloud
   #pragma omp parallel for num_threads(this->NbThreads)

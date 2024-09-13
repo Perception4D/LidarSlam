@@ -111,7 +111,7 @@ void OusterToLidarNode::Callback(const CloudO& cloudO)
   if (!isTimeValid)
     ROS_WARN_STREAM("Invalid 'time' field, it will be built from azimuth advancement.");
 
-  Eigen::Vector2d firstPoint = {cloudO[0].x, cloudO[0].y};
+  Eigen::Vector2d firstPoint = Utils::GetFirstValidPoint(cloudO);
 
   // Build SLAM pointcloud
   for (const PointO& ousterPoint : cloudO)

@@ -309,6 +309,24 @@ inline int ComputeLaserId(const Eigen::Vector3d& currentPoint, unsigned int nbLa
 
 //----------------------------------------------------------------------------
 /*!
+ * @brief Get first valid point in the pointcloud
+ * @return First valid point in the pointcloud.
+ * @param cloudRaw PointCloud published by lidar driver
+ */
+template <typename PointType>
+inline Eigen::Vector2d GetFirstValidPoint(const pcl::PointCloud<PointType> cloudRaw)
+{
+  for (auto id = 0; id < cloudRaw.size(); id++)
+  {
+    if (Utils::IsPointValid(cloudRaw[id]))
+    {
+      return {cloudRaw[id].x, cloudRaw[id].y};
+    }
+  }
+}
+
+//----------------------------------------------------------------------------
+/*!
  * @brief Deduce the rotation sense of the lidar
  * @return true if the LiDAR rotates clockwise, false otherwise.
  * @param cloudRaw PointCloud published by lidar driver
@@ -317,10 +335,13 @@ inline int ComputeLaserId(const Eigen::Vector3d& currentPoint, unsigned int nbLa
 template <typename PointType>
 inline bool IsRotationClockwise(const pcl::PointCloud<PointType> cloudRaw, unsigned int nbLasers)
 {
-  Eigen::Vector2d firstPointFirstLine ({cloudRaw.front().x, cloudRaw.front().y});
-  Eigen::Vector2d firstPointSecondLine ({cloudRaw[nbLasers].x, cloudRaw[nbLasers].y});
-  double crossZ = firstPointFirstLine.x() * firstPointSecondLine.y() - firstPointFirstLine.y() * firstPointSecondLine.x();
-  return crossZ > 0;
+  for (auto id = 0; id < cloudRaw.size(); id++)
+  {
+    if (Utils::IsPointValid(cloudRaw[id]) && Utils::IsPointValid(cloudRaw[id + nbLasers]))
+    {
+      return cloudRaw[id].x * cloudRaw[id + nbLasers].y - cloudRaw[id].y * cloudRaw[id + nbLasers].x > 0;
+    }
+  }
 }
 
 //----------------------------------------------------------------------------
