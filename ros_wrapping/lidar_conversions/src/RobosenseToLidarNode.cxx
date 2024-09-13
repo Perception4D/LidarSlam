@@ -140,8 +140,12 @@ void RobosenseToLidarNode::Callback(const CloudRS& cloudRS)
   }
 
   // Publish pointcloud only if non empty
-  if (!cloudS.empty())
-    this->Talker.publish(cloudS);
+  if (cloudS.empty())
+  {
+    ROS_ERROR_STREAM("Slam pointcloud is empty : frame ignored.");
+    return;
+  }
+  this->Talker.publish(cloudS);
 }
 
 //------------------------------------------------------------------------------

@@ -79,6 +79,12 @@ void LivoxToLidarNode::PointCloud2Callback(const CloudL& cloudL)
       cloudS.push_back(slamPoint);
   }
 
+  // Publish pointcloud only if non empty
+  if (cloudS.empty())
+  {
+    ROS_ERROR_STREAM("Slam pointcloud is empty : frame ignored.");
+    return;
+  }
   this->Talker.publish(cloudS);
 }
 

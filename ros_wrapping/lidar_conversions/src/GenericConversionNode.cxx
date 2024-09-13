@@ -231,8 +231,12 @@ void GenericConversionNode::Callback(const sensor_msgs::PointCloud2& msg_receive
   }
 
   // Publish pointcloud only if non empty
-  if (!cloudS.empty())
-    this->Talker.publish(cloudS);
+  if (cloudS.empty())
+  {
+    ROS_ERROR_STREAM("Slam pointcloud is empty : frame ignored.");
+    return;
+  }
+  this->Talker.publish(cloudS);
 }
 
 //------------------------------------------------------------------------------
