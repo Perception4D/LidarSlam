@@ -585,6 +585,7 @@ protected:
 private:
 
   // Member to store the current time
+  double LastFrameTime = -1.;
   double FrameTime = -1.;
   std::map<LidarSlam::Keypoint, vtkSmartPointer<vtkPolyData>> CacheMaps;
 

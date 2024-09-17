@@ -389,7 +389,8 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
   {
     vtkMultiBlockDataSet* mb = vtkMultiBlockDataSet::GetData(inputVector[LIDAR_FRAME_INPUT_PORT], 0);
     // Extract first block if it is a vtkPolyData
-    input = vtkPolyData::SafeDownCast(mb->GetBlock(0));
+    if (mb)
+        input = vtkPolyData::SafeDownCast(mb->GetBlock(0));
   }
   // If the input could not be cast, return
   if (!input)
@@ -399,10 +400,10 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
   }
   // Check input is not empty
   vtkIdType nbPoints = input->GetNumberOfPoints();
-  if (nbPoints < 100)
+  if (nbPoints == 0)
   {
-    vtkErrorMacro(<< "Input point cloud does not contain enough points. Abort");
-    return 0;
+      vtkErrorMacro(<< "Empty input data. Abort.");
+      return 0;
   }
 
   // Check input format
@@ -411,33 +412,44 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
     vtkErrorMacro(<< "Unable to identify LiDAR arrays to use. Please define them manually before processing the frame.");
     return 0;
   }
-
+  
   auto arrayTime = input->GetPointData()->GetArray(this->TimeArrayName.c_str());
+  this->LastFrameTime = this->FrameTime;
   this->FrameTime = arrayTime->GetRange()[1];
 
+  if (this->LastFrameTime == this->FrameTime)
+      vtkDebugMacro(<< "Timestamp has not changed. Skipping frame.");
+  if (nbPoints < 100)
+      vtkErrorMacro(<< "Input point cloud does not contain enough points. Skipping frame");
+
+  bool allPointsAreValid = false;
+
   // Conversion vtkPolyData -> PCL pointcloud
-  LidarSlam::Slam::PointCloud::Ptr pc(new LidarSlam::Slam::PointCloud);
-  bool allPointsAreValid = this->PolyDataToPointCloud(input, pc);
-
-  // Get frame first point time in vendor format
-  double* range = arrayTime->GetRange();
-  double frameFirstPointTime = range[0] * this->TimeToSecondsFactor;
-  if (this->SynchronizeOnPacket)
+  if (this->LastFrameTime != this->FrameTime && nbPoints >= 100)
   {
-    // Get first frame packet reception time
-    vtkInformation *inInfo = inputVector[0]->GetInformationObject(0);
-    double frameReceptionPOSIXTime = inInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
-    double absCurrentOffset = std::abs(this->SlamAlgo->GetSensorTimeOffset());
-    double potentialOffset = frameFirstPointTime - frameReceptionPOSIXTime;
-    // We exclude the first frame cause frameReceptionPOSIXTime can be badly set
-    if (this->SlamAlgo->GetNbrFrameProcessed() > 0 && (absCurrentOffset < 1e-6 || std::abs(potentialOffset) < absCurrentOffset))
-      this->SlamAlgo->SetSensorTimeOffset(potentialOffset);
-  }
+      LidarSlam::Slam::PointCloud::Ptr pc(new LidarSlam::Slam::PointCloud);
+      bool allPointsAreValid = this->PolyDataToPointCloud(input, pc);
 
-  // Run SLAM
-  IF_VERBOSE(3, Utils::Timer::StopAndDisplay("vtkSlam : input conversions"));
-  this->SlamAlgo->AddFrame(pc);
-  IF_VERBOSE(3, Utils::Timer::Init("vtkSlam : basic output conversions"));
+      // Get frame first point time in vendor format
+      double* range = arrayTime->GetRange();
+      double frameFirstPointTime = range[0] * this->TimeToSecondsFactor;
+      if (this->SynchronizeOnPacket)
+      {
+          // Get first frame packet reception time
+          vtkInformation* inInfo = inputVector[0]->GetInformationObject(0);
+          double frameReceptionPOSIXTime = inInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+          double absCurrentOffset = std::abs(this->SlamAlgo->GetSensorTimeOffset());
+          double potentialOffset = frameFirstPointTime - frameReceptionPOSIXTime;
+          // We exclude the first frame cause frameReceptionPOSIXTime can be badly set
+          if (this->SlamAlgo->GetNbrFrameProcessed() > 0 && (absCurrentOffset < 1e-6 || std::abs(potentialOffset) < absCurrentOffset))
+              this->SlamAlgo->SetSensorTimeOffset(potentialOffset);
+      }
+
+      // Run SLAM
+      IF_VERBOSE(3, Utils::Timer::StopAndDisplay("vtkSlam : input conversions"));
+      this->SlamAlgo->AddFrame(pc);
+      IF_VERBOSE(3, Utils::Timer::Init("vtkSlam : basic output conversions"));
+  }
 
   // ===== SLAM frame =====
   // Output : Current undistorted LiDAR frame in world coordinates
@@ -618,42 +630,46 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
     IF_VERBOSE(3, Utils::Timer::StopAndDisplay("vtkSlam : add advanced return arrays"));
   }
 
-  // If SLAM had failed before
-  if (this->SlamAlgo->IsRecovery())
+  // Update trajectory
+  if (this->LastFrameTime != this->FrameTime && nbPoints >= 100)
   {
-    // TMP : in the future, the user should have a look
-    // at the result to validate recovery
-    // Check if the SLAM can go on and pose has to be displayed
-    if (this->SlamAlgo->GetOverlapEstimation() > 0.2f &&
-        this->SlamAlgo->GetPositionErrorStd()  < 0.1f)
-    {
-      vtkWarningMacro(<< "Getting out of recovery mode");
-      // Frame is relocalized, reset params
-      this->SlamAlgo->EndRecovery();
-      this->AddLastPosesToTrajectory();
-    }
-    else
-      vtkWarningMacro(<< "Still waiting for recovery");
+      // If SLAM had failed before
+      if (this->SlamAlgo->IsRecovery())
+      {
+          // TMP : in the future, the user should have a look
+          // at the result to validate recovery
+          // Check if the SLAM can go on and pose has to be displayed
+          if (this->SlamAlgo->GetOverlapEstimation() > 0.2f &&
+              this->SlamAlgo->GetPositionErrorStd()  < 0.1f)
+          {
+              vtkWarningMacro(<< "Getting out of recovery mode");
+              // Frame is relocalized, reset params
+              this->SlamAlgo->EndRecovery();
+              this->AddLastPosesToTrajectory();
+          }
+          else
+              vtkWarningMacro(<< "Still waiting for recovery");
+      }
+      // Checking failure and add or not the poses
+      else if (this->SlamAlgo->HasFailed())
+      {
+          vtkErrorMacro(<< "SLAM has failed : entering recovery mode :\n"
+              << "\t -Maps will not be updated\n"
+              << "\t -Egomotion and undistortion are disabled\n"
+              << "\t -The number of ICP iterations is increased\n"
+              << "\t -The maximum distance between a frame point and a map target point is increased");
+          // Enable recovery mode :
+          // Last frames are removed
+          // Maps are not updated
+          // Param are tuned to handle bigger motions
+          // Warning : real time is not ensured
+          this->SlamAlgo->StartRecovery(this->RecoveryTime);
+          // Remove newest trajectory poses
+          this->ResetTrajectory(this->SlamAlgo->GetLogStates().back().Time);
+      }
+      else
+          this->AddLastPosesToTrajectory();
   }
-  // Checking failure and add or not the poses
-  else if (this->SlamAlgo->HasFailed())
-  {
-    vtkErrorMacro(<< "SLAM has failed : entering recovery mode :\n"
-                  << "\t -Maps will not be updated\n"
-                  << "\t -Egomotion and undistortion are disabled\n"
-                  << "\t -The number of ICP iterations is increased\n"
-                  << "\t -The maximum distance between a frame point and a map target point is increased");
-    // Enable recovery mode :
-    // Last frames are removed
-    // Maps are not updated
-    // Param are tuned to handle bigger motions
-    // Warning : real time is not ensured
-    this->SlamAlgo->StartRecovery(this->RecoveryTime);
-    // Remove newest trajectory poses
-    this->ResetTrajectory(this->SlamAlgo->GetLogStates().back().Time);
-  }
-  else
-    this->AddLastPosesToTrajectory();
 
   // Output : SLAM Trajectory
   auto* slamTrajectory = vtkPolyData::GetData(outputVector, SLAM_TRAJECTORY_OUTPUT_PORT);
