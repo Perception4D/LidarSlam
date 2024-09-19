@@ -151,6 +151,9 @@ vtkSlam::vtkSlam()
 //-----------------------------------------------------------------------------
 void vtkSlam::Reset()
 {
+  // Reset SLAM time to remove doubled frames
+  this->FrameTime = -1;
+
   if (this->SlamAlgo->IsRecovery())
     vtkWarningMacro(<< "Getting out of recovery mode");
 
@@ -412,7 +415,7 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
     vtkErrorMacro(<< "Unable to identify LiDAR arrays to use. Please define them manually before processing the frame.");
     return 0;
   }
-  
+
   auto arrayTime = input->GetPointData()->GetArray(this->TimeArrayName.c_str());
   this->LastFrameTime = this->FrameTime;
   this->FrameTime = arrayTime->GetRange()[1];
@@ -464,16 +467,13 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
   auto registeredPoints = vtkSmartPointer<vtkPoints>::New();
   registeredPoints->SetNumberOfPoints(nbPoints);
   slamFrame->SetPoints(registeredPoints);
-  if (worldFrame->empty())
-  {
-    vtkWarningMacro(<< "Registered frame is empty");
-  }
-  else if (allPointsAreValid)
+
+  if (!worldFrame->empty() && allPointsAreValid)
   {
     for (vtkIdType i = 0; i < nbPoints; i++)
       registeredPoints->SetPoint(i, worldFrame->at(i).data);
   }
-  else
+  else if (!worldFrame->empty())
   {
     unsigned int validFrameIndex = 0;
     for (vtkIdType i = 0; i < nbPoints; i++)
@@ -677,7 +677,7 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
 
   // Output : SLAM Trajectory
   auto* slamTrajectory = vtkPolyData::GetData(outputVector, SLAM_TRAJECTORY_OUTPUT_PORT);
-  slamTrajectory->ShallowCopy(this->Trajectory);
+  slamTrajectory->DeepCopy(this->Trajectory);
 
   IF_VERBOSE(1, Utils::Timer::StopAndDisplay("vtkSlam"));
 
