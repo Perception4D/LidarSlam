@@ -448,8 +448,12 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
       // Run SLAM
       IF_VERBOSE(3, Utils::Timer::StopAndDisplay("vtkSlam : input conversions"));
       this->SlamAlgo->AddFrame(pc);
-      IF_VERBOSE(3, Utils::Timer::Init("vtkSlam : basic output conversions"));
   }
+  else
+    IF_VERBOSE(3, Utils::Timer::StopAndDisplay("vtkSlam : input conversions"));
+
+
+  IF_VERBOSE(3, Utils::Timer::Init("vtkSlam : basic output conversions"));
 
   // ===== SLAM frame =====
   // Output : Current undistorted LiDAR frame in world coordinates
