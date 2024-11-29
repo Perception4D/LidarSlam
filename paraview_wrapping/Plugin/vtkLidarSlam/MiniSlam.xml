@@ -1,0 +1,24 @@
+<ServerManagerConfiguration>
+
+  <!-- Begin Mini Slam -->
+  <ProxyGroup name="filters">
+    <SourceProxy name="MiniSLAM"
+                 class="vtkMiniSlam"
+                 label="Mini SLAM"
+                 base_proxygroup="filters"
+                 base_proxyname="SlamOnline">
+
+      <Documentation
+        short_help="Applies SLAM on input LiDAR frames and displays the most recently transformed frames."
+        long_help="Applies SLAM on input LiDAR frames and displays the most recently transformed frames.">
+        The Mini SLAM filter is a real-time application of SLAM algorithms to sequential LiDAR frames.
+        The output of the filter is the most recently transformed frames. The filter heritages from vtkSlam filter.
+        It is ideal for applications requiring visualization of the latest SLAM-processed frames
+        for quick inspection.
+      </Documentation>
+
+    </SourceProxy>
+  </ProxyGroup>
+  <!-- End Mini Slam -->
+
+</ServerManagerConfiguration>

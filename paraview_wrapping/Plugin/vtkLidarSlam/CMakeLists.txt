@@ -3,6 +3,7 @@ set(lidarslam_sources)
 set(lidarslam_classes
   vtkSlam
   vtkSlamManager
+  vtkMiniSlam
   vtkSpinningSensorKeypointExtractor
 )
 
@@ -11,6 +12,7 @@ set(lidarslam_templates)
 
 set(lidarslam_xml
   Slam.xml
+  MiniSlam.xml
 )
 
 # Create Module
