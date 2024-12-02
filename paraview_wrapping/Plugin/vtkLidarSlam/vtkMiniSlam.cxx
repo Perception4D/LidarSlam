@@ -106,5 +106,72 @@ int vtkMiniSlam::RequestData(vtkInformation* request,
     return 0;
   }
 
+  // ===== Apply SLAM =====
+  auto arrayTime = input->GetPointData()->GetArray(vtkSlam::GetTimeArrayName().c_str());
+  vtkSlam::SetLastFrameTime(vtkSlam::GetFrameTime());
+  vtkSlam::SetFrameTime(arrayTime->GetRange()[1]);
+  if (vtkSlam::GetLastFrameTime() == vtkSlam::GetFrameTime())
+      vtkDebugMacro(<< "Timestamp has not changed. Skipping frame.");
+  if (nbPoints < 100)
+      vtkErrorMacro(<< "Input point cloud does not contain enough points. Skipping frame");
+
+  bool allPointsAreValid = false;
+  // Conversion vtkPolyData -> PCL pointcloud
+  if (vtkSlam::GetLastFrameTime() != vtkSlam::GetFrameTime() && nbPoints >= 100)
+  {
+    LidarSlam::Slam::PointCloud::Ptr pc(new LidarSlam::Slam::PointCloud);
+    bool allPointsAreValid = vtkSlam::PolyDataToPointCloud(input, pc);
+
+    // Get frame first point time in vendor format
+    double* range = arrayTime->GetRange();
+    double frameFirstPointTime = range[0] * vtkSlam::GetTimeToSecondsFactor();
+    if (vtkSlam::GetSynchronizeOnPacket())
+    {
+      // Get first frame packet reception time
+      vtkInformation* inInfo = inputVector[0]->GetInformationObject(0);
+      double frameReceptionPOSIXTime = inInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+      double absCurrentOffset = std::abs(vtkSlam::SlamAlgo->GetSensorTimeOffset());
+      double potentialOffset = frameFirstPointTime - frameReceptionPOSIXTime;
+      // We exclude the first frame cause frameReceptionPOSIXTime can be badly set
+      if (vtkSlam::SlamAlgo->GetNbrFrameProcessed() > 0 && (absCurrentOffset < 1e-6 || std::abs(potentialOffset) < absCurrentOffset))
+          vtkSlam::SlamAlgo->SetSensorTimeOffset(potentialOffset);
+    }
+    // Run SLAM
+    vtkSlam::SlamAlgo->AddFrame(pc);
+  }
+
+  // ===== Ouput slam =====
+  // Output: Current undistorted LiDAR frame in world coordinates
+  vtkNew<vtkPolyData> currentFrame;
+  currentFrame->ShallowCopy(input);
+  auto worldFrame = vtkSlam::SlamAlgo->GetRegisteredFrame();
+  // Modify only points coordinates to keep input arrays
+  auto registeredPoints = vtkSmartPointer<vtkPoints>::New();
+  registeredPoints->SetNumberOfPoints(nbPoints);
+  currentFrame->SetPoints(registeredPoints);
+
+  if (!worldFrame->empty() && allPointsAreValid)
+  {
+    for (vtkIdType i = 0; i < nbPoints; i++)
+      registeredPoints->SetPoint(i, worldFrame->at(i).data);
+  }
+  else if (!worldFrame->empty())
+  {
+    unsigned int validFrameIndex = 0;
+    for (vtkIdType i = 0; i < nbPoints; i++)
+    {
+      // Modify point only if valid
+      double pos[3];
+      input->GetPoint(i, pos);
+      if (pos[0] || pos[1] || pos[2])
+      {
+        const auto& p = worldFrame->points[validFrameIndex++];
+        registeredPoints->SetPoint(i, p.data);
+      }
+      else
+        registeredPoints->SetPoint(i, pos);
+    }
+  }
+
   return 1;
 }
