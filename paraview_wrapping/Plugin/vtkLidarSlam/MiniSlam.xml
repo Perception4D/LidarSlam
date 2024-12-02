@@ -17,6 +17,21 @@
         for quick inspection.
       </Documentation>
 
+      <!-- ================ Mini Slam Parameters ================ -->
+
+      <IntVectorProperty name="Number of SLAM frames"
+                         command="SetNumberOfSlamFrames"
+                         number_of_elements="1"
+                         default_values="5">
+        <Documentation>
+         The number of slam frames displayed at the same time.
+        </Documentation>
+      </IntVectorProperty>
+
+      <PropertyGroup label="Mini SLAM manager parameters">
+        <Property name="Number of SLAM frames" />
+      </PropertyGroup>
+
     </SourceProxy>
   </ProxyGroup>
   <!-- End Mini Slam -->

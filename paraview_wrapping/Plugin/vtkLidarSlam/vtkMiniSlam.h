@@ -19,6 +19,8 @@
 #ifndef VTK_MINI_SLAM_H
 #define VTK_MINI_SLAM_H
 
+#include <deque>
+
 #include "vtkSlam.h"
 #include <vtkMultiBlockDataSet.h>
 #include <vtkSetGet.h>
@@ -29,6 +31,11 @@ public:
   static vtkMiniSlam* New();
   vtkTypeMacro(vtkMiniSlam, vtkSlam)
   void PrintSelf(ostream& os, vtkIndent indent) override;
+
+  //! @{ @copydoc NumberOfSlamFrames
+  vtkGetMacro(NumberOfSlamFrames, unsigned int)
+  vtkSetMacro(NumberOfSlamFrames, unsigned int)
+  //! @}
 
 protected:
   vtkMiniSlam();
@@ -42,6 +49,11 @@ private:
   vtkMiniSlam(const vtkMiniSlam&) = delete;
   void operator=(const vtkMiniSlam&) = delete;
 
+  //! Number of transformed frames to display
+  unsigned int NumberOfSlamFrames = 5;
+
+  //! Cache to save output previously produced by the filter
+  std::deque<vtkSmartPointer<vtkPolyData>> SlamFrames;
 };
 
 #endif // VTK_MINI_SLAM_H

@@ -173,5 +173,15 @@ int vtkMiniSlam::RequestData(vtkInformation* request,
     }
   }
 
+  // Add current frame into frame cache
+  this->SlamFrames.push_back(currentFrame);
+  if (this->SlamFrames.size() > this->NumberOfSlamFrames)
+    this->SlamFrames.pop_front();
+  // Set output
+  output->Initialize();
+  output->SetNumberOfBlocks(this->NumberOfSlamFrames);
+  for (auto frameId = 0; frameId < this->SlamFrames.size(); ++frameId)
+    output->SetBlock(static_cast<unsigned int>(frameId), this->SlamFrames[frameId]);
+
   return 1;
 }
