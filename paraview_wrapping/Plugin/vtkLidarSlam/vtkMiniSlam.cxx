@@ -23,6 +23,7 @@
 #include <vtkObjectFactory.h>
 #include <vtkPointData.h>
 #include <vtkStreamingDemandDrivenPipeline.h>
+#include <vtkTransform.h>
 
 #include <sstream>
 
@@ -141,6 +142,8 @@ int vtkMiniSlam::RequestData(vtkInformation* request,
   }
 
   // ===== Ouput slam =====
+  // Output: slam pose
+  this->AddSlamPose(vtkSlam::SlamAlgo->GetLastState().Isometry);
   // Output: Current undistorted LiDAR frame in world coordinates
   vtkNew<vtkPolyData> currentFrame;
   currentFrame->ShallowCopy(input);
@@ -183,5 +186,48 @@ int vtkMiniSlam::RequestData(vtkInformation* request,
   for (auto frameId = 0; frameId < this->SlamFrames.size(); ++frameId)
     output->SetBlock(static_cast<unsigned int>(frameId), this->SlamFrames[frameId]);
 
+  // Transform frames to origin
+  if (this->DisplayAtOrigin)
+    this->TransformFramesToOrigin(output);
+
   return 1;
+}
+
+//----------------------------------------------------------------------------
+void vtkMiniSlam::AddSlamPose(const Eigen::Isometry3d& pose)
+{
+  this->SlamPoses.push_back(pose);
+  if (this->SlamPoses.size() > this->NumberOfSlamFrames)
+    this->SlamPoses.pop_front();
+}
+
+//----------------------------------------------------------------------------
+void vtkMiniSlam::TransformFramesToOrigin(vtkMultiBlockDataSet* outputBlocks)
+{
+  if (this->SlamFrames.size() == 0)
+    return;
+  // Get transform from estimated pose of slam
+  Eigen::Isometry3d refTransform = this->RefFrame == ReferenceFrame::OLDEST_FRAME ?
+                                   this->SlamPoses.front() : this->SlamPoses.back();
+  refTransform = refTransform.inverse();
+  // Convert matrix from column major (Eigen) to row major (VTK)
+  refTransform.matrix().transposeInPlace();
+  vtkSmartPointer<vtkTransform> transform = vtkSmartPointer<vtkTransform>::New();
+  transform->Concatenate(refTransform.matrix().data());
+
+  for (unsigned int idx = 0; idx < outputBlocks->GetNumberOfBlocks(); idx++)
+  {
+    vtkPolyData* frame = vtkPolyData::SafeDownCast(outputBlocks->GetBlock(idx));
+    if (frame)
+    {
+      vtkSmartPointer<vtkPolyData> newFrame = vtkSmartPointer<vtkPolyData>::New();
+      vtkSmartPointer<vtkPoints> newPts = vtkSmartPointer<vtkPoints>::New();
+      newFrame->DeepCopy(frame);
+      newPts->Allocate(newFrame->GetNumberOfPoints());
+      newPts->GetData()->SetName(newFrame->GetPoints()->GetData()->GetName());
+      transform->TransformPoints(newFrame->GetPoints(), newPts);
+      newFrame->SetPoints(newPts);
+      outputBlocks->SetBlock(idx, newFrame);
+    }
+  }
 }

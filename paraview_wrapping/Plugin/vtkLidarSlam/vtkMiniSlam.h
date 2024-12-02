@@ -37,6 +37,27 @@ public:
   vtkSetMacro(NumberOfSlamFrames, unsigned int)
   //! @}
 
+  //! @{ @copydoc DisplayAtOrigin
+  vtkGetMacro(DisplayAtOrigin, bool)
+  vtkSetMacro(DisplayAtOrigin, bool)
+  //! @}
+
+  ///@{
+  /**
+   * Define the referential frame used to transform frames to origin, can be either first or last.
+   * Only used if DisplayAtOrigin is true.
+   */
+  enum ReferenceFrame
+  {
+    NEWEST_FRAME = 0,
+    OLDEST_FRAME,
+
+    Size
+  };
+  vtkSetClampMacro(RefFrame, int, 0, ReferenceFrame::Size);
+  vtkGetMacro(RefFrame, int);
+  ///@}
+
 protected:
   vtkMiniSlam();
 
@@ -49,11 +70,24 @@ private:
   vtkMiniSlam(const vtkMiniSlam&) = delete;
   void operator=(const vtkMiniSlam&) = delete;
 
+  // Store slam poses
+  void AddSlamPose(const Eigen::Isometry3d& pose);
+
+  // Transform frames to origin
+  void TransformFramesToOrigin(vtkMultiBlockDataSet* outputBlocks);
+
   //! Number of transformed frames to display
   unsigned int NumberOfSlamFrames = 5;
 
+  //! Enable/disable to display frames at origin
+  bool DisplayAtOrigin = true;
+
+  //! The reference frame type
+  int RefFrame = ReferenceFrame::NEWEST_FRAME;
+
   //! Cache to save output previously produced by the filter
   std::deque<vtkSmartPointer<vtkPolyData>> SlamFrames;
+  std::deque<Eigen::Isometry3d> SlamPoses;
 };
 
 #endif // VTK_MINI_SLAM_H
