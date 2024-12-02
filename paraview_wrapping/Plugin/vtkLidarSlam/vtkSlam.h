@@ -133,6 +133,21 @@ public:
   vtkGetMacro(AdvancedReturnMode, bool)
   virtual void SetAdvancedReturnMode(bool _arg);
 
+  vtkGetMacro(TimeArrayName, std::string)
+  vtkSetMacro(TimeArrayName, std::string)
+
+  vtkGetMacro(TimeToSecondsFactor, double)
+  vtkSetMacro(TimeToSecondsFactor, double)
+
+  vtkGetMacro(LastFrameTime, double)
+  vtkSetMacro(LastFrameTime, double)
+
+  vtkGetMacro(FrameTime, double)
+  vtkSetMacro(FrameTime, double)
+
+  vtkGetMacro(SynchronizeOnPacket, bool)
+  vtkSetMacro(SynchronizeOnPacket, bool)
+
   vtkGetMacro(OutputCurrentKeypoints, bool)
   vtkSetMacro(OutputCurrentKeypoints, bool)
 
@@ -526,6 +541,18 @@ protected:
   int FillInputPortInformation(int port, vtkInformation* info) override;
   int RequestData(vtkInformation*, vtkInformationVector**, vtkInformationVector*) override;
 
+  // Identify input arrays to use
+  bool IdentifyInputArrays(vtkPolyData* poly);
+
+  // Convert VTK PolyData to PCL pointcloud
+  // Returns true if all input points are valid (null coordinates), false otherwise
+  bool PolyDataToPointCloud(vtkPolyData* poly,
+                            LidarSlam::Slam::PointCloud::Ptr pc) const;
+
+  // Convert PCL pointcloud to VTK PolyData
+  void PointCloudToPolyData(LidarSlam::Slam::PointCloud::Ptr pc,
+                            vtkPolyData* poly) const;
+
 private:
   vtkSlam(const vtkSlam&) = delete;
   void operator=(const vtkSlam&) = delete;
@@ -533,9 +560,6 @@ private:
   // ---------------------------------------------------------------------------
   //   Useful helpers
   // ---------------------------------------------------------------------------
-
-  // Identify input arrays to use
-  bool IdentifyInputArrays(vtkPolyData* poly);
 
   // Create polydata with trajectory arrays and points
   vtkSmartPointer<vtkPolyData> CreateInitTrajectory();
@@ -549,15 +573,6 @@ private:
 
   // Add current SLAM pose and covariance in WORLD coordinates to Trajectory.
   void AddLastPosesToTrajectory();
-
-  // Convert VTK PolyData to PCL pointcloud
-  // Returns true if all input points are valid (null coordinates), false otherwise
-  bool PolyDataToPointCloud(vtkPolyData* poly,
-                            LidarSlam::Slam::PointCloud::Ptr pc) const;
-
-  // Convert PCL pointcloud to VTK PolyData
-  void PointCloudToPolyData(LidarSlam::Slam::PointCloud::Ptr pc,
-                            vtkPolyData* poly) const;
 
   // Fill calibration arg with the calibration supplied in fileName file
   // Filename must be a .mat file with matrix saved as numbers spaced by empty char
@@ -587,6 +602,8 @@ private:
   // Member to store the current time
   double LastFrameTime = -1.;
   double FrameTime = -1.;
+
+  // Cache to save maps
   std::map<LidarSlam::Keypoint, vtkSmartPointer<vtkPolyData>> CacheMaps;
 
   // Polydata which represents the computed trajectory
