@@ -50,6 +50,14 @@ vtkMiniSlam::vtkMiniSlam()
 }
 
 //----------------------------------------------------------------------------
+void vtkMiniSlam::ResetMiniSlam()
+{
+  this->SlamPoses.clear();
+  this->SlamFrames.clear();
+  vtkSlam::Reset();
+}
+
+//----------------------------------------------------------------------------
 void vtkMiniSlam::PrintSelf(std::ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);

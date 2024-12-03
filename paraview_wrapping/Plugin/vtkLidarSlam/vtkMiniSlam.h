@@ -32,6 +32,9 @@ public:
   vtkTypeMacro(vtkMiniSlam, vtkSlam)
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
+  // Reset mini slam
+  void ResetMiniSlam();
+
   //! @{ @copydoc NumberOfSlamFrames
   vtkGetMacro(NumberOfSlamFrames, unsigned int)
   vtkSetMacro(NumberOfSlamFrames, unsigned int)

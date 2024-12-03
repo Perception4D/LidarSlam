@@ -61,6 +61,19 @@
         <Property name="Reference frame" />
       </PropertyGroup>
 
+      <!-- ============= Override slam filter's parameters ============ -->
+
+      <!--~~~~~~~~~~~~~~~~~~~~~~~~~ Inputs options ~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+      <Property name="Reset state"
+                override="1"
+                command="ResetMiniSlam">
+        <Documentation>
+          Reset mini SLAM internal state: maps and trajectory are cleared,
+          current pose is set back to origin.
+          This keeps parameters unchanged.
+        </Documentation>
+      </Property>
+
     </SourceProxy>
   </ProxyGroup>
   <!-- End Mini Slam -->
