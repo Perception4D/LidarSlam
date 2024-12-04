@@ -74,6 +74,148 @@
         </Documentation>
       </Property>
 
+      <StringVectorProperty name="Reload trajectory"
+                            override="1"
+                            panel_visibility="never">
+      </StringVectorProperty>
+
+      <!--~~~~~~~~~~~~~~~~~~~~~~~~~ Inputs options ~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+      <StringVectorProperty name="External sensors data file"
+                            override="1"
+                            panel_visibility="never">
+      </StringVectorProperty>
+
+      <IntVectorProperty name="Auto detect input arrays"
+                         override="1"
+                         command="SetAutoDetectInputArrays"
+                         number_of_elements="1"
+                         default_values="1">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          If enabled, SLAM filter will try to auto-detect the time, intensity
+          and laser ring id arrays to use depending on LiDAR model.
+        </Documentation>
+      </IntVectorProperty>
+
+      <!-- If auto-detection mode is disabled, user needs to specify input arrays to use -->
+      <StringVectorProperty name="Time array"
+                            override="1"
+                            command="SetInputArrayToProcess"
+                            number_of_elements="5"
+                            element_types="0 0 0 0 2"
+                            default_values_delimiter=";"
+                            default_values="0;0;0;0;timestamp">
+        <ArrayListDomain attribute_type="Scalars" name="array_list">
+          <RequiredProperties>
+            <Property function="Input" name="Input" />
+          </RequiredProperties>
+        </ArrayListDomain>
+        <Documentation>
+          The points measurements timestamps.
+        </Documentation>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Auto detect input arrays" value="0" />
+        </Hints>
+      </StringVectorProperty>
+
+      <StringVectorProperty name="Intensity array"
+                            override="1"
+                            command="SetInputArrayToProcess"
+                            number_of_elements="5"
+                            element_types="0 0 0 0 2"
+                            default_values_delimiter=";"
+                            default_values="1;0;0;0;intensity">
+        <ArrayListDomain attribute_type="Scalars" name="array_list">
+          <RequiredProperties>
+            <Property function="Input" name="Input" />
+          </RequiredProperties>
+        </ArrayListDomain>
+        <Documentation>
+          The points intensity/reflectivity measurements.
+        </Documentation>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Auto detect input arrays" value="0" />
+        </Hints>
+      </StringVectorProperty>
+
+      <StringVectorProperty name="Laser ring id array"
+                            override="1"
+                            command="SetInputArrayToProcess"
+                            number_of_elements="5"
+                            element_types="0 0 0 0 2"
+                            default_values_delimiter=";"
+                            default_values="2;0;0;0;laser_id">
+        <ArrayListDomain attribute_type="Scalars" name="array_list">
+          <RequiredProperties>
+            <Property function="Input" name="Input" />
+          </RequiredProperties>
+        </ArrayListDomain>
+        <Documentation>
+          The laser ring ids that acquired points.
+        </Documentation>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Auto detect input arrays" value="0" />
+        </Hints>
+      </StringVectorProperty>
+
+      <!--~~~~~~~~~~~~~~~~~~~~~~~~~ Outputs options ~~~~~~~~~~~~~~~~~~~~~~~~~-->
+
+      <IntVectorProperty name="Advanced return mode"
+                         override="1"
+                         command="SetAdvancedReturnMode"
+                         default_values="0"
+                         panel_visibility="never">
+        <BooleanDomain name="bool" />
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Failure detection"
+                         override="1"
+                         command="SetFailureDetectionEnabled"
+                         default_values="0"
+                         panel_visibility="never">
+        <BooleanDomain name="bool" />
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Keypoint maps output mode"
+                         override="1"
+                         command="SetOutputKeypointsMaps"
+                         default_values="0"
+                         panel_visibility="never">
+        <EnumerationDomain name="enum">
+          <Entry value="0" text="Disabled"/>
+          <Entry value="1" text="Full maps"/>
+          <Entry value="2" text="Sub-maps"/>
+        </EnumerationDomain>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Keypoints maps update step"
+                         override="1"
+                         command="SetMapsUpdateStep"
+                         default_values="10"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Trajectory frequency"
+                         override="1"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Output current keypoints"
+                         override="1"
+                         command="SetOutputCurrentKeypoints"
+                         default_values="0"
+                         panel_visibility="never">
+        <BooleanDomain name="bool" />
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Output keypoints in WORLD coordinates"
+                         override="1"
+                         command="SetOutputKeypointsInWorldCoordinates"
+                         default_values="1"
+                         panel_visibility="never">
+        <BooleanDomain name="bool" />
+      </IntVectorProperty>
+
     </SourceProxy>
   </ProxyGroup>
   <!-- End Mini Slam -->
