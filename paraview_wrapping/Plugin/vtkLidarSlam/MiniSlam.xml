@@ -417,8 +417,246 @@
                          panel_visibility="never">
       </IntVectorProperty>
 
+      <!-- ============================ Initialization ============================ -->
+      <!-- No change from slam filter-->
+
+      <!-- ==================== Transform tree ==================== -->
+
+      <StringVectorProperty name="Set BASE to Lidar transform"
+                            override="1"
+                            panel_visibility="never">
+      </StringVectorProperty>
+
+      <StringVectorProperty name="Set initial pose"
+                            override="1"
+                            panel_visibility="never">
+      </StringVectorProperty>
+
+      <StringVectorProperty name="Set current pose"
+                            override="1"
+                            panel_visibility="never">
+      </StringVectorProperty>
+
+      <!-- ================ Keypoints extraction Parameters ================ -->
+      <!-- No change from slam filter-->
+
+      <!-- ===================== Ego Motion Parameters ===================== -->
+      <!-- No change from slam filter-->
+
+      <!-- ==================== Localization Parameters ==================== -->
+      <!-- No change from slam filter-->
+
     </SourceProxy>
   </ProxyGroup>
   <!-- End Mini Slam -->
+
+  <!-- Begin KeyPointsExtractor -->
+  <ProxyGroup name="KeyPointsExtractors">
+    <Proxy name="SpinningSensorKeypointExtractor"
+           class="vtkSpinningSensorKeypointExtractor"
+           label="Spinning Sensor Keypoint Extractor">
+
+      <Documentation
+        short_help="Extract keypoints from a spinning LiDAR sensor pointcloud."
+        long_help="Extract edges (geometric + intensity based), planes and blobs keypoints from a spinning LiDAR sensor pointcloud.">
+        Extract edges, planes and blobs keypoints from a spinning LiDAR sensor pointcloud.
+      </Documentation>
+
+      <IntVectorProperty name="Mode"
+                         command="SetMode"
+                         number_of_elements="1"
+                         default_values="0"
+                         panel_visibility="advanced">
+        <EnumerationDomain name="enum">
+          <Entry value="0" text="Sparse"/>
+          <Entry value="1" text="Dense"/>
+        </EnumerationDomain>
+        <Documentation>
+          How to extract the keypoints.
+
+          If DENSE, a vertex map is built to analyse the frame.
+
+          If SPARSE, the lines are analysed independently.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Min neighbors nb"
+                         command="SetMinNeighNb"
+                         number_of_elements="1"
+                         default_values="4"
+                         panel_visibility="advanced">
+        <Documentation>
+          Minimum number of neighbors to use on each side of current point to estimate
+          the points curvature score.
+        </Documentation>
+      </IntVectorProperty>
+
+      <DoubleVectorProperty name="Min neighborhood radius"
+                            command="SetMinNeighRadius"
+                            number_of_elements="1"
+                            default_values="0.10"
+                            panel_visibility="advanced">
+        <Documentation>
+          Minimum distance of the farthest neighbor to use on each side of current point to estimate
+          the points curvature score.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Min distance to sensor"
+                            command="SetMinDistanceToSensor"
+                            number_of_elements="1"
+                            default_values="1.5"
+                            panel_visibility="advanced">
+        <Documentation>
+          Minimum distance in meters between a point and the sensor to be processed for
+          the keypoint extraction. In other words, all points too close from the
+          sensor are automatically rejected.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Max distance to sensor"
+                            command="SetMaxDistanceToSensor"
+                            number_of_elements="1"
+                            default_values="200"
+                            panel_visibility="advanced">
+        <Documentation>
+          Maximum distance in meters between a point and the sensor to be processed for
+          the keypoint extraction. In other words, all points too far from the
+          sensor are automatically rejected.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Min azimuth angle"
+                            command="SetAzimuthMin"
+                            number_of_elements="1"
+                            default_values="0"
+                            panel_visibility="advanced">
+        <Documentation>
+          Minimum azimuth angle in degrees to extract a keypoint. This allows to not etract false edges due to permanent occlusions
+          (due to vehicle/robot/pedestrian) or to handle reduced field of view cases. Space from min to max azimuth compels with the right thumb rule.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Max azimuth angle"
+                            command="SetAzimuthMax"
+                            number_of_elements="1"
+                            default_values="360"
+                            panel_visibility="advanced">
+        <Documentation>
+          Maximum azimuth angle in degrees to extract a keypoint. This allows to not etract false edges due to permanent occlusions
+          (due to vehicle/robot/pedestrian) or to handle reduced field of view cases. Space from min to max azimuth compels with the right thumb rule.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Min laser beam to surface angle"
+                            command="SetMinBeamSurfaceAngle"
+                            number_of_elements="1"
+                            default_values="10."
+                            panel_visibility="advanced">
+        <Documentation>
+          Minimum angle in degrees between the laser beam and the surface on which
+          a point is laying to consider it as a potential keypoint.
+          In other words, all points laying on too oblique surfaces
+          relatively to the sensor are automatically rejected.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Plane threshold angle"
+                            command="SetPlaneAngleThreshold"
+                            number_of_elements="1"
+                            default_values="150."
+                            panel_visibility="advanced">
+        <Documentation>
+          Threshold upon angle in degrees between left and right lines to consider a point as plane.
+          It is used with its absolute sine value in SSKE for planes,
+          with its cosine value in DSSKE for planes and
+          with its opposite cosine value in DSSKE to filter too sharp edges.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Edge threshold angle"
+                            command="SetEdgeAngleThreshold"
+                            number_of_elements="1"
+                            default_values="120."
+                            panel_visibility="advanced">
+        <Documentation>
+          Threshold upon angle in degrees between left and right lines to consider a point as edge.
+          Used with its absolute sine value in SSKE for edges and
+          with its cosine value in DSSKE for edges.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Edge min depth gap"
+                            command="SetEdgeDepthGapThreshold"
+                            number_of_elements="1"
+                            default_values="1."
+                            panel_visibility="advanced">
+        <Documentation>
+          One strategy to consider a point as an edge keypoint is to compute
+          the gap between the point and its azimuthal neighbors. If the
+          gap is big enough on at least one side, we consider the point as an
+          edge keypoint.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <IntVectorProperty name="Edge min nb of missing points"
+                            command="SetEdgeNbGapPoints"
+                            number_of_elements="1"
+                            default_values="10"
+                            panel_visibility="advanced">
+        <Documentation>
+          One strategy to consider a point as an edge keypoint is to compute
+          the number of points that were missed because of no return (e.g. some window)
+        </Documentation>
+      </IntVectorProperty>
+
+      <DoubleVectorProperty name="Edge min intensity gap"
+                            command="SetEdgeIntensityGapThreshold"
+                            number_of_elements="1"
+                            default_values="50."
+                            panel_visibility="advanced">
+        <Documentation>
+          One strategy to consider a point as an intensity edge keypoint is to compute
+          the intensity gap between the point and its left and right neighbors.
+          If the gap is big enough, we consider the point as an intensity edge keypoint.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <IntVectorProperty name="Maximum keypoints number"
+                         command="SetMaxPoints"
+                         number_of_elements="1"
+                         default_values="1000"
+                         panel_visibility="advanced">
+        <Documentation>
+          Maximum number of keypoints of each type to extract. A voxel grid is used to downsample the keypoints cloud.
+          Points in voxels are sorted following their certainty value. The most certain points are extracted in each voxel
+          until reaching this threshold number.
+        </Documentation>
+      </IntVectorProperty>
+
+      <DoubleVectorProperty name="Voxel grid resolution"
+                            command="SetVoxelResolution"
+                            number_of_elements="1"
+                            default_values="1."
+                            panel_visibility="advanced">
+        <Documentation>
+          Resolution of the voxel grid used to downsample the keypoints cloud in meters.
+          Points in voxels are sorted following their certainty value.
+          The most certain points are extracted in each voxel until reaching the "maximum keypoints" number threshold.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Ratio of points"
+                            command="SetInputSamplingRatio"
+                            number_of_elements="1"
+                            default_values="1."
+                            panel_visibility="advanced">
+        <Documentation>
+          Ratio to randomly downsample the input frame to extract keypoints [0, 1]. This can be used to solve computation time issues.
+        </Documentation>
+      </DoubleVectorProperty>
+    </Proxy>
+  </ProxyGroup>
+  <!-- End KeyPointsExtractors -->
 
 </ServerManagerConfiguration>
