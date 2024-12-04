@@ -216,6 +216,207 @@
         <BooleanDomain name="bool" />
       </IntVectorProperty>
 
+      <!-- ============================ General ============================ -->
+
+      <IntVectorProperty name="2d mode"
+                         override="1"
+                         command="SetTwoDMode"
+                         number_of_elements="1"
+                         default_values="0"
+                         panel_visibility="never">
+        <BooleanDomain name="bool" />
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Use edges"
+                         override="1"
+                         command="EnableEdges"
+                         number_of_elements="1"
+                         default_values="1"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          If enabled, edge keypoints are used in optimization.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Use intensity edges"
+                         override="1"
+                         command="EnableIntensityEdges"
+                         number_of_elements="1"
+                         default_values="1"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          If enabled, intensity edge keypoints are used in optimization.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Use planes"
+                         override="1"
+                         command="EnablePlanes"
+                         number_of_elements="1"
+                         default_values="1"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          If enabled, plane keypoints are used in optimization.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Use blobs"
+                         override="1"
+                         command="EnableBlobs"
+                         number_of_elements="1"
+                         default_values="0"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          If enabled, blob keypoints are used in optimization.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Verbosity level"
+                         override="1"
+                         command="SetVerbosity"
+                         number_of_elements="1"
+                         default_values="0"
+                         panel_visibility="advanced">
+        <EnumerationDomain name="enum">
+          <Entry value="0" text="0) Errors, warnings or one time info"/>
+          <Entry value="1" text="1) 0 + Frame total processing duration"/>
+          <Entry value="2" text="2) 1 + Main steps summary"/>
+          <Entry value="3" text="3) 2 + Sub-problems processing duration"/>
+          <Entry value="4" text="4) 3 + Ceres optimization summary"/>
+          <Entry value="5" text="5) 4 + Logging/maps memory usage"/>
+        </EnumerationDomain>
+        <Documentation>
+          Indicate verbosity level to display more or less information in console:
+
+           (0) print errors, warnings or one time info;
+
+           (1) 0 + frame number and total processing duration;
+
+           (2) 1 + extracted features, used keypoints, localization variance, ego-motion and localization summary;
+
+           (3) 2 + sub-problems processing duration;
+
+           (4) 3 + ceres optimization summary;
+
+           (5) 4 + logging/maps memory usage.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Ego-Motion mode"
+                         override="1"
+                         command="SetEgoMotion"
+                         number_of_elements="1"
+                         default_values="1"
+                         panel_visibility="advanced">
+        <EnumerationDomain name="enum">
+          <Entry value="0" text="Disabled"/>
+          <Entry value="1" text="Motion extrapolation"/>
+          <Entry value="2" text="Registration on previous frame"/>
+          <Entry value="3" text="Motion extrapolation + Registration"/>
+          <Entry value="4" text="External"/>
+          <Entry value="5" text="External OR motion extrapolation"/>
+        </EnumerationDomain>
+        <Documentation>
+          How to estimate Ego-Motion (approximate relative motion since last frame).
+          The ego-motion step aims to give a fast and approximate initialization of new
+          frame world pose to ensure faster and more precise convergence in Localization step.
+
+          If DISABLED, no ego-motion step is performed : relative motion is Identity, new estimated
+          Tworld is equal to previous Tworld. Fast, but may lead to unstable and imprecise
+          Localization step if motion is important.
+
+          If MOTION EXTRAPOLATION, previous motion is linearly extrapolated to estimate new Tworld pose
+          from the 2 previous poses. Fast and precise if motion is roughly constant and continuous.
+
+          If REGISTRATION ON PREVIOUS FRAME, Trelative (and therefore Tworld) is estimated by globally
+          registering new frame on previous frame. Slower and need textured enough environment, but do not
+          rely on constant motion hypothesis.
+
+          If MOTION EXTRAPOLATION + REGISTRATION ON PREVIOUS FRAME, previous motion is linearly extrapolated
+          to estimate new Tworld pose from the 2 previous poses. Then this estimation is refined by globally
+          registering new frame on previous frame. Slower and need textured enough environment, but should
+          be more precise and rely less on constant motion hypothesis.
+
+          If EXTERNAL, the pose is initialized using external sensor information. Sensor data file must have been loaded.
+          If no external sensor info correspond to Lidar times, no prior egomotion is set.
+
+          If EXTERNAL_OR_MOTION_EXTRAPOLATION, the pose is initialized using external sensor information. Sensor data file must have been loaded.
+          If no external sensor info correspond to Lidar times, a motion extrapolation is performed to get an initial pose.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Undistortion mode"
+                         override="1"
+                         command="SetUndistortion"
+                         number_of_elements="1"
+                         default_values="2"
+                         panel_visibility="advanced">
+        <EnumerationDomain name="enum">
+          <Entry value="0" text="Disabled"/>
+          <Entry value="1" text="Once"/>
+          <Entry value="2" text="Refined"/>
+          <Entry value="3" text="External"/>
+        </EnumerationDomain>
+        <Documentation>
+          Undistortion mode, to correct rolling shutter distortion during frame acquisition.
+          The undistortion should greatly improve the accuracy for smooth motions,
+          but might be unstable for high-frequency motions.
+
+          DISABLED: no undistortion is performed.
+
+          ONCE: undistortion is performed only once using estimated ego-motion.
+
+          REFINED: undistortion is iteratively refined using optimized ego-motion.
+
+          EXTERNAL: undistortion is performed once using external poses information.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Number of threads"
+                         override="1"
+                         command="SetNbThreads"
+                         number_of_elements="1"
+                         default_values="4"
+                         panel_visibility="advanced">
+        <IntRangeDomain name="range" min="1" max="16"/>
+        <Documentation>
+          Max number of threads to use for parallel processing.
+        </Documentation>
+      </IntVectorProperty>
+
+      <DoubleVectorProperty name="Logging timeout"
+                            override="1"
+                            command="SetLoggingTimeout"
+                            number_of_elements="1"
+                            default_values="10."
+                            panel_visibility="advanced">
+        <Documentation>
+          Maximum duration in seconds on which to keep states in memory.
+          It can be reduced to 0 if there are memory constraints.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <IntVectorProperty name="Use pose graph"
+                         override="1"
+                         command="SetUsePoseGraph"
+                         number_of_elements="1"
+                         default_values="0"
+                         panel_visibility="never">
+        <BooleanDomain name="bool" />
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Interpolation model"
+                         override="1"
+                         command="SetInterpolation"
+                         number_of_elements="1"
+                         default_values="0"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
     </SourceProxy>
   </ProxyGroup>
   <!-- End Mini Slam -->
