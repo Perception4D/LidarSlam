@@ -446,6 +446,141 @@
       <!-- ==================== Localization Parameters ==================== -->
       <!-- No change from slam filter-->
 
+      <!-- ======================== Map Parameters ========================= -->
+
+      <Property name="Clear maps and log"
+                override="1"
+                panel_visibility="never">
+      </Property>
+
+      <IntVectorProperty name="Mapping mode"
+                         override="1"
+                         command="SetMapUpdate"
+                         number_of_elements="1"
+                         default_values="2"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Submap extraction mode"
+                         override="1"
+                         command="SetSubmapMode"
+                         number_of_elements="1"
+                         default_values="0"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <DoubleVectorProperty name="Decaying threshold"
+                            override="1"
+                            command="SetVoxelGridDecayingThreshold"
+                            number_of_elements="1"
+                            default_values="-1."
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Keyframe distance threshold"
+                            override="1"
+                            command="SetKfDistanceThreshold"
+                            number_of_elements="1"
+                            default_values="0.5"
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Keyframe angle threshold"
+                            override="1"
+                            command="SetKfAngleThreshold"
+                            number_of_elements="1"
+                            default_values="5."
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <IntVectorProperty name="Edges map sampling mode"
+                         override="1"
+                         command="SetVoxelGridSamplingModeEdges"
+                         number_of_elements="1"
+                         default_values="2"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Intensity edges map sampling mode"
+                         override="1"
+                         command="SetVoxelGridSamplingModeIntensityEdges"
+                         number_of_elements="1"
+                         default_values="2"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Planes map sampling mode"
+                         override="1"
+                         command="SetVoxelGridSamplingModePlanes"
+                         number_of_elements="1"
+                         default_values="2"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Blobs map sampling mode"
+                         override="1"
+                         command="SetVoxelGridSamplingModeBlobs"
+                         number_of_elements="1"
+                         default_values="2"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <DoubleVectorProperty name="Edges map resolution"
+                            override="1"
+                            command="SetVoxelGridLeafSizeEdges"
+                            number_of_elements="1"
+                            default_values="0.3"
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Intensity edges map resolution"
+                            override="1"
+                            command="SetVoxelGridLeafSizeIntensityEdges"
+                            number_of_elements="1"
+                            default_values="0.2"
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Planes map resolution"
+                            override="1"
+                            command="SetVoxelGridLeafSizePlanes"
+                            number_of_elements="1"
+                            default_values="0.6"
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Blobs map resolution"
+                            override="1"
+                            command="SetVoxelGridLeafSizeBlobs"
+                            number_of_elements="1"
+                            default_values="0.5"
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <IntVectorProperty name="Rolling grid dimension"
+                         override="1"
+                         command="SetVoxelGridSize"
+                         number_of_elements="1"
+                         default_values="50"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <DoubleVectorProperty name="Rolling grid resolution"
+                            override="1"
+                            command="SetVoxelGridResolution"
+                            number_of_elements="1"
+                            default_values="10."
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <IntVectorProperty name="Min number of frames per voxel"
+                         override="1"
+                         command="SetVoxelGridMinFramesPerVoxel"
+                         number_of_elements="1"
+                         default_values="2"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
     </SourceProxy>
   </ProxyGroup>
   <!-- End Mini Slam -->
