@@ -581,6 +581,84 @@
                          panel_visibility="never">
       </IntVectorProperty>
 
+     <!-- ==================== External sensors' parameters ==================== -->
+
+     <IntVectorProperty name="Planar trajectory"
+                        override="1"
+                        panel_visibility="never">
+      </IntVectorProperty>
+
+      <DoubleVectorProperty name="Lever arm"
+                            override="1"
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <Property name="Calibrate"
+                override="1"
+                panel_visibility="never">
+      </Property>
+
+      <DoubleVectorProperty name="Wheel odom weight"
+                            override="1"
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <IntVectorProperty name="Wheel odometry relative mode"
+                         override="1"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <DoubleVectorProperty name="IMU gravity weight"
+                            override="1"
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="IMU weight"
+                            override="1"
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Gravity"
+                            override="1"
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="Pose weight"
+                            override="1"
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <IntVectorProperty name="Imu reset threshold"
+                         override="1"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Imu update"
+                         override="1"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <DoubleVectorProperty name="Time threshold"
+                            override="1"
+                            panel_visibility="never">
+      </DoubleVectorProperty>
+
+      <IntVectorProperty name="Time synchronization"
+                         override="1"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <!-- ================ Confidence estimator parameters ================ -->
+      <!-- No change from slam filter. Confidence estimator parameters is not displayed
+           since Failure detection is disabled, -->
+
+      <!-- ============================ Pose Graph Optimization ============================ -->
+      <!-- No change from slam filter. Pose Graph Optimization parameters is not displayed
+           since Use pose graph is disabled, -->
+
+      <!-- ============================ Loop Closure ============================ -->
+      <!-- No change from slam filter. Loop clousre parameters is not displayed
+           since Use loop closure constraint is disabled, -->
     </SourceProxy>
   </ProxyGroup>
   <!-- End Mini Slam -->
