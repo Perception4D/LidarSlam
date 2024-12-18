@@ -24,9 +24,9 @@
 
 #include <pcl/common/common.h>
 
-#include <random>
-
+#include <cmath>
 #include <fstream>
+#include <random>
 
 namespace LidarSlam
 {
@@ -108,7 +108,7 @@ void DenseSpinningSensorKeypointExtractor::InitInternalParameters()
   // Estimate azimuthal resolution if not already done
   // or if the previous value found is not plausible
   // (because last scan was badly formed, e.g. lack of points)
-  if (this->AzimuthalResolution < 1e-6 || M_PI/4. < this->AzimuthalResolution)
+  if (this->AzimuthalResolution < 1e-6 || M_PI/4. < this->AzimuthalResolution || std::isnan(this->AzimuthalResolution))
     this->EstimateAzimuthalResolution();
 
   // Compute the indices of scan points in the future vertex map

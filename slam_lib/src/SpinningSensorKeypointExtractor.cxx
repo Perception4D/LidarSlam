@@ -26,6 +26,7 @@
 
 #include <pcl/common/common.h>
 
+#include <cmath>
 #include <random>
 
 namespace LidarSlam
@@ -92,7 +93,7 @@ void SpinningSensorKeypointExtractor::ConvertAndSortScanLines()
   // Estimate azimuthal resolution if not already done
   // or if the previous value found is not plausible
   // (because last scan was badly formed, e.g. lack of points)
-  if (this->AzimuthalResolution < 1e-6 || M_PI/4. < this->AzimuthalResolution)
+  if (this->AzimuthalResolution < 1e-6 || M_PI/4. < this->AzimuthalResolution || std::isnan(this->AzimuthalResolution))
     this->EstimateAzimuthalResolution();
 }
 
