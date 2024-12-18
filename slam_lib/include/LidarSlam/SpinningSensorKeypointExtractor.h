@@ -30,7 +30,6 @@
 #include <unordered_map>
 #include <map>
 #include <bitset>
-#include <map>
 
 namespace LidarSlam
 {
