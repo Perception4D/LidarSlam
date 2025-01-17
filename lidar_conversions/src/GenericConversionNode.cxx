@@ -101,7 +101,7 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
     Utils::InitEstimationParameters<PointXYZ>(cloudRaw, nbLasers, this->Clusters, this->RotationIsClockwise, this->NbThreads);
     this->RotSenseAndClustersEstimated = true;
   }
-  Eigen::Vector2d firstPoint = {cloudRaw[0].x, cloudRaw[0].y};
+  Eigen::Vector2d firstPoint = Utils::GetFirstValidPoint(cloudRaw);
 
   // Initialize vectors of optional fields
   std::vector<float> intensities;

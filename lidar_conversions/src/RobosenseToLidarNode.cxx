@@ -103,7 +103,7 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
     this->RotSenseAndClustersEstimated = true;
   }
 
-  Eigen::Vector2d firstPoint = {cloudRS[0].x, cloudRS[0].y};
+  Eigen::Vector2d firstPoint = Utils::GetFirstValidPoint(cloudRS);
 
   // Build SLAM pointcloud
   #pragma omp parallel for num_threads(this->NbThreads)

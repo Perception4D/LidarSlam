@@ -121,7 +121,7 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   if (!timeIsValid)
     RCLCPP_WARN_STREAM(this->get_logger(), "Invalid 'time' field, it will be built from azimuth advancement.");
 
-  Eigen::Vector2d firstPoint = {cloudO[0].x, cloudO[0].y};
+  Eigen::Vector2d firstPoint = Utils::GetFirstValidPoint(cloudO);
 
   // Build SLAM pointcloud
   #pragma omp parallel for num_threads(this->NbThreads)
