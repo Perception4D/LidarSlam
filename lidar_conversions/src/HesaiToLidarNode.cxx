@@ -106,8 +106,11 @@ void HesaiToLidarNode::Callback(const Pcl2_msg& msg_received)
   }
 
   // Check if time field looks properly set
-  double duration = cloudH.back().timestamp - cloudH.front().timestamp;
+  auto minmaxTime = std::minmax_element(cloudH.points.begin(), cloudH.points.end(),
+                    [](const PointH& lhs, const PointH& rhs) { return lhs.timestamp < rhs.timestamp; });
+  double duration = minmaxTime.second->timestamp - minmaxTime.first->timestamp;
   double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
+  duration *= factor;
 
   bool timeIsValid = duration > 1e-8 && duration < 2. * this->RotationDuration;
 

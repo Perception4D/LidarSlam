@@ -106,8 +106,11 @@ void VelodyneToLidarNode::Callback(const Pcl2_msg& msg_received)
   }
 
   // Check if time field looks properly set
-  double duration = cloudV.back().time - cloudV.front().time;
+  auto minmaxTime = std::minmax_element(cloudV.points.begin(), cloudV.points.end(),
+                    [](const PointV& lhs, const PointV& rhs) { return lhs.time < rhs.time; });
+  double duration = minmaxTime.second->time - minmaxTime.first->time;
   double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
+  duration *= factor;
 
   bool timeIsValid = duration > 1e-8 && duration < 2. * this->RotationDuration;
 

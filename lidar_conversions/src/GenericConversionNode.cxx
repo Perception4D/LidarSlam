@@ -191,8 +191,10 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
   bool timeIsValid = false;
   if (!times.empty())
   {
-    double duration = times.back() - times.front();
+    auto minmaxTime = std::minmax_element(times.begin(), times.end());
+    double duration = *minmaxTime.second - *minmaxTime.first;
     double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
+    duration *= factor;
     timeIsValid = duration > 1e-8 && duration < 2. * this->RotationDuration;
     if (!timeIsValid)
       RCLCPP_WARN_STREAM(this->get_logger(), "Invalid 'time' field, it will be built from azimuth advancement.");
