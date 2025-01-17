@@ -226,6 +226,13 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
     if (!Utils::HasNanField(slamPoint))
       cloudS.push_back(slamPoint);
   }
+
+  // Publish pointcloud only if it is not empty
+  if (cloudS.empty())
+  {
+    RCLCPP_ERROR_STREAM(this->get_logger(), "Slam pointcloud is empty : frame ignored.");
+    return;
+  }
   PublishMsg(cloudS);
 }
 

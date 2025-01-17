@@ -148,7 +148,13 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
       cloudS.push_back(slamPoint);
   }
 
-  //conversion to msg
+  // Publish pointcloud only if it is not empty
+  if (cloudS.empty())
+  {
+    RCLCPP_ERROR_STREAM(this->get_logger(), "Slam pointcloud is empty : frame ignored.");
+    return;
+  }
+  // Convert PointCloud into msg
   Pcl2_msg toPublish;
   pcl::toROSMsg(cloudS, toPublish);
 

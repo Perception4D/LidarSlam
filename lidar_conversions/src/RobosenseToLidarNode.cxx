@@ -133,15 +133,17 @@ void RobosenseToLidarNode::Callback(const Pcl2_msg& msg_received)
       cloudS.push_back(slamPoint);
   }
 
-  // Publish pointcloud only if non empty
-  if (!cloudS.empty())
+  // Publish pointcloud only if it is not empty
+  if (cloudS.empty())
   {
-    //convertion to msg
-    Pcl2_msg msg_sended;
-    pcl::toROSMsg(cloudS, msg_sended);
-
-    this->Talker->publish(msg_sended);
+    RCLCPP_ERROR_STREAM(this->get_logger(), "Slam pointcloud is empty : frame ignored.");
+    return;
   }
+  // Convert PointCloud into msg
+  Pcl2_msg msg_sended;
+  pcl::toROSMsg(cloudS, msg_sended);
+
+  this->Talker->publish(msg_sended);
 }
 
 //------------------------------------------------------------------------------
