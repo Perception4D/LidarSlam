@@ -129,6 +129,7 @@ public:
   // Getters / Setters
   vtkGetMacro(PointTimeRelativeToFrame, bool)
   vtkSetMacro(PointTimeRelativeToFrame, bool)
+  std::vector<bool> GetArePointsValid();
 
   vtkGetMacro(AutoDetectInputArrays, bool)
   vtkSetMacro(AutoDetectInputArrays, bool)
@@ -548,9 +549,9 @@ protected:
   bool IdentifyInputArrays(vtkPolyData* poly);
 
   // Convert VTK PolyData to PCL pointcloud
-  // Returns true if all input points are valid (null coordinates), false otherwise
-  bool PolyDataToPointCloud(vtkPolyData* poly,
-                            LidarSlam::Slam::PointCloud::Ptr pc) const;
+  // Keep only valid points
+  void PolyDataToPointCloud(vtkPolyData* poly,
+                            LidarSlam::Slam::PointCloud::Ptr pc);
 
   // Convert PCL pointcloud to VTK PolyData
   void PointCloudToPolyData(LidarSlam::Slam::PointCloud::Ptr pc,
@@ -604,6 +605,7 @@ private:
 
   // If true, the input point time data is relative to the frame time, such as with MCAP data. 
   bool PointTimeRelativeToFrame = false;
+  std::vector<bool> ArePointsValid;
 
   // Member to store the current time
   double LastFrameTime = -1.;

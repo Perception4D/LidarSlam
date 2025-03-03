@@ -111,6 +111,25 @@ vtkSmartPointer<vtkDelimitedTextReader> CreateCSVLoader(const std::string& fileN
   return reader;
 }
 
+//-----------------------------------------------------------------------------
+bool IsPointValid(Eigen::Vector3d& point)
+{
+  if (!std::isfinite(point.x()) || !std::isfinite(point.y()) || !std::isfinite(point.z()))
+    return false;
+
+  double distance = point.norm();
+  return distance > 1e-6 && distance < 1000.;
+}
+
+//-----------------------------------------------------------------------------
+bool HasNanField(const LidarSlam::Slam::Point& point)
+{
+  return !std::isfinite(point.x)         ||
+         !std::isfinite(point.y)         ||
+         !std::isfinite(point.z)         ||
+         !std::isfinite(point.time)      ||
+         !std::isfinite(point.intensity);
+}
 } // end of anonymous namespace
 } // end of Utils namespace
 
@@ -312,6 +331,12 @@ bool vtkSlam::GetPGOConstraintExtPose()
 }
 
 //-----------------------------------------------------------------------------
+std::vector<bool> vtkSlam::GetArePointsValid()
+{
+  return this->ArePointsValid;
+}
+
+//-----------------------------------------------------------------------------
 void vtkSlam::ClearMapsAndLog()
 {
   vtkDebugMacro(<< "Clearing the maps and the log");
@@ -431,13 +456,11 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
   if (nbPoints < 100)
       vtkErrorMacro(<< "Input point cloud does not contain enough points. Skipping frame");
 
-  bool allPointsAreValid = false;
-
   // Conversion vtkPolyData -> PCL pointcloud
   if (this->LastFrameTime != this->FrameTime && nbPoints >= 100)
   {
       LidarSlam::Slam::PointCloud::Ptr pc(new LidarSlam::Slam::PointCloud);
-      bool allPointsAreValid = this->PolyDataToPointCloud(input, pc);
+      this->PolyDataToPointCloud(input, pc);
 
       // Get frame first point time in vendor format
       double* range = arrayTime->GetRange();
@@ -472,12 +495,7 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
   registeredPoints->SetNumberOfPoints(nbPoints);
   slamFrame->SetPoints(registeredPoints);
 
-  if (!worldFrame->empty() && allPointsAreValid)
-  {
-    for (vtkIdType i = 0; i < nbPoints; i++)
-      registeredPoints->SetPoint(i, worldFrame->at(i).data);
-  }
-  else if (!worldFrame->empty())
+  if (!worldFrame->empty())
   {
     unsigned int validFrameIndex = 0;
     for (vtkIdType i = 0; i < nbPoints; i++)
@@ -485,7 +503,7 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
       // Modify point only if valid
       double pos[3];
       input->GetPoint(i, pos);
-      if (pos[0] || pos[1] || pos[2])
+      if (this->ArePointsValid[i])
       {
         const auto& p = worldFrame->points[validFrameIndex++];
         registeredPoints->SetPoint(i, p.data);
@@ -583,23 +601,8 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
 
       // Fill array values from debug data
       // memcpy is a better alternative than looping on all tuples
-      // but can only be used if the arrays use contiguous storage
-      if (allPointsAreValid)
-        std::memcpy(array->GetVoidPointer(0), it.second.data(), sizeof(float) * it.second.size());
-
-      // Otherwise, we need to loop over each point and test if it is valid.
-      // NOTE: this is slow, but we accept it as this mode is only used for debug purpose.
-      else
-      {
-        unsigned int validFrameIndex = 0;
-        for (vtkIdType i = 0; i < nbPoints; i++)
-        {
-          // Add array value only if point coordinates are non empty
-          double pos[3];
-          input->GetPoint(i, pos);
-          array->SetTuple1(i, (pos[0] || pos[1] || pos[2]) ? it.second[validFrameIndex++] : 0.);
-        }
-      }
+      // but can only be used if the arrays use continuous storage
+      std::memcpy(array->GetVoidPointer(0), it.second.data(), sizeof(float) * it.second.size());
     }
 
     // ICP keypoints matching results for ego-motion registration or localization steps
@@ -1392,8 +1395,8 @@ void vtkSlam::AddLastPosesToTrajectory()
 }
 
 //-----------------------------------------------------------------------------
-bool vtkSlam::PolyDataToPointCloud(vtkPolyData* poly,
-                                   LidarSlam::Slam::PointCloud::Ptr pc) const
+void vtkSlam::PolyDataToPointCloud(vtkPolyData* poly,
+                                   LidarSlam::Slam::PointCloud::Ptr pc) 
 {
   const vtkIdType nbPoints = poly->GetNumberOfPoints();
 
@@ -1407,30 +1410,29 @@ bool vtkSlam::PolyDataToPointCloud(vtkPolyData* poly,
   pc->header.stamp = this->PointTimeRelativeToFrame ? this->FrameTime * 1e6
                      : this->FrameTime * (this->TimeToSecondsFactor * 1e6); // max time in microseconds
   pc->header.frame_id = "mainLidar";
-  bool allPointsAreValid = true;
+  this->ArePointsValid.resize(nbPoints);
   for (vtkIdType i = 0; i < nbPoints; i++)
   {
     // Get point coordinates
-    double pos[3];
-    poly->GetPoint(i, pos);
+    Eigen::Vector3d pos;
+    poly->GetPoint(i, pos.data());
+    this->ArePointsValid[i] = false;
     // Check that points coordinates are not null before adding point
-    if (pos[0] || pos[1] || pos[2])
-    {
-      LidarSlam::Slam::Point p;
-      p.x = pos[0];
-      p.y = pos[1];
-      p.z = pos[2];
-      p.time = this->PointTimeRelativeToFrame ? arrayTime->GetTuple1(i) * this->TimeToSecondsFactor
-               : (arrayTime->GetTuple1(i) - this->FrameTime) * this->TimeToSecondsFactor; // time in seconds
-      p.laser_id = arrayLaserId->GetTuple1(i);
-      p.intensity = arrayIntensity->GetTuple1(i);
-      pc->push_back(p);
-    }
-    else
-      allPointsAreValid = false;
+    if (!Utils::IsPointValid(pos))
+      continue;
+    LidarSlam::Slam::Point p;
+    p.x = pos[0];
+    p.y = pos[1];
+    p.z = pos[2];
+    p.time = this->PointTimeRelativeToFrame ? arrayTime->GetTuple1(i) * this->TimeToSecondsFactor
+              : (arrayTime->GetTuple1(i) - this->FrameTime) * this->TimeToSecondsFactor; // time in seconds
+    p.laser_id = arrayLaserId->GetTuple1(i);
+    p.intensity = arrayIntensity->GetTuple1(i);
+    if (Utils::HasNanField(p))
+      continue;  
+    pc->push_back(p);
+    this->ArePointsValid[i] = true;
   }
-
-  return allPointsAreValid;
 }
 
 //-----------------------------------------------------------------------------

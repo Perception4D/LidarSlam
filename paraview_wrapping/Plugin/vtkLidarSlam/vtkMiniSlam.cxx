@@ -124,12 +124,11 @@ int vtkMiniSlam::RequestData(vtkInformation* request,
   if (nbPoints < 100)
       vtkErrorMacro(<< "Input point cloud does not contain enough points. Skipping frame");
 
-  bool allPointsAreValid = false;
   // Conversion vtkPolyData -> PCL pointcloud
   if (vtkSlam::GetLastFrameTime() != vtkSlam::GetFrameTime() && nbPoints >= 100)
   {
     LidarSlam::Slam::PointCloud::Ptr pc(new LidarSlam::Slam::PointCloud);
-    bool allPointsAreValid = vtkSlam::PolyDataToPointCloud(input, pc);
+    vtkSlam::PolyDataToPointCloud(input, pc);
 
     // Get frame first point time in vendor format
     double* range = arrayTime->GetRange();
@@ -161,12 +160,8 @@ int vtkMiniSlam::RequestData(vtkInformation* request,
   registeredPoints->SetNumberOfPoints(nbPoints);
   currentFrame->SetPoints(registeredPoints);
 
-  if (!worldFrame->empty() && allPointsAreValid)
-  {
-    for (vtkIdType i = 0; i < nbPoints; i++)
-      registeredPoints->SetPoint(i, worldFrame->at(i).data);
-  }
-  else if (!worldFrame->empty())
+  std::vector<bool> arePointsValid = vtkSlam::GetArePointsValid();
+  if (!worldFrame->empty())
   {
     unsigned int validFrameIndex = 0;
     for (vtkIdType i = 0; i < nbPoints; i++)
@@ -174,7 +169,7 @@ int vtkMiniSlam::RequestData(vtkInformation* request,
       // Modify point only if valid
       double pos[3];
       input->GetPoint(i, pos);
-      if (pos[0] || pos[1] || pos[2])
+      if (arePointsValid[i])
       {
         const auto& p = worldFrame->points[validFrameIndex++];
         registeredPoints->SetPoint(i, p.data);
