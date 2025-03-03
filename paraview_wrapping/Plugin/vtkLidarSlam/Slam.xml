@@ -154,6 +154,17 @@
         </Documentation>
       </StringVectorProperty>
 
+      <IntVectorProperty name="Point time relative to frame"
+                         command="SetPointTimeRelativeToFrame"
+                         number_of_elements="1"
+                         default_values="0"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          Check this if the input point time data is relative to the lidar frame time, such as with MCAP data.
+        </Documentation>
+      </IntVectorProperty>
+
       <IntVectorProperty name="Auto detect input arrays"
                          command="SetAutoDetectInputArrays"
                          number_of_elements="1"
@@ -340,6 +351,7 @@
         <Property name="Reset state" />
         <Property name="Reload trajectory" />
         <Property name="External sensors data file" />
+        <Property name="Point time relative to frame" />
         <Property name="Auto detect input arrays" />
         <Property name="Time array" />
         <Property name="Intensity array" />

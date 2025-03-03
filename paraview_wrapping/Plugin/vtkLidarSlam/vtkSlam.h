@@ -127,6 +127,9 @@ public:
   void SetInitialPoseRotation(double roll, double pitch, double yaw);
 
   // Getters / Setters
+  vtkGetMacro(PointTimeRelativeToFrame, bool)
+  vtkSetMacro(PointTimeRelativeToFrame, bool)
+
   vtkGetMacro(AutoDetectInputArrays, bool)
   vtkSetMacro(AutoDetectInputArrays, bool)
 
@@ -598,6 +601,9 @@ protected:
   vtkSpinningSensorKeypointExtractor* KeyPointsExtractor = nullptr;
 
 private:
+
+  // If true, the input point time data is relative to the frame time, such as with MCAP data. 
+  bool PointTimeRelativeToFrame = false;
 
   // Member to store the current time
   double LastFrameTime = -1.;

@@ -416,9 +416,15 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
     return 0;
   }
 
+  // Get frame time
   auto arrayTime = input->GetPointData()->GetArray(this->TimeArrayName.c_str());
   this->LastFrameTime = this->FrameTime;
-  this->FrameTime = arrayTime->GetRange()[1];
+  // Get frame packet reception time
+  double frameReceptionPOSIXTime = -1.;
+  vtkInformation* inInfo = inputVector[0]->GetInformationObject(0);
+  if (inInfo->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP()))
+    frameReceptionPOSIXTime = inInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+  this->FrameTime = this->PointTimeRelativeToFrame ? frameReceptionPOSIXTime : arrayTime->GetRange()[1];
 
   if (this->LastFrameTime == this->FrameTime)
       vtkDebugMacro(<< "Timestamp has not changed. Skipping frame.");
@@ -438,9 +444,7 @@ int vtkSlam::RequestData(vtkInformation* vtkNotUsed(request),
       double frameFirstPointTime = range[0] * this->TimeToSecondsFactor;
       if (this->SynchronizeOnPacket)
       {
-          // Get first frame packet reception time
-          vtkInformation* inInfo = inputVector[0]->GetInformationObject(0);
-          double frameReceptionPOSIXTime = inInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+          // Compare potential offset with current offset
           double absCurrentOffset = std::abs(this->SlamAlgo->GetSensorTimeOffset());
           double potentialOffset = frameFirstPointTime - frameReceptionPOSIXTime;
           // We exclude the first frame cause frameReceptionPOSIXTime can be badly set
@@ -1400,7 +1404,8 @@ bool vtkSlam::PolyDataToPointCloud(vtkPolyData* poly,
 
   // Loop over points data
   pc->reserve(nbPoints);
-  pc->header.stamp = this->FrameTime * (this->TimeToSecondsFactor * 1e6); // max time in microseconds
+  pc->header.stamp = this->PointTimeRelativeToFrame ? this->FrameTime * 1e6
+                     : this->FrameTime * (this->TimeToSecondsFactor * 1e6); // max time in microseconds
   pc->header.frame_id = "mainLidar";
   bool allPointsAreValid = true;
   for (vtkIdType i = 0; i < nbPoints; i++)
@@ -1415,7 +1420,8 @@ bool vtkSlam::PolyDataToPointCloud(vtkPolyData* poly,
       p.x = pos[0];
       p.y = pos[1];
       p.z = pos[2];
-      p.time = (arrayTime->GetTuple1(i) - this->FrameTime) * this->TimeToSecondsFactor; // time in seconds
+      p.time = this->PointTimeRelativeToFrame ? arrayTime->GetTuple1(i) * this->TimeToSecondsFactor
+               : (arrayTime->GetTuple1(i) - this->FrameTime) * this->TimeToSecondsFactor; // time in seconds
       p.laser_id = arrayLaserId->GetTuple1(i);
       p.intensity = arrayIntensity->GetTuple1(i);
       pc->push_back(p);
