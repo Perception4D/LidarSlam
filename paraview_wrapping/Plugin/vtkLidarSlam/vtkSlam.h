@@ -247,6 +247,9 @@ public:
   bool GetPGOConstraintGPS();
   bool GetPGOConstraintExtPose();
 
+  vtkGetMacro(EnableExternalPoseOffset, bool)
+  vtkSetMacro(EnableExternalPoseOffset, bool)
+
   // ---------------------------------------------------------------------------
   //   Loop closure parameters
   // ---------------------------------------------------------------------------
@@ -677,6 +680,9 @@ private:
 
   // Sensor file name stored to reload the external sensor data after reset
   std::string ExtSensorFileName;
+
+  // Sensor file name stored to reload the external sensor data after reset
+  bool EnableExternalPoseOffset = false;
 
   // Output trajectory require frequency (Hz)
   double TrajFrequency = -1;

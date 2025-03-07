@@ -253,6 +253,12 @@ void vtkSlam::OptimizeGraph()
 {
   if (!this->SlamAlgo->OptimizeGraph())
     return;
+  // Add external Pose offset to slam odom
+  if (this->EnableExternalPoseOffset)
+    this->SlamAlgo->AddExternalPoseOffsetToOdom();
+  else  
+    this->SlamAlgo->ResetToSlamOdom();
+  
   // Update PV trajectory poses that have been optimized by the SLAM
   const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
   // Keep old poses that have not been optimized

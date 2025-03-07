@@ -1932,6 +1932,21 @@
         </Documentation>
       </IntVectorProperty>
 
+      <IntVectorProperty name="Enable external pose offset"
+                         command="SetEnableExternalPoseOffset"
+                         number_of_elements="1"
+                         default_values="0"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          If enabled, the offset between external pose and slam pose will be added to slam odom.
+          The trajectory and the maps will be updated into the new referential.
+        </Documentation>
+         <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Use external pose constraint" value="1" />
+        </Hints>
+      </IntVectorProperty>
+
       <PropertyGroup label="Pose Graph Optimization">
         <Property name="Optimize Graph With IMU" />
         <Property name="Optimize Graph" />
@@ -1942,6 +1957,7 @@
         <Property name="Use landmark constraint" />
         <Property name="Use GPS constraint" />
         <Property name="Use external pose constraint" />
+        <Property name="Enable external pose offset" />
         <Hints>
           <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="Use pose graph" value="1" />
         </Hints>

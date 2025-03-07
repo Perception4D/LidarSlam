@@ -37,7 +37,8 @@ const QStringList ADD_EXTERNAL_SENSOR_PROPERTIES = { "External sensors data file
 constexpr const char* OPTIMIZE_GRAPH_TITLE = "Optimize Graph Dialog";
 const QStringList OPTIMIZE_GRAPH_PROPERTIES = { "Optimize Graph", "Logging timeout",
   "Use loop closure constraint", "Use landmark constraint", "Use GPS constraint",
-  "Use external pose constraint", "Loop closure detector", "Load loop indices", "Detect Loop" };
+  "Use external pose constraint","Enable external pose offset", 
+  "Loop closure detector", "Load loop indices", "Detect Loop" };
 }
 
 //-----------------------------------------------------------------------------

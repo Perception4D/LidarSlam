@@ -713,6 +713,11 @@ public:
   double GetPoseWeight() const;
   void SetPoseWeight(double weight);
 
+  // Add or reset the offset between the external sensor pose and slam pose in BASE frame
+  // Todo: Generalize for external sensors
+  void AddExternalPoseOffsetToOdom();
+  void ResetToSlamOdom();
+
   float GetPoseSaturationDistance() const;
   void SetPoseSaturationDistance(float dist);
 
@@ -1259,6 +1264,10 @@ private:
   // Maximum number of sensor measurements stored
   // Above this number, the oldest measurements are forgotten
   unsigned int SensorMaxMeasures = 1e6;
+
+  // Parameter to store the external pose offset which 
+  // has been added onto slam odom 
+  Eigen::Isometry3d ExtPoseOffset = Eigen::Isometry3d::Identity();
 
   // ---------------------------------------------------------------------------
   //   Graph parameters

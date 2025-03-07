@@ -1082,6 +1082,40 @@ void Slam::SetCurrentPose(const Eigen::Isometry3d& newPose)
   this->TransformOdom(offset);
 }
 
+//-----------------------------------------------------------------------------
+void Slam::AddExternalPoseOffsetToOdom()
+{
+  if (!this->PoseManager)
+  {
+    PRINT_ERROR("Cannot get external pose offset : external pose not enabled")
+    return;
+  }
+  // If ExtPoseOffset is not identity, the offset has already been added
+  if (!this->ExtPoseOffset.matrix().isIdentity(1e-6))
+  {
+    PRINT_WARNING("External pose offset has already been added onto slam odom")
+    return;
+  }
+  // Otherwise, update external pose offset and add external pose offset
+  if (this->PoseManager->GetOffset().matrix().isIdentity(1e-6))
+    this->PoseManager->UpdateOffset(this->LogStates);
+  this->ExtPoseOffset = this->PoseManager->GetOffset();
+  this->TransformOdom(this->ExtPoseOffset);
+}
+
+//-----------------------------------------------------------------------------
+void Slam::ResetToSlamOdom()
+{
+  // Check whether or not an external pose offset should be removed from slam odom
+  if (!this->PoseManager || this->ExtPoseOffset.matrix().isIdentity(1e-6) || this->PoseManager->GetOffset().matrix().isIdentity(1e-6))
+    return;
+  // Remove external pose offset from slam odom
+  this->TransformOdom(this->ExtPoseOffset.inverse());
+  // Reset external pose offset since it has been removed
+  this->ExtPoseOffset = Eigen::Isometry3d::Identity();
+  PRINT_WARNING("The offset of external pose has been removed from slam odom")
+}
+
 //----------------------------------------------------------------
 void Slam::ResetTrajWithTworldInit()
 {
