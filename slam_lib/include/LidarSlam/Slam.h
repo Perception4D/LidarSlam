@@ -1116,6 +1116,58 @@ private:
   // 6-DoF parameters (DoF order : X, Y, Z, rX, rY, rZ)
   LocalOptimizer::RegistrationError LocalizationUncertainty;
 
+  // ---------------------------------------------------------------------------
+  //   Optimization parameters
+  // ---------------------------------------------------------------------------
+
+  // Optimize only 2D pose in BASE coordinates.
+  // This will only optimize X, Y (ground coordinates) and yaw (rZ).
+  // This will hold Z (elevation), rX (roll) and rY (pitch) constant.
+  bool TwoDMode = false;
+
+  Optimization::Parameters EgoMotionParams
+  {
+    // KeypointsMatcher::Parameters MatchingParams
+    {
+      // unsigned int NbThreads, bool SingleEdgePerRing, double MaxNeighborsDistance,
+      1, true, 5.,
+      // unsigned int EdgeNbNeighbors, unsigned int EdgeMinNbNeighbors, double EdgeMaxModelError,
+      8, 3, 0.2,
+      // unsigned int PlaneNbNeighbors, double PlanarityThreshold, double PlaneMaxModelError
+      5, 0.04, 0.2,
+      // unsigned int BlobNbNeighbors, double SaturationDistance
+      10, 1.
+    },
+    // unsigned int ICPMaxIter, unsigned int LMMaxIter, double InitSaturationDistance, double FinalSaturationDistance
+    4, 15, 2, 0.5,
+    // UndistortionMode Undistortion, bool enableExternalConstraints
+    UndistortionMode::NONE, false
+  };
+
+  Optimization::Parameters LocalizationParams
+  {
+    // KeypointsMatcher::Parameters MatchingParams
+    {
+      // unsigned int NbThreads, bool SingleEdgePerRing, double MaxNeighborsDistance,
+      1, false, 5.,
+      // unsigned int EdgeNbNeighbors, unsigned int EdgeMinNbNeighbors, double EdgeMaxModelError,
+      10, 4, 0.2,
+      // unsigned int PlaneNbNeighbors, double PlanarityThreshold, double PlaneMaxModelError
+      5, 0.04, 0.2,
+      // unsigned int BlobNbNeighbors, double SaturationDistance
+      10, 1.
+    },
+    // unsigned int ICPMaxIter, unsigned int LMMaxIter, double InitSaturationDistance, double FinalSaturationDistance
+    3, 15, 2, 0.5,
+    // UndistortionMode Undistortion, bool enableExternalConstraints
+    this->Undistortion, true
+  };
+
+
+  // ---------------------------------------------------------------------------
+  //   External sensors parameters
+  // ---------------------------------------------------------------------------
+
   // Odometry manager
   // It computes the residual with a weight, a measurements list and
   // taking account of the acquisition time correspondance
@@ -1144,6 +1196,8 @@ private:
   // Variable used internally to store the IMU update information
   // IMU should not be used before having been updated once with a SLAM state
   unsigned int ImuHasBeenUpdated = 0;
+  // To update the IMU bias or not depending on the accuracy
+  bool ImuUpdate = true;
 
   // Landmarks manager
   // Each landmark has its own manager and is identified by its ID.
@@ -1205,56 +1259,6 @@ private:
   // Maximum number of sensor measurements stored
   // Above this number, the oldest measurements are forgotten
   unsigned int SensorMaxMeasures = 1e6;
-
-  // To update the IMU bias or not depending on the accuracy
-  bool ImuUpdate = true;
-
-  // ---------------------------------------------------------------------------
-  //   Optimization parameters
-  // ---------------------------------------------------------------------------
-
-  // Optimize only 2D pose in BASE coordinates.
-  // This will only optimize X, Y (ground coordinates) and yaw (rZ).
-  // This will hold Z (elevation), rX (roll) and rY (pitch) constant.
-  bool TwoDMode = false;
-
-  Optimization::Parameters EgoMotionParams
-  {
-    // KeypointsMatcher::Parameters MatchingParams
-    {
-      // unsigned int NbThreads, bool SingleEdgePerRing, double MaxNeighborsDistance,
-      1, true, 5.,
-      // unsigned int EdgeNbNeighbors, unsigned int EdgeMinNbNeighbors, double EdgeMaxModelError,
-      8, 3, 0.2,
-      // unsigned int PlaneNbNeighbors, double PlanarityThreshold, double PlaneMaxModelError
-      5, 0.04, 0.2,
-      // unsigned int BlobNbNeighbors, double SaturationDistance
-      10, 1.
-    },
-    // unsigned int ICPMaxIter, unsigned int LMMaxIter, double InitSaturationDistance, double FinalSaturationDistance
-    4, 15, 2, 0.5,
-    // UndistortionMode Undistortion, bool enableExternalConstraints
-    UndistortionMode::NONE, false
-  };
-
-  Optimization::Parameters LocalizationParams
-  {
-    // KeypointsMatcher::Parameters MatchingParams
-    {
-      // unsigned int NbThreads, bool SingleEdgePerRing, double MaxNeighborsDistance,
-      1, false, 5.,
-      // unsigned int EdgeNbNeighbors, unsigned int EdgeMinNbNeighbors, double EdgeMaxModelError,
-      10, 4, 0.2,
-      // unsigned int PlaneNbNeighbors, double PlanarityThreshold, double PlaneMaxModelError
-      5, 0.04, 0.2,
-      // unsigned int BlobNbNeighbors, double SaturationDistance
-      10, 1.
-    },
-    // unsigned int ICPMaxIter, unsigned int LMMaxIter, double InitSaturationDistance, double FinalSaturationDistance
-    3, 15, 2, 0.5,
-    // UndistortionMode Undistortion, bool enableExternalConstraints
-    this->Undistortion, true
-  };
 
   // ---------------------------------------------------------------------------
   //   Graph parameters
