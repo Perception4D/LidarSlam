@@ -352,25 +352,30 @@ void vtkSlam::SetInitialSlam()
   // Check number of log states
   const std::list<LidarSlam::LidarState>& initLidarStates = this->SlamAlgo->GetLogStates();
   double motion = (initLidarStates.front().Isometry.translation() - initLidarStates.back().Isometry.translation()).norm();
-  if (initLidarStates.size() <= 2 || motion < this->SlamAlgo->GetKfDistanceThreshold())
+  auto initPose = LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose);
+  // Only set initial pose if it is not identity
+  if (!initPose.matrix().isIdentity(1e-6))
   {
-    // Reset slam
-    this->SlamAlgo->Reset(true);
-    // Init the output SLAM trajectory
-    this->ResetTrajectory();
-    // There is no log states, jump to initial pose and the pose is added to log states
-    this->SlamAlgo->JumpPose(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose));
-    // Set TworldInit
-    this->SlamAlgo->SetTworldInit(LidarSlam::Utils::XYZRPYtoIsometry(this->InitPose));
-    // Update PV trajectory
-    this->AddLastPosesToTrajectory();
+    // Before setting initial pose, check whether or not a slam trajectory exist
+    if ((initLidarStates.size() <= 2 || motion < this->SlamAlgo->GetKfDistanceThreshold()))
+    {
+      // Reset slam
+      this->SlamAlgo->Reset(true);
+      // Init the output SLAM trajectory
+      this->ResetTrajectory();
+      // There is no log states, jump to initial pose and the pose is added to log states
+      this->SlamAlgo->JumpPose(initPose);
+      // Set TworldInit
+      this->SlamAlgo->SetTworldInit(initPose);
+      // Update PV trajectory
+      this->AddLastPosesToTrajectory();
+    }
+    else
+    {
+      vtkWarningMacro(<< "Could not initialize the SLAM because a trajectory already exists : "
+                      << "please reset manually if you wish to proceed with initialization.");
+    }
   }
-  else
-  {
-    vtkWarningMacro(<< "Could not initialize the SLAM because a trajectory already exists : "
-                    << "please reset manually if you wish to proceed with initialization.");
-  }
-
   // Set initial maps for slam if they are provided
   if (!this->InitMapPrefix.empty())
   {
