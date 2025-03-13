@@ -298,13 +298,21 @@ with idSensor being:
 * CAMERA : 5
 
 ##### Calibrate with external pose sensor
-Another command allows to find the calibration transform between the current tracked pose and the pose tracked by an external sensor and stored in a CSV file. This CSV file must have the same format as the one described in [this section](#save-the-current-trajectory).
+Another command allows to find the calibration transform between the current tracked pose and the pose tracked by an external sensor. The poses can be sent as a PoseStampedWithCovariance message in the topic `ext_poses` or be loaded from a CSV file. This CSV file must have the same format as the one described in [this section](#save-the-current-trajectory).
 
 ```bash
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 30, string_arg: /path/to/external/poses.csv}"
 ```
 
 This command allows to estimate the calibration and to send a static TF transform between the base frame and the frame specified in the CSV file.
+
+If poses have been sent through `ext_poses` topic, the string_arg should remain empty : 
+
+```bash
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 30"
+```
+
+Then, the TF is published between the tracked frame and the frame ID "ins".
 
 The calibration has 3 parameters :
 * *planar_trajectory* : if the trajectory you use to calibrate is planar, this leads to a lack of a degree of liberty and some "invented" values can appear in the calibration matrix. Setting this parameter to true allows to remove the part of the calibration that was overfitted on the noise of the planar trajectory. The trajectory does not need to be on x,y plane.
