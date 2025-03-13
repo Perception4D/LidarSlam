@@ -451,12 +451,11 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::msg::PoseWithCovariance
 
   // Set calibration
   Eigen::Isometry3d baseToPose;
-  if(Utils::Tf2LookupTransform(baseToPose, *this->TfBuffer, this->TrackingFrameId,
-                               poseMsg.header.frame_id, poseMsg.header.stamp))
+  if(Utils::Tf2LookupTransform(baseToPose, *this->TfBuffer, this->TrackingFrameId, "ins", poseMsg.header.stamp))
     this->LidarSlam.SetPoseCalibration(baseToPose);
 
   // Set frame ID for optional calibration
-  this->ExtPoseFrameId = poseMsg.header.frame_id;
+  this->ExtPoseFrameId = "ins";
 
   // Get external pose
   LidarSlam::ExternalSensors::PoseMeasurement poseMeas;
