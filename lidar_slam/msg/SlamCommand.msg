@@ -7,6 +7,9 @@ string string_arg
 # ==============================================================================
 # Commands description :
 
+# Enable/Disable the SLAM process
+uint8 SWITCH_ON_OFF = 0
+
 # Disable/enable SLAM maps update with new frames keypoints. This can be useful
 # if we want to keep the pose graph optimized SLAM map
 # or any initially loaded map untouched
@@ -18,8 +21,10 @@ uint8 ENABLE_SLAM_MAP_UPDATE = 10
 uint8 RESET_TRAJECTORY = 11
 # Reset the SLAM state. Clear the maps and the trajectory, set the current pose to origin.
 uint8 RESET_SLAM = 12
-# Enable/Disable the SLAM process
-uint8 SWITCH_ON_OFF = 13
+# Reset ODOM so current pose is identity
+# This allows to minimize numerical instability in odometry
+# This command should be used regularly in outside environment (each 200m step for example)
+uint8 RESET_ODOM = 13
 
 # Save the current trajectory tracking base frame as csv file
 uint8 SAVE_TRAJECTORY = 14

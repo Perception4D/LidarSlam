@@ -1182,13 +1182,30 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       if (msg.string_arg.empty())
       {
         RCLCPP_ERROR_STREAM(this->get_logger(), "No path is specified, the trajectory cannot be reset");
-        break;;
+        break;
       }
       this->ReadPoses(msg.string_arg, true);
 
       this->LidarSlam.ClearLoopDetections();
       RCLCPP_INFO_STREAM(this->get_logger(), "Loop indices are cleared");
 
+      break;
+    }
+
+    // Reset slam trajectory and update map
+    case lidar_slam::msg::SlamCommand::RESET_ODOM:
+    {
+      Eigen::Isometry3d mapToOdom;
+      if (!Utils::Tf2LookupTransform(mapToOdom, *this->TfBuffer, this->MapFrameId, this->OdometryFrameId))
+      {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "No transform from " << this->MapFrameId << " to " << this->OdometryFrameId << " : cannot reset ODOM.");
+        break;
+      }
+
+      LidarSlam::LidarState state = this->LidarSlam.GetLastState();
+      this->PublishTransformTF(state.Time, msg.string_arg, this->OdometryFrameId, mapToOdom * state.Isometry);
+      this->LidarSlam.SetCurrentPose(Eigen::Isometry3d::Identity());
+      RCLCPP_INFO_STREAM(this->get_logger(), "ODOM has been moved, SLAM pose is now identity");
       break;
     }
 
