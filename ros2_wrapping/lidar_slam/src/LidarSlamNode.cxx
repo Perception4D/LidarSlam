@@ -25,6 +25,9 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <nav_msgs/msg/path.hpp>
 
+// Boost
+#include <boost/filesystem.hpp>
+
 #include <iomanip>
 
 #ifdef USE_CV_BRIDGE
@@ -238,6 +241,11 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
                                                                       std::bind(&LidarSlamNode::ImuCallback, this, std::placeholders::_1), ops);
     }
   }
+
+  // Init service
+  this->SaveService = this->create_service<lidar_slam::srv::SavePc>(
+      "lidar_slam/save_pc",
+      std::bind(&LidarSlamNode::SavePointcloudService, this, std::placeholders::_1, std::placeholders::_2));
 
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("LiDAR SLAM is ready !"));
 }
@@ -1143,6 +1151,37 @@ void LidarSlamNode::SetPoseCallback(const geometry_msgs::msg::PoseWithCovariance
 }
 
 //------------------------------------------------------------------------------
+void LidarSlamNode::SavePointcloudService(
+    const std::shared_ptr<lidar_slam::srv::SavePc::Request> req,
+    const std::shared_ptr<lidar_slam::srv::SavePc::Response> res)
+{
+  std::string outputPrefix = req->output_prefix_path.empty() ? std::getenv("HOME") : req->output_prefix_path;
+  boost::filesystem::path outputPrefixPath(outputPrefix);
+  if (!boost::filesystem::exists(outputPrefixPath.parent_path()))
+  {
+    RCLCPP_WARN_STREAM(this->get_logger(), "Output folder does not exist, saving to home folder :" << std::getenv("HOME"));
+    outputPrefixPath = boost::filesystem::path(std::getenv("HOME")) / boost::filesystem::path(outputPrefixPath.stem());
+  }
+
+  LidarSlam::PCDFormat pcdFormat = static_cast<LidarSlam::PCDFormat>(req->format);
+  if (pcdFormat != LidarSlam::PCDFormat::ASCII &&
+      pcdFormat != LidarSlam::PCDFormat::BINARY &&
+      pcdFormat != LidarSlam::PCDFormat::BINARY_COMPRESSED)
+  {
+    RCLCPP_WARN_STREAM(this->get_logger(), "Incorrect PCD format value (" << pcdFormat << "). Setting it to 'BINARY_COMPRESSED'.");
+    pcdFormat = LidarSlam::PCDFormat::BINARY_COMPRESSED;
+  }
+
+  bool filtered = req->filtered;
+  this->LidarSlam.SaveMapsToPCD(outputPrefixPath.string(), pcdFormat, filtered);
+  RCLCPP_INFO_STREAM(this->get_logger(), "Pointcloud saved to " << outputPrefixPath.string());
+  res->success = true;
+
+  if (this->LidarSlam.GetMapUpdate() == LidarSlam::MappingMode::NONE)
+    RCLCPP_WARN_STREAM(this->get_logger(), "The initially loaded maps were not modified but are saved anyway.");
+}
+
+//------------------------------------------------------------------------------
 void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
 {
   // Parse command
@@ -1284,44 +1323,6 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
         fout << s;
       }
       fout.close();
-      break;
-    }
-
-    // Save SLAM keypoints maps to PCD files
-    case lidar_slam::msg::SlamCommand::SAVE_KEYPOINTS_MAPS:
-    {
-      RCLCPP_INFO_STREAM(this->get_logger(), "Saving keypoint maps as PCD files in " << msg.string_arg);
-      if (this->LidarSlam.GetMapUpdate() == LidarSlam::MappingMode::NONE)
-        RCLCPP_WARN(this->get_logger(), "The initially loaded maps were not modified but are saved anyway.");
-      int pcdFormatInt;
-      this->get_parameter_or<int>("maps.export_pcd_format", pcdFormatInt, static_cast<int>(LidarSlam::PCDFormat::BINARY_COMPRESSED));
-      LidarSlam::PCDFormat pcdFormat = static_cast<LidarSlam::PCDFormat>(pcdFormatInt);
-      if (pcdFormat != LidarSlam::PCDFormat::ASCII &&
-          pcdFormat != LidarSlam::PCDFormat::BINARY &&
-          pcdFormat != LidarSlam::PCDFormat::BINARY_COMPRESSED)
-      {
-        RCLCPP_ERROR_STREAM(this->get_logger(), "Incorrect PCD format value (" << pcdFormat << "). Setting it to 'BINARY_COMPRESSED'.");
-        pcdFormat = LidarSlam::PCDFormat::BINARY_COMPRESSED;
-      }
-      this->LidarSlam.SaveMapsToPCD(msg.string_arg, pcdFormat, false);
-      break;
-    }
-
-    // Save SLAM keypoints submaps to PCD files
-    case lidar_slam::msg::SlamCommand::SAVE_FILTERED_KEYPOINTS_MAPS:
-    {
-      RCLCPP_INFO_STREAM(this->get_logger(), "Saving keypoints submaps to PCD.");
-      int pcdFormatInt;
-      this->get_parameter_or<int>("maps.export_pcd_format", pcdFormatInt, static_cast<int>(LidarSlam::PCDFormat::BINARY_COMPRESSED));
-      LidarSlam::PCDFormat pcdFormat = static_cast<LidarSlam::PCDFormat>(pcdFormatInt);
-      if (pcdFormat != LidarSlam::PCDFormat::ASCII &&
-          pcdFormat != LidarSlam::PCDFormat::BINARY &&
-          pcdFormat != LidarSlam::PCDFormat::BINARY_COMPRESSED)
-      {
-        RCLCPP_ERROR_STREAM(this->get_logger(), "Incorrect PCD format value (" << pcdFormat << "). Setting it to 'BINARY_COMPRESSED'.");
-        pcdFormat = LidarSlam::PCDFormat::BINARY_COMPRESSED;
-      }
-      this->LidarSlam.SaveMapsToPCD(msg.string_arg, pcdFormat, true);
       break;
     }
 
