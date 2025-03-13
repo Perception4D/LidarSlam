@@ -116,7 +116,7 @@ void OusterToLidarNode::Callback(const Pcl2_msg& msg_received)
   double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
   duration *= factor;
 
-  bool timeIsValid = duration > 1e-8 && duration * factor < 2. * this->RotationDuration;
+  bool timeIsValid = duration > 1e-8 && duration < 2. * this->RotationDuration;
 
   if (!timeIsValid)
     RCLCPP_WARN_STREAM(this->get_logger(), "Invalid 'time' field, it will be built from azimuth advancement.");

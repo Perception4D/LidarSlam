@@ -189,11 +189,12 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
 
   // Check if time field looks properly set
   bool timeIsValid = false;
+  double factor = 1.;
   if (!times.empty())
   {
     auto minmaxTime = std::minmax_element(times.begin(), times.end());
     double duration = *minmaxTime.second - *minmaxTime.first;
-    double factor = Utils::GetTimeFactor(duration, this->RotationDuration);
+    factor = Utils::GetTimeFactor(duration, this->RotationDuration);
     duration *= factor;
     timeIsValid = duration > 1e-8 && duration < 2. * this->RotationDuration;
     if (!timeIsValid)
@@ -221,7 +222,7 @@ void GenericConversionNode::Callback(const Pcl2_msg& msg_received)
     slamPoint.z = rawPoint.z;
     slamPoint.intensity = intensities.empty() ? 0. : intensities[i];
     slamPoint.laser_id = laser_ids.empty() ? Utils::ComputeLaserId({slamPoint.x, slamPoint.y, slamPoint.z}, nbLasers, this->Clusters) : laser_ids[i];
-    slamPoint.time = (times.empty() || !timeIsValid)? Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise) : times[i];
+    slamPoint.time = (times.empty() || !timeIsValid)? Utils::EstimateTime({slamPoint.x, slamPoint.y}, this->RotationDuration, firstPoint, this->RotationIsClockwise) : factor * times[i];
 
     if (!Utils::HasNanField(slamPoint))
       cloudS.push_back(slamPoint);
