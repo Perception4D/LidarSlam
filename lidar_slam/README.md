@@ -14,6 +14,7 @@
       - [Multiple LiDAR sensors](#multiple-lidar-sensors)
       - [Online configuration](#online-configuration)
         - [Reset state](#reset-state)
+        - [Reset ODOM](#reset-odom)
         - [Map update modes](#map-update-modes)
         - [Reset the trajectory](#reset-the-trajectory)
         - [Save the current trajectory](#save-the-current-trajectory)
@@ -208,6 +209,18 @@ Some features are available online. Note that an interface for some of these fea
 ##### Reset state
 At any time, the SLAM state can be reset meaning the maps, the trajectory and the external sensors are cleaned and all the metrics are reset as for the first frame acquisition. Note that it disables the recovery mode as well.
 
+```bash
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 12"
+```
+
+##### Reset ODOM
+At any time, ODOM can be reset so the current pose is null in ODOM. This can reduce numerical instability. 
+This should be used regularly in outside environment every 200m for example.
+
+```bash
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 13"
+```
+
 ##### Map update modes
 
 At any time, commands `lidar_slam/msg/SlamCommand/DISABLE_SLAM_MAP_UPDATE`, `lidar_slam/msg/SlamCommand/ENABLE_SLAM_MAP_EXPANSION` and `lidar_slam/msg/SlamCommand/ENABLE_SLAM_MAP_UPDATE` can be published to '*slam_command*' topic as *lidar_slam/msg/SlamCommand* to change SLAM map update mode.
@@ -275,7 +288,7 @@ At any time, a pose message (`PoseWithCovarianceStamped`) can be sent through th
 ##### Switch ON/OFF the process
 At any time, the SLAM can be switched ON/OFF using the command message :
 ```bash
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 13"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 0"
 ```
 This disables the sensor messages handling of the node.
 
@@ -421,12 +434,12 @@ ros2 launch lidar_slam slam_velodyne.py # Start SLAM (external pose log must be 
 ...  # Run 1st real test or bag file
 # Stop the acquisition :
 # (or pause the system)
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 13"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 0"
 # Trigger PGO : optimize SLAM trajectory, recompute the map and update last pose 
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 20"
 # Restart the acquisition : 
 # (or play the bag again)
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 13"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 0"
 ```
 
 ### Tag detector
@@ -478,12 +491,12 @@ ros2 launch lidar_slam slam_velodyne.py tags_topic:="your_tag_topic" # Start SLA
 ...  # Run 1st real test or bag file
 # Stop the acquisition :
 # (or pause the system)
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 13"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 0"
 # Trigger PGO : optimize SLAM trajectory, recompute the map and update last pose 
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 20, string_arg: path/to/landmarksAbsolutePoses.csv}"
 # Restart the acquisition : 
 # (or play the bag again)
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 13"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 0"
 ```
 
 **NOTE** : If the SLAM was running with initially loaded tag poses (`landmarks_file_path` is not empty), and one wants to run the pose graph optimization, the file parameter is not compulsory, one can just launch :
@@ -623,12 +636,12 @@ ros2 launch lidar_slam slam_velodyne.py ext_poses:="your_ext_pose_topic" # Start
 ...  # Run 1st real test or bag file
 # Stop the acquisition :
 # (or pause the system)
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 13"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 0"
 # Trigger PGO : optimize SLAM trajectory, recompute the map and update last pose 
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 20"
 # Restart the acquisition : 
 # (or play the bag again)
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 13"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 0"
 ```
 
 **Tip** : save the maps and the trajectory before optimizing the graph to be sure to be able to come back if something goes wrong with the optimization.
