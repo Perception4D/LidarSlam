@@ -1443,7 +1443,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       //Publish new static TF
       geometry_msgs::msg::TransformStamped tfStamped;
       tfStamped.header.stamp = this->now();
-      tfStamped.header.frame_id = this->OdometryFrameId;
+      tfStamped.header.frame_id = this->TrackingFrameId;
       tfStamped.child_frame_id = this->ExtPoseFrameId;
       tfStamped.transform = Utils::IsometryToTfMsg(calibration);
       this->StaticTfBroadcaster->sendTransform(tfStamped);
