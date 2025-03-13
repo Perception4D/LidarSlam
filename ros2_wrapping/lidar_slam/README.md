@@ -272,14 +272,16 @@ ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 15, string
 
 ##### Save maps
 
-The current maps can be saved as PCD at any time publishing the command `SAVE_KEYPOINTS_MAPS` (to save the whole maps) or the command `SAVE_FILTERED_KEYPOINTS_MAPS` (to remove the potential moving objects) to `slam_command` topic:
+The current maps can be saved as PCD at any time by calling `/lidar_slam/save_pc` service. Use the service request `filtered` to specify whether to save the whole maps or remove potential moving objects. Use the service request `format` to choose the PCD file format: 0) ascii, 1) binary, 2) binary_compressed.
+
+To save the entire keypoints maps:
 
 ```bash
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 16, string_arg: /path/to/maps/prefix}"
+ros2 service call /lidar_slam/save_pc lidar_slam/srv/SavePc "{output_prefix_path: /path/to/maps/prefix, format: 2, filtered: false}"
 ```
-OR
+OR to save the filtered keypoints maps:
 ```bash
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 17, string_arg: /path/to/maps_filtered/prefix}"
+ros2 service call /lidar_slam/save_pc lidar_slam/srv/SavePc "{output_prefix_path: /path/to/maps/prefix, format: 2, filtered: true}"
 ```
 
 ##### Set pose
@@ -712,7 +714,7 @@ Another node called **aggregation_node** is included in the **lidar_slam** packa
 This node can answer to a service called **save_pc** to save the pointcloud on disk as a PCD file. The command should be :
 
 ```bash
-ros2 service call /lidar_slam/save_pc lidar_slam/srv/SavePc "{output_prefix_path: 'prefix/path/where/to/save/the/cloud', format: 0}"
+ros2 service call /lidar_slam/save_pc lidar_slam/srv/SavePc "{output_prefix_path: 'prefix/path/where/to/save/the/cloud', format: 0, filtered: true}"
 ```
 
 To save the pointcloud as a PCD ASCII file at *prefix/path/where/to/save/the/cloud_CurrentTime.pcd*.
