@@ -256,9 +256,9 @@ void vtkSlam::OptimizeGraph()
   // Add external Pose offset to slam odom
   if (this->EnableExternalPoseOffset)
     this->SlamAlgo->AddExternalPoseOffsetToOdom();
-  else  
+  else
     this->SlamAlgo->ResetToSlamOdom();
-  
+
   // Update PV trajectory poses that have been optimized by the SLAM
   const std::list<LidarSlam::LidarState>& lidarStates = this->SlamAlgo->GetLogStates();
   // Keep old poses that have not been optimized
@@ -1242,6 +1242,7 @@ bool vtkSlam::IdentifyInputArrays(vtkPolyData* poly)
     checkAndSetScanArray("times", this->TimeArrayName);
     checkAndSetScanArray("timestamp", this->TimeArrayName);
     checkAndSetScanArray("adjustedTime", this->TimeArrayName);
+    checkAndSetScanArray("Raw Timestamp", this->TimeArrayName);
     if (this->TimeArrayName == "")
       return false;
 
@@ -1253,6 +1254,7 @@ bool vtkSlam::IdentifyInputArrays(vtkPolyData* poly)
 
     checkAndSetScanArray("laser_id", this->LaserIdArrayName);
     checkAndSetScanArray("ring", this->LaserIdArrayName);
+    checkAndSetScanArray("Channel", this->LaserIdArrayName);
     if (this->LaserIdArrayName == "")
       return false;
   }
@@ -1407,7 +1409,7 @@ void vtkSlam::AddLastPosesToTrajectory()
 
 //-----------------------------------------------------------------------------
 void vtkSlam::PolyDataToPointCloud(vtkPolyData* poly,
-                                   LidarSlam::Slam::PointCloud::Ptr pc) 
+                                   LidarSlam::Slam::PointCloud::Ptr pc)
 {
   const vtkIdType nbPoints = poly->GetNumberOfPoints();
 
@@ -1440,7 +1442,7 @@ void vtkSlam::PolyDataToPointCloud(vtkPolyData* poly,
     p.laser_id = arrayLaserId->GetTuple1(i);
     p.intensity = arrayIntensity->GetTuple1(i);
     if (Utils::HasNanField(p))
-      continue;  
+      continue;
     pc->push_back(p);
     this->ArePointsValid[i] = true;
   }
