@@ -153,26 +153,59 @@ def generate_launch_description():
   ##  TF  ##
   ##########
 
-  # Static TF base to Os sensor (for compatibility with ROS1 bags)
-  tf_base_to_os_sensor = Node(
-    package="tf2_ros",
-    executable="static_transform_publisher",
-    name="tf_base_to_os_sensor",
-    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "os_sensor"]
-  )
-
-  # Static TF base to laser sensor
-  tf_base_to_laser_sensor = Node(
-    package="tf2_ros",
-    executable="static_transform_publisher",
-    name="tf_base_to_laser_sensor_frame",
-    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "laser_sensor_frame"]
+  tf_nodes = GroupAction(
+    actions=[
+      # Static TF base to Os sensor (for compatibility with ROS1 bags)
+      Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="tf_base_to_os_sensor",
+        parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
+        arguments=["--x", "0", "--y", "0", "--z", "0",
+                  "--roll", "0", "--pitch", "0", "--yaw", "0",
+                  "--frame-id", "base_link", "--child-frame-id", "os_sensor"]
+      ),
+      # Static TF base to laser sensor
+      Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="tf_base_to_laser_sensor_frame",
+        parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
+        arguments=["--x", "0", "--y", "0", "--z", "0",
+                  "--roll", "0", "--pitch", "0", "--yaw", "0",
+                  "--frame-id", "base_link", "--child-frame-id", "laser_sensor_frame"]
+      ),
+      # Static TF base to wheel encoder
+      Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="tf_base_to_wheel",
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        arguments=["--x", "0", "--y", "0", "--z", "0",
+                  "--roll", "0", "--pitch", "0", "--yaw", "0",
+                  "--frame-id", "base_link", "--child-frame-id", "wheel"]
+      ),
+      # Static TF base to INS
+      Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="tf_base_to_ins",
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        arguments=["--x", "0", "--y", "0", "--z", "0",
+                  "--roll", "0", "--pitch", "0", "--yaw", "0",
+                  "--frame-id", "base_link", "--child-frame-id", "ins"]
+      ),
+      # Static TF base to GPS
+      Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="tf_base_to_gps",
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        arguments=["--x", "0", "--y", "0", "--z", "0",
+                  "--roll", "0", "--pitch", "0", "--yaw", "0",
+                  "--frame-id", "base_link", "--child-frame-id", "gps"]
+      )
+    ],
   )
 
   # Static TF laser to Os lidar (when the driver is not launched)
@@ -203,28 +236,6 @@ def generate_launch_description():
                "--frame-id", "laser_sensor_frame", "--child-frame-id", "imu_data_frame"]
   )
 
-  # Static TF base to wheel (to set by the user)
-  tf_base_to_wheel = Node(
-    package="tf2_ros",
-    executable="static_transform_publisher",
-    name="tf_base_to_wheel",
-    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "wheel"]
-  )
-
-  # Static TF base to ext sensor
-  tf_base_to_ext_sensor = Node(
-    package="tf2_ros",
-    executable="static_transform_publisher",
-    name="tf_base_to_ext_sensor",
-    parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
-    arguments=["--x", "0", "--y", "0", "--z", "0",
-               "--roll", "0", "--pitch", "0", "--yaw", "0",
-               "--frame-id", "base_link", "--child-frame-id", "ext_sensor"]
-  )
-
   ld.add_action(rviz_node)
   ld.add_action(ouster_conversion_node)
   if os.name != 'nt':
@@ -233,11 +244,8 @@ def generate_launch_description():
   ld.add_action(slam_indoor_node)
   ld.add_action(aggregation_node)
   # TF
-  ld.add_action(tf_base_to_os_sensor)
-  ld.add_action(tf_base_to_laser_sensor)
+  ld.add_action(tf_nodes)
   if LaunchConfiguration('os_driver') == 'false':
     ld.add_action(tf_laser_to_os_lidar)
     ld.add_action(tf_laser_to_imu)
-  ld.add_action(tf_base_to_wheel)
-  ld.add_action(tf_base_to_ext_sensor)
   return (ld)

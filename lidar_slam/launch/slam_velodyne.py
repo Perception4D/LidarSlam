@@ -176,17 +176,12 @@ def generate_launch_description():
     condition=IfCondition(LaunchConfiguration("aggregate"))
   )
 
+  ##########
+  ##  TF  ##
+  ##########
+
   tf_nodes = GroupAction(
     actions=[
-      Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        name="tf_base_to_wheel",
-        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
-        arguments=["--x", "0", "--y", "0", "--z", "0",
-                  "--roll", "0", "--pitch", "0", "--yaw", "0",
-                  "--frame-id", "base_link", "--child-frame-id", "wheel"]
-      ),
       Node(
         package="tf2_ros",
         executable="static_transform_publisher",
@@ -199,11 +194,29 @@ def generate_launch_description():
       Node(
         package="tf2_ros",
         executable="static_transform_publisher",
-        name="tf_base_to_ext_sensor",
+        name="tf_base_to_wheel",
         parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
         arguments=["--x", "0", "--y", "0", "--z", "0",
                   "--roll", "0", "--pitch", "0", "--yaw", "0",
-                  "--frame-id", "base_link", "--child-frame-id", "ext_sensor"]
+                  "--frame-id", "base_link", "--child-frame-id", "wheel"]
+      ),
+      Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="tf_base_to_ins",
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        arguments=["--x", "0", "--y", "0", "--z", "0",
+                  "--roll", "0", "--pitch", "0", "--yaw", "0",
+                  "--frame-id", "base_link", "--child-frame-id", "ins"]
+      ),
+      Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="tf_base_to_gps",
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        arguments=["--x", "0", "--y", "0", "--z", "0",
+                  "--roll", "0", "--pitch", "0", "--yaw", "0",
+                  "--frame-id", "base_link", "--child-frame-id", "gps"]
       )
     ],
   )
