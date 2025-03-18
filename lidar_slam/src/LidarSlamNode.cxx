@@ -1314,18 +1314,17 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
     case lidar_slam::msg::SlamCommand::OPTIMIZE_GRAPH:
     {
 
-      if ((!this->UseExtSensor[LidarSlam::ExternalSensor::GPS] &&
-           !this->UseExtSensor[LidarSlam::ExternalSensor::LANDMARK_DETECTOR] &&
-           !this->UseExtSensor[LidarSlam::ExternalSensor::POSE]) &&
-           !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE) ||
+      if ((!this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS) &&
+           !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LANDMARK) &&
+           !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE) &&
+           !this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::LOOP_CLOSURE)) ||
            this->LidarSlam.GetSensorMaxMeasures() < 2 || this->LidarSlam.GetLoggingTimeout() < 0.2)
       {
         RCLCPP_ERROR_STREAM(this->get_logger(),
-                            "Cannot optimize pose graph as sensor info logging has not been enabled "
-                            "and loop closure constraint is disabled."
-                            "Please make sure that one external sensor has been enabled "
-                            "and that the external sensor and 'logging/timeout'"
-                            "private parameters are set to convenient values.");
+                            "Cannot optimize pose graph: "
+                            "Please make sure that one external sensor or "
+                            "loop closure has been enabled and 'logging/timeout' "
+                            "parameters are set to convenient values.");
         break;
       }
 
