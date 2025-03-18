@@ -521,7 +521,6 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
 
       // Add gps measurement to measurements list
       this->LidarSlam.AddGpsMeasurement(this->LastGpsMeas);
-      this->GpsLastTime = rclcpp::Time(this->LastGpsMeas.Time * 1e9);
       this->GpsRefFrameId = gpsMsg.header.frame_id;
 
       if (this->LidarSlam.GetVerbosity() >= 3)
@@ -1344,10 +1343,17 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       RCLCPP_INFO_STREAM(this->get_logger(), "Optimizing the pose graph");
       if (!this->LidarSlam.OptimizeGraph())
         break;
-      // Broadcast new calibration offset (GPS to base)
-      // if GPS used
-      if (this->LidarSlam.GpsHasData())
-        this->BroadcastGpsOffset();
+      
+      if (this->LidarSlam.GpsHasData() && 
+          this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS))
+      {
+        // Broadcast new calibration offset (GPS ref to odom)
+        // which has been computed/refined with pose graph optimization
+        // Note : the offset in the library is defined as odom to GPS ref 
+        // for computation simplications
+        Eigen::Isometry3d offset = this->LidarSlam.GetGpsOffset().inverse();
+        PublishTransformTF(this->LastGpsMeas.Time, this->GpsRefFrameId, this->OdometryFrameId, offset);
+      }
       // Publish new trajectory
       if (this->Publish[PGO_PATH])
       {
@@ -2189,16 +2195,4 @@ void LidarSlamNode::PublishTransformTF(double timeSec, std::string frameId, std:
   tfMsg.child_frame_id = childFrameId;
   tfMsg.transform = Utils::IsometryToTfMsg(transfo);
   this->TfBroadcaster->sendTransform(tfMsg);
-}
-
-//------------------------------------------------------------------------------
-void LidarSlamNode::BroadcastGpsOffset()
-{
-  Eigen::Isometry3d offset = this->LidarSlam.GetGpsOffset().inverse();
-  geometry_msgs::msg::TransformStamped tfStamped;
-  tfStamped.header.stamp = this->GpsLastTime;
-  tfStamped.header.frame_id = this->OdometryFrameId;
-  tfStamped.child_frame_id = this->GpsRefFrameId;
-  tfStamped.transform = Utils::IsometryToTfMsg(offset);
-  this->StaticTfBroadcaster->sendTransform(tfStamped);
 }

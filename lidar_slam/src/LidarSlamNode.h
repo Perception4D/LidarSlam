@@ -270,12 +270,6 @@ protected:
   int BuildId(const std::vector<int>& ids);
 
   //----------------------------------------------------------------------------
-  // Publish static tf to link world (UTM) frame to SLAM origin
-  // PGO must have been run, so we can average
-  // the correspondant poses (GPS/LidarSLAM) distances to get the offset
-  void BroadcastGpsOffset();
-
-  //----------------------------------------------------------------------------
   /*!
    * @brief Publish a Tf2 static transform
    *        Use the StaticTfBroadcaster of the node
@@ -326,8 +320,8 @@ protected:
   std::chrono::high_resolution_clock::time_point StartTimeChrono;
 
   // TF stuff
-  std::string OdometryFrameId = "odom";       ///< Frame in which SLAM odometry and maps are expressed.
-  std::string TrackingFrameId = "base_link";  ///< Frame to track (ensure a valid TF tree is published).
+  std::string OdometryFrameId = "odom";       ///< Frame in which SLAM odometry and maps are expressed
+  std::string TrackingFrameId = "base_link";  ///< Frame to track (ensure a valid TF tree is published)
   std::string MainLidarId;
   std::string GpsRefFrameId = "map";          ///< Frame in which GPS positions are represented.
   std::string WheelFrameId = "wheel";         ///< Frame of the wheel encoder
