@@ -451,11 +451,8 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::msg::PoseWithCovariance
 
   // Set calibration
   Eigen::Isometry3d baseToPose;
-  if(Utils::Tf2LookupTransform(baseToPose, *this->TfBuffer, this->TrackingFrameId, "ins", poseMsg.header.stamp))
+  if(Utils::Tf2LookupTransform(baseToPose, *this->TfBuffer, this->TrackingFrameId, this->ExtPoseFrameId, poseMsg.header.stamp))
     this->LidarSlam.SetPoseCalibration(baseToPose);
-
-  // Set frame ID for optional calibration
-  this->ExtPoseFrameId = "ins";
 
   // Get external pose
   LidarSlam::ExternalSensors::PoseMeasurement poseMeas;
@@ -498,7 +495,7 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
 
     // Calibration
     Eigen::Isometry3d baseToGps;
-    if (Utils::Tf2LookupTransform(baseToGps, *this->TfBuffer, this->TrackingFrameId, "gps", gpsMsg.header.stamp))
+    if (Utils::Tf2LookupTransform(baseToGps, *this->TfBuffer, this->TrackingFrameId, this->GpsFrameId, gpsMsg.header.stamp))
     {
       // Get gps pose
       this->LastGpsMeas.Position = Utils::PoseMsgToIsometry(gpsMsg.pose.pose).translation();
@@ -525,7 +522,7 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
       // Add gps measurement to measurements list
       this->LidarSlam.AddGpsMeasurement(this->LastGpsMeas);
       this->GpsLastTime = rclcpp::Time(this->LastGpsMeas.Time * 1e9);
-      this->GpsFrameId = gpsMsg.header.frame_id;
+      this->GpsRefFrameId = gpsMsg.header.frame_id;
 
       if (this->LidarSlam.GetVerbosity() >= 3)
         RCLCPP_INFO_STREAM(this->get_logger(),
@@ -1728,6 +1725,8 @@ void LidarSlamNode::SetSlamParameters()
   this->get_parameter_or<std::string>("tracking_frame", this->TrackingFrameId, "base_link");
   this->LidarSlam.SetBaseFrameId(this->TrackingFrameId);
   this->get_parameter_or<std::string>("wheel_frame", this->WheelFrameId, "wheel");
+  this->get_parameter_or<std::string>("ins_frame", this->ExtPoseFrameId, "ins");
+  this->get_parameter_or<std::string>("gps_frame", this->GpsFrameId, "gps");
 
   // Keypoint extractors
   auto setExtractorMode = [this](LidarSlam::KeypointExtractorMode& mode,
@@ -2199,7 +2198,7 @@ void LidarSlamNode::BroadcastGpsOffset()
   geometry_msgs::msg::TransformStamped tfStamped;
   tfStamped.header.stamp = this->GpsLastTime;
   tfStamped.header.frame_id = this->OdometryFrameId;
-  tfStamped.child_frame_id = this->GpsFrameId;
+  tfStamped.child_frame_id = this->GpsRefFrameId;
   tfStamped.transform = Utils::IsometryToTfMsg(offset);
   this->StaticTfBroadcaster->sendTransform(tfStamped);
 }

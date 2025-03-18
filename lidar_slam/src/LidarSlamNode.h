@@ -329,8 +329,10 @@ protected:
   std::string OdometryFrameId = "odom";       ///< Frame in which SLAM odometry and maps are expressed.
   std::string TrackingFrameId = "base_link";  ///< Frame to track (ensure a valid TF tree is published).
   std::string MainLidarId;
-  std::string GpsFrameId = "GPS";             ///< Frame to represent GPS positions.
-  std::string WheelFrameId = "wheel";         ///< Frame of the wheel
+  std::string GpsRefFrameId = "map";          ///< Frame in which GPS positions are represented.
+  std::string WheelFrameId = "wheel";         ///< Frame of the wheel encoder
+  std::string ExtPoseFrameId = "ins";         ///< Frame of the external pose
+  std::string GpsFrameId = "gps";             ///< Frame of the GPS
 
   rclcpp::Time GpsLastTime;
   std::unique_ptr<tf2_ros::Buffer> TfBuffer;
@@ -399,7 +401,6 @@ protected:
 
   // External poses
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr ExtPoseSub;
-  std::string ExtPoseFrameId;
 
   // Wheel encoder
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr WheelOdomSub;
