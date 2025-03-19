@@ -323,7 +323,7 @@ protected:
   std::string OdometryFrameId = "odom";       ///< Frame in which SLAM odometry and maps are expressed
   std::string TrackingFrameId = "base_link";  ///< Frame to track (ensure a valid TF tree is published)
   std::string MainLidarId;
-  std::string GpsRefFrameId = "map";          ///< Frame in which GPS positions are represented.
+  std::string MapFrameId = "map";             ///< Frame in which GPS positions and external poses are represented.
   std::string WheelFrameId = "wheel";         ///< Frame of the wheel encoder
   std::string ExtPoseFrameId = "ins";         ///< Frame of the external pose
   std::string GpsFrameId = "gps";             ///< Frame of the GPS

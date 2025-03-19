@@ -454,6 +454,8 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::msg::PoseWithCovariance
   if(Utils::Tf2LookupTransform(baseToPose, *this->TfBuffer, this->TrackingFrameId, this->ExtPoseFrameId, poseMsg.header.stamp))
     this->LidarSlam.SetPoseCalibration(baseToPose);
 
+  this->MapFrameId = poseMsg.header.frame_id;
+
   // Get external pose
   LidarSlam::ExternalSensors::PoseMeasurement poseMeas;
   poseMeas.Pose = Utils::PoseMsgToIsometry(poseMsg.pose.pose);
@@ -521,7 +523,7 @@ void LidarSlamNode::GpsCallback(const nav_msgs::msg::Odometry& gpsMsg)
 
       // Add gps measurement to measurements list
       this->LidarSlam.AddGpsMeasurement(this->LastGpsMeas);
-      this->GpsRefFrameId = gpsMsg.header.frame_id;
+      this->MapFrameId = gpsMsg.header.frame_id;
 
       if (this->LidarSlam.GetVerbosity() >= 3)
         RCLCPP_INFO_STREAM(this->get_logger(),
@@ -1351,8 +1353,20 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
         // Note : the offset in the library is defined as odom to GPS ref 
         // for computation simplications
         Eigen::Isometry3d offset = this->LidarSlam.GetGpsOffset().inverse();
-        PublishTransformTF(this->LastGpsMeas.Time, this->GpsRefFrameId, this->OdometryFrameId, offset);
+        PublishTransformTF(this->LastGpsMeas.Time, this->MapFrameId, this->OdometryFrameId, offset);
       }
+
+      if (this->LidarSlam.PoseHasData() && 
+          this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE))
+      {
+        // Broadcast new calibration offset (Pose ref to odom)
+        // which has been computed/refined with pose graph optimization
+        // Note : the offset in the library is defined as odom to GPS ref 
+        // for computation simplications
+        Eigen::Isometry3d offset = this->LidarSlam.GetPoseOffset().inverse();
+        PublishTransformTF(this->LastGpsMeas.Time, this->MapFrameId, this->OdometryFrameId, offset);
+      }
+
       // Publish new trajectory
       if (this->Publish[PGO_PATH])
       {
