@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(slam_visualization VERSION 2.2.0)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ standard")
 if (NOT CMAKE_BUILD_TYPE)
     message(STATUS "No build type selected, default to RelWithDebInfo")
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
