@@ -73,12 +73,12 @@ sudo apt install ros-$ROS_DISTRO-velodyne
 
 - To start SLAM when replaying a velodyne rosbag file, run :
 ```bash
-ros2 launch lidar_slam slam_velodyne.py   # in 1st shell
+ros2 launch lidar_slam slam_velodyne.launch.py   # in 1st shell
 ros2 bag play --clock <my_bag_file>  # in 2nd shell
 ```
 - When using it in real live conditions, use :
 ```bash
-ros2 launch lidar_slam slam_velodyne.py use_sim_time:=false
+ros2 launch lidar_slam slam_velodyne.launch.py use_sim_time:=false
 ```
 
 ##### With an Ouster Lidar
@@ -102,7 +102,7 @@ source ./install/setup.bash
 
 - To start SLAM when replaying a ouster rosbag file, run :
 ```bash
-ros2 launch lidar_slam slam_ouster.py replay:=true os_driver:=true # in 1st shell
+ros2 launch lidar_slam slam_ouster.launch.py replay:=true os_driver:=true # in 1st shell
 ros2 bag play --clock <my_bag_file>  # in 2nd shell
 ```
 - When using it in real live conditions :
@@ -110,12 +110,12 @@ ros2 bag play --clock <my_bag_file>  # in 2nd shell
 Change the sensor_hostname parameter to your ip address in the file ros2_wrapping/lidar_slam/params/ouster_driver_parameters.yaml.
 Then lauch the slam with the ouster driver on a live usage
 ```bash
-ros2 launch lidar_slam slam_ouster.py os_driver:=true replay:=false
+ros2 launch lidar_slam slam_ouster.launch.py os_driver:=true replay:=false
 ```
 
 You can also use your own ouster driver parameters file with
 ```bash
-ros2 launch lidar_slam slam_ouster.py os_driver:=true replay:=false driver_parameter_file:="path/to/driver_parameters.yaml"
+ros2 launch lidar_slam slam_ouster.launch.py os_driver:=true replay:=false driver_parameter_file:="path/to/driver_parameters.yaml"
 ```
 
 **NOTE** : If you don't find the IP address of your lidar, you can remap it using :
@@ -147,7 +147,7 @@ types of Lidar. Thanks to it, you can use any Lidar that publishes a PointCloud2
 To use the generic conversion node and launch lidar_slam, you can use the following commands :
 ```bash
 ros2 run lidar_conversions generic_conversion_node  # Run generic conversion node
-ros2 launch ros2 launch lidar_slam slam_velodyne.py # Launch any slam launch file
+ros2 launch ros2 launch lidar_slam slam_velodyne.launch.py # Launch any slam launch file
 ros2 bag play --clock path/to/bag --remap /points_topic_name:=/generic_points # Play ros bag
 ```
 
@@ -430,7 +430,7 @@ A possible pipeline is the following :
 
 ```bash
 # Run the SLAM with gps topic remapping if needed:
-ros2 launch lidar_slam slam_velodyne.py # Start SLAM (external pose log must be enabled).
+ros2 launch lidar_slam slam_velodyne.launch.py # Start SLAM (external pose log must be enabled).
 ...  # Run 1st real test or bag file
 # Stop the acquisition :
 # (or pause the system)
@@ -487,7 +487,7 @@ If you want to run SLAM and then to optimize the graph using landmarks, one pipe
 
 ```bash
 # Run the SLAM with tag topic remapping :
-ros2 launch lidar_slam slam_velodyne.py tags_topic:="your_tag_topic" # Start SLAM (tags use must be enabled).
+ros2 launch lidar_slam slam_velodyne.launch.py tags_topic:="your_tag_topic" # Start SLAM (tags use must be enabled).
 ...  # Run 1st real test or bag file
 # Stop the acquisition :
 # (or pause the system)
