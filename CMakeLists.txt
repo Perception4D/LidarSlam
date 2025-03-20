@@ -30,32 +30,11 @@ if(WIN32 AND MSVC)
 	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 endif()
 
-# Include cmake directory to be able to do include() on cmake files
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
-# Set SLAM version variables (e.g SLAM_VERSION, SLAM_VERSION_FULL)
-include(DetermineVersion)
-find_package(Git)
-determine_version(${CMAKE_SOURCE_DIR} ${GIT_EXECUTABLE} "SLAM")
-
 #-------------------------
 #  Find dependencies
 #-------------------------
 
 find_package(Boost REQUIRED)
-
-# If the Paraview plugin needs to be compiled, we must find Paraview before PCL.
-# Otherwise, if PCL is built with pcl_visualization module and uses another VTK
-# than the one provided by Paraview, it may override the correct include
-# directories and libraries.
-option(SLAM_PARAVIEW_PLUGIN "Build a Paraview plugin to wrap SLAM" OFF)
-if (SLAM_PARAVIEW_PLUGIN)
-  # Find ParaView
-  find_package(ParaView REQUIRED)
-  # As the PV plugin is a shared library, we also need to ensure that the core
-  # SLAM lib is compatible with position independent code.
-  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-endif()
 
 find_package(nanoflann REQUIRED)
 
@@ -89,9 +68,6 @@ find_package(PCL REQUIRED COMPONENTS common io octree geometry
 include_directories(SYSTEM ${PCL_INCLUDE_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 link_directories(${PCL_LIBRARY_DIRS})
-#We do not want VTK for now, FIX WIN32 command too long issue
-#PCL is linked finds VTK in paraview/src rather than paraview/build
-list(FILTER PCL_LIBRARIES EXCLUDE REGEX "VTK::.*")
 
 # Find optional g2o (only used for pose graph optimization)
 option(ENABLE_g2o "Use G2O, necessary for pose graph optimization." OFF)
@@ -139,11 +115,6 @@ endif()
 # Build core SLAM lib
 add_subdirectory(slam_lib)
 
-# Build optional ParaView plugin
-if (SLAM_PARAVIEW_PLUGIN)
-  add_subdirectory(paraview_wrapping)
-endif()
-
 # To build/use ROS wrapping, just put this entire directory in the catkin src
 # workspace and run `catkin_make` or `catkin build`.
 
@@ -163,16 +134,6 @@ configure_package_config_file(
   "${CMAKE_BINARY_DIR}/LidarSlamConfig.cmake"
   INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/LidarSlam"
 )
-
-# Is automatically exported in paraview_wrapping with LidarSlamPlugin
-if (NOT SLAM_PARAVIEW_PLUGIN)
-  install(
-    EXPORT LidarSlamLib
-    FILE "LidarSlamLib-targets.cmake"
-    NAMESPACE LidarSlam::
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/LidarSlam"
-  )
-endif()
 
 install(
   FILES "${CMAKE_BINARY_DIR}/LidarSlamConfig.cmake"
