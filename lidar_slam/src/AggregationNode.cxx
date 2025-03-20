@@ -534,9 +534,11 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
 
   // Track number of frames that have seen the pixels
   #pragma omp parallel for num_threads(this->NbThreads)
-  for (auto& el : this->ObstaclesGrid.Data)
+  for (int idxGrid = 0; idxGrid < this->ObstaclesGrid.Data.size(); ++idxGrid)
   {
-    Pixel& pix = el.second; // shortcut
+    auto it = this->ObstaclesGrid.Data.begin();
+    std::advance(it, idxGrid);
+    Pixel& pix = it->second; // shortcut
     // Notify it has been seen
     if (pix.CurrentPtIndices.size() > 0)
     {
@@ -547,9 +549,11 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
 
   // Label pixels to clusterize
   #pragma omp parallel for num_threads(this->NbThreads)
-  for (auto& el : this->ObstaclesGrid.Data)
+  for (int idxGrid = 0; idxGrid < this->ObstaclesGrid.Data.size(); ++idxGrid)
   {
-    Pixel& pix = el.second; // shortcut
+    auto it = this->ObstaclesGrid.Data.begin();
+    std::advance(it, idxGrid);
+    Pixel& pix = it->second; // shortcut
     // Update the cluster label of the pixel
     // if it is not registered and
     // if the pixel has been seen at least once
@@ -601,8 +605,9 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
 
       // Add neighbors
       #pragma omp parallel for num_threads(this->NbThreads)
-      for (const Eigen::Array2i& r : radii)
+      for (int idxRad = 0; idxRad < radii.size(); ++idxRad)
       {
+        const Eigen::Array2i& r = radii[idxRad];
         Eigen::Array2i neigh = clusterPixels[idxPix] + r;
         // Check neighbor validity
         if (!this->ObstaclesGrid.Check(neigh.x(), neigh.y()))
@@ -659,10 +664,12 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
   // Fill the potential seeds with remaining unknown pixels
   std::vector<Eigen::Array2i> potentialSeeds;
   #pragma omp parallel for num_threads(this->NbThreads)
-  for (auto& el : this->ObstaclesGrid.Data)
+  for (int idxGrid = 0; idxGrid < this->ObstaclesGrid.Data.size(); ++idxGrid)
   {
-    int idx = el.first; // shortcut
-    Pixel& pix = el.second; // shortcut
+    auto it = this->ObstaclesGrid.Data.begin();
+    std::advance(it, idxGrid);
+    int idx = it->first; // shortcut
+    Pixel& pix = it->second; // shortcut
     // Select unknown pixels which are trustworthy enough (they have been seen enough)
     if (pix.ClusterIdx == unknownLabel &&
         pix.SeenTimes >= this->DenseMap->GetMinFramesPerVoxel())
@@ -693,8 +700,9 @@ void AggregationNode::LabelObstacle(CloudS& inputCloud, double currentTime)
 
       // Check neighbors
       #pragma omp parallel for num_threads(this->NbThreads)
-      for (const Eigen::Array2i& r : radii)
+      for (int idxRad = 0; idxRad < radii.size(); ++idxRad)
       {
+        const Eigen::Array2i& r = radii[idxRad];
         Eigen::Array2i neigh = clusterPixels[idxPix] + r;
         // If neighbor is occupied, add it to current cluster
         if (this->ObstaclesGrid.Check(neigh.x(), neigh.y()) &&
@@ -850,8 +858,9 @@ void AggregationNode::ClearObstaclesGrid(CloudS& inputCloud, double currentTime)
 
         // Check neighbors
         #pragma omp parallel for num_threads(this->NbThreads)
-        for (const Eigen::Array2i& r : radii)
+        for (int idxRad = 0; idxRad < radii.size(); ++idxRad)
         {
+          const Eigen::Array2i& r = radii[idxRad];
           Eigen::Array2i neigh = clusterPixels[idxPix] + r;
           if (this->ObstaclesGrid.Check(neigh.x(), neigh.y()) &&
               this->ObstaclesGrid(neigh.x(), neigh.y()).ClusterIdx == clusIdx)
@@ -966,9 +975,11 @@ void AggregationNode::ClearObstaclesGrid(CloudS& inputCloud, double currentTime)
 
   // 4. Clear pts indices in remaining pixels and reset unknown labels to -1
   #pragma omp parallel for num_threads(this->NbThreads)
-  for (auto& el : this->ObstaclesGrid.Data)
+  for (int idxGrid = 0; idxGrid < this->ObstaclesGrid.Data.size(); ++idxGrid)
   {
-    Pixel& pix = el.second; // shortcut
+    auto it = this->ObstaclesGrid.Data.begin();
+    std::advance(it, idxGrid);
+    Pixel& pix = it->second; // shortcut
 
     // Clear current points of each pixel for next fill
     pix.CurrentPtIndices.clear();
