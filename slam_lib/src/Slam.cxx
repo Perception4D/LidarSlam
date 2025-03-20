@@ -1160,7 +1160,7 @@ void Slam::LoadMapsFromPCD(const std::string& filePrefix, bool resetMaps)
     if (pcl::io::loadPCDFile(path, *keypoints) == 0)
     {
       std::cout << "SLAM keypoints map successfully loaded from " << path << std::endl;
-      // If mapping mode is NONE or ADD_DECAYING_KPTS, the first map points are fixed,
+      // If mapping mode is NONE or ADD_KPTS_TO_FIXED_MAP, the first map points are fixed,
       // else, the initial map points can be updated
       bool fixedMap = this->MapUpdate == MappingMode::NONE || this->MapUpdate == MappingMode::ADD_KPTS_TO_FIXED_MAP;
       this->LocalMaps[k]->Add(keypoints, fixedMap);
@@ -2083,7 +2083,7 @@ bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState,
   #ifdef USE_TEASERPP
   if (this->LogStates.size() < 2)
   {
-    PRINT_WARNING("Cannot detect loop closure: not enough logged states");
+    PRINT_WARNING("Cannot detect loop closure: no enough logged states");
     return false;
   }
   // Create query submap and get keypoints in BASE coordinates

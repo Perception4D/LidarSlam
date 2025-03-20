@@ -1265,8 +1265,8 @@ private:
   // Above this number, the oldest measurements are forgotten
   unsigned int SensorMaxMeasures = 1e6;
 
-  // Parameter to store the external pose offset which 
-  // has been added onto slam odom 
+  // Parameter to store the external pose offset which
+  // has been added onto slam odom
   Eigen::Isometry3d ExtPoseOffset = Eigen::Isometry3d::Identity();
 
   // ---------------------------------------------------------------------------
