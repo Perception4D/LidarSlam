@@ -176,6 +176,9 @@ private:
   std::shared_ptr<LidarSlam::RollingGrid> RefMap;
   CloudS::Ptr Pointcloud;
 
+  // Number of threads to use in parallel processing
+  unsigned int NbThreads = 1;
+
   // Slice extraction parameters
   bool DoExtractSlice = false;
   // Optional positions logged to compute

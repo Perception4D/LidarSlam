@@ -4,6 +4,7 @@
 
 /aggregation:
   ros__parameters:
+    nbthreads: 4   # Number of threads to use for the aggregation (only used for obstacles detection for now)
     leaf_size: 0.1 # Voxel size (eq approx space between points after downsampling)
     max_size: 500. # Maximum size of the scene (from the last lidar slam position)
                    # Warning : should be at least as large as one frame

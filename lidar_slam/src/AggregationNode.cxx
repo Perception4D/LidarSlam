@@ -69,6 +69,8 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
       "lidar_slam/reset",
       std::bind(&AggregationNode::ResetService, this, std::placeholders::_1, std::placeholders::_2));
 
+  // Performances parameter
+  this->get_parameter_or<unsigned int>("nbthreads", this->NbThreads, 1);
 
   // Init rolling grid with parameters
   this->DenseMap = std::make_shared<LidarSlam::RollingGrid>();
