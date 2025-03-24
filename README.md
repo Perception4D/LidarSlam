@@ -254,6 +254,18 @@ See [ros_wrapping/lidar_slam/README.md](ros_wrapping/lidar_slam/README.md) for m
 
 ## ROS2 wrapping on Linux
 
+You can download the ROS2 package in [the artifacts of the CI pipeline](https://gitlab.kitware.com/keu-computervision/slam/-/pipelines) for any version.
+
+A docker image is available on [this link](https://send.kitware.io/download.php?id=2329&token=yyoAxvfKEYECXOhxedzjkFMSVzkhKI66). It can also be found in [the artifacts of the feat/ROS2 branch](https://gitlab.kitware.com/keu-computervision/slam/-/pipelines?page=1&scope=all&source=web&ref=feat%2FROS2) if it has been triggered manually.
+You can load and run this image with :
+
+```
+docker load -i slam_image.tar
+docker run -it --rm slam:<CURRENT_COMMIT> bash
+```
+
+replacing CURRENT_COMMIT with the image commit sha.
+
 ### Dependencies
 
 Ensure all *LidarSlam* dependencies are respected (see next sections to do so). Specific ROS packages dependencies are listed in the table below along with the version used during development and testing.
@@ -352,14 +364,14 @@ Example :
 
 For Velodyne :
 ```bash
-ros2 launch lidar_slam slam_velodyne.py use_sim_time:=false
-ros2 lidar_slam slam_velodyne.py use_sim_time:=false gps:=true   # if GPS/SLAM calibration has to be run
+ros2 launch lidar_slam slam_velodyne.launch.py use_sim_time:=false
+ros2 lidar_slam slam_velodyne.launch.py use_sim_time:=false gps:=true   # if GPS/SLAM calibration has to be run
 ```
 
 For Ouster :
 ```bash
-ros2 launch lidar_slam slam_ouster.py replay:=false
-ros2 launch lidar_slam slam_ouster.py replay:=false gps:=true   # if GPS/SLAM calibration has to be run
+ros2 launch lidar_slam slam_ouster.launch.py replay:=false
+ros2 launch lidar_slam slam_ouster.launch.py replay:=false gps:=true   # if GPS/SLAM calibration has to be run
 ```
 
 See [ros2_wrapping/lidar_slam/README.md](ros2_wrapping/lidar_slam/README.md) for more details.
