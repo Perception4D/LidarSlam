@@ -1,18 +1,21 @@
 # Default variables/parameters for all jobs
 variables:
-  data_folder: /usr/src/app/data
+  data_folder: /root/data
   cmake_option_GENERATOR: -GNinja
   cmake_option_build_type: -DCMAKE_BUILD_TYPE=Release
   cmake_option_shared: -DBUILD_SHARED_LIBS=ON
   SB_deps_install_path: "${CI_PROJECT_DIR}/../${CI_PROJECT_NAME}_build/build_SB/install"
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_SUBMODULE_DEPTH: 20
+  CI_ENV_IMAGE: $CI_REGISTRY/keu-computervision/slam/ci_ros2_env
+  ROS2_ENV_IMAGE: $CI_REGISTRY/keu-computervision/slam/ros2_env
 
 stages:
   - superbuild
   - slam_lib
-  - ros_wrapping_build
-  - ros_test
+  - ros2_wrapping_build
+  - ros2_wrapping_package
+  - ros2_test
   - paraview_wrapping
 
 # Windows specific configuration
@@ -122,6 +125,7 @@ linux_build_superbuild:
     slam_cmake_option_glog_DIR: "-Dglog_DIR=${SB_deps_install_path}/lib/cmake/glog"
     slam_cmake_option_Ceres_DIR: "-DCeres_DIR=${SB_deps_install_path}/lib/cmake/Ceres"
     slam_cmake_option_nanoflann_DIR: "-Dnanoflann_DIR=${SB_deps_install_path}/share/nanoflann/cmake"
+    slam_cmake_option_BOOST_DIR: "-DBOOST_DIR=${SB_deps_install_path}/lib/cmake/Boost-1.76.0"
     slam_cmake_option_BOOST_ROOT: "-DBOOST_ROOT=${SB_deps_install_path}/"
     slam_cmake_option_Boost_STATIC: "-DBoost_USE_STATIC_LIBS=OFF"
     slam_cmake_option_g2o_DIR: "-Dg2o_DIR=${SB_deps_install_path}/lib/cmake/g2o"
@@ -143,7 +147,9 @@ linux_build_superbuild:
       $slam_cmake_option_glog_DIR
       $slam_cmake_option_Ceres_DIR
       $slam_cmake_option_nanoflann_DIR
+      $slam_cmake_option_BOOST_DIR
       $slam_cmake_option_BOOST_ROOT
+      $slam_cmake_option_Boost_INCLUDE_DIR
       $slam_cmake_option_Boost_STATIC
       $slam_cmake_option_PCL_DIR
       $slam_cmake_option_g2o_DIR"
@@ -156,7 +162,9 @@ linux_build_superbuild:
       $slam_cmake_option_glog_DIR
       $slam_cmake_option_Ceres_DIR
       $slam_cmake_option_nanoflann_DIR
+      $slam_cmake_option_BOOST_DIR
       $slam_cmake_option_BOOST_ROOT
+      $slam_cmake_option_Boost_INCLUDE_DIR
       $slam_cmake_option_Boost_STATIC
       $slam_cmake_option_PCL_DIR
       $slam_cmake_option_g2o_DIR
@@ -169,6 +177,7 @@ linux_slam_lib:
     - .slam_lib
   variables:
     slam_cmake_option_PCL_DIR: "-DPCL_DIR=${SB_deps_install_path}/share/pcl-1.13"
+    slam_cmake_option_Boost_INCLUDE_DIR: "-DBoost_INCLUDE_DIR=${SB_deps_install_path}/include"
 
 # Build core LidarSlam lib on Windows
 windows_slam_lib:
@@ -178,6 +187,7 @@ windows_slam_lib:
   - .slam_lib
   variables:
     slam_cmake_option_PCL_DIR: "-DPCL_DIR=${SB_deps_install_path}/cmake"
+    slam_cmake_option_Boost_INCLUDE_DIR: "-DBoost_INCLUDE_DIR=${SB_deps_install_path}/include/boost-1_76"
 
 # ------------------------------------------------------------------------------
 #   Build PV wrapping
@@ -266,15 +276,15 @@ linux_paraview_wrapping:
     - cmake --build $CI_PROJECT_DIR/build -j 4
 
 # ------------------------------------------------------------------------------
-#   Build ROS wrapping (on docker)
+#   Build ROS2 wrapping (on docker)
 # ------------------------------------------------------------------------------
 
-# Build ROS wrapping on linux
-linux_ros_wrapping_build:
+# Build ROS2 wrapping on linux
+linux_ros2_wrapping_build:
   tags: [linux, ros]
-  stage: ros_wrapping_build
+  stage: ros2_wrapping_build
   needs: []
-  image: gitlab.kitware.com:4567/keu-computervision/slam:ros1_noetic
+  image: $CI_ENV_IMAGE
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
@@ -284,41 +294,85 @@ linux_ros_wrapping_build:
       when: always
   artifacts:
       paths:
-        - catkin_ws
-      expire_in: "60 days"
+        - ros2_ws/install
+      expire_in: "30 days"
   script:
-    # Create a hidden catkin workspace folder beside sources
+    # Create a hidden ros2 workspace folder beside sources
     # This is used to move all files from the current directory
-    - cmake -E make_directory .catkin_ws/src/slam
+    - cmake -E make_directory .ros2_ws/src/slam
     # Move sources to workspace
-    - mv * .catkin_ws/src/slam
+    - mv * .ros2_ws/src/slam
     # Convert to not hidden folder to be able to cache it for next jobs
-    - mv .catkin_ws catkin_ws
-    # Compile
-    - cd catkin_ws
-    - source /opt/ros/noetic/setup.bash
-    - catkin_make
-      $cmake_option_build_type
-      -j 4
+    - mv .ros2_ws ros2_ws
+    # Build/Install
+    - cd ros2_ws
+    - colcon build --base-paths src/slam/ros2_wrapping --cmake-args ${cmake_option_build_type}
+
+# Create new docker image packaging the SLAM
+# WARNING : nobody external to Kitware should be able to modify this job
+# See documentation: https://archives.docs.gitlab.com/16.11/ee/ci/docker/using_docker_build.html#docker-in-docker-with-tls-enabled-in-the-docker-executor
+# TLS communication is setup automatically by gitlab between the host and the dind service
+# The runner needs to have a volume to share the certificates
+# The job just needs docker installed in the container
+create_docker_image:
+  tags: [docker, privileged]
+  stage: ros2_wrapping_package
+  services:
+  - name: docker:24.0.5-dind
+  variables:
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_CERT_PATH: "/certs/client"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: manual
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: manual
+  needs:
+    - job: linux_ros2_wrapping_build
+      artifacts: true
+  dependencies: [linux_ros2_wrapping_build]
+  artifacts:
+    paths:
+      - slam_image.tar
+    expire_in: "30 days"
+  script:
+    # stdin is used for security
+    # (see https://docs.gitlab.com/ee/user/packages/container_registry/authenticate_with_container_registry.html)
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    # Create a new Dockerfile with slam installation
+    - |
+      cat <<EOF > Dockerfile
+      FROM $ROS2_ENV_IMAGE
+      COPY ./ros2_ws/install /root/ros2_ws/install
+      RUN echo "source /root/ros2_ws/install/setup.bash" >> /root/.bashrc
+      WORKDIR /root/ros2_ws/install
+      EOF
+    # Build image
+    - docker build -t slam:$CI_COMMIT_SHA .
+    # Save the image and upload it as artifact
+    - docker save slam:$CI_COMMIT_SHA > slam_image.tar
 
 # ------------------------------------------------------------------------------
 #   Perform ROS tests (on docker)
 # ------------------------------------------------------------------------------
 
 # Create a reference for any test from master branch
-.ros_make_reference:
-  stage: ros_test
+.ros2_make_reference:
+  stage: ros2_test
   tags: [linux, ros]
-  needs: [linux_ros_wrapping_build]
-  dependencies: [linux_ros_wrapping_build]
-  image: gitlab.kitware.com:4567/keu-computervision/slam:ros1_noetic
+  needs:
+    - job: linux_ros2_wrapping_build
+      artifacts: true
+  dependencies: [linux_ros2_wrapping_build]
+  image: $CI_ENV_IMAGE
   variables:
     GIT_STRATEGY: none
     PATH_REFERENCE_LOG: "test_log/${test_name}/reference"
   artifacts:
     paths:
-    - "catkin_ws/$PATH_REFERENCE_LOG"
-    expire_in: "60 days"
+    - "ros2_ws/$PATH_REFERENCE_LOG"
+    expire_in: "30 days"
   rules:
     # Allow to manually create a reference for master from the web interface
     - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "master"
@@ -326,43 +380,47 @@ linux_ros_wrapping_build:
     - if: $CI_COMMIT_BRANCH == "master"
       when: always
   script:
-    - cd catkin_ws
+    - cd ros2_ws
     - echo "Creating reference log files for $test_name for next lib improvements"
     - cmake -E make_directory "$PATH_REFERENCE_LOG"
-    - source devel/setup.bash
+    - source install/setup.bash
 
-    - ROS1_COMMAND="roslaunch lidar_slam_test slam.launch
-      test_data:=${data_folder}/${test_name}/${test_name}.bag
+    - ROS2_COMMAND="ros2 launch lidar_slam_test slam.launch.py
+      test_data:=${data_folder}/${test_name}
       outdoor:=$outdoor
-      vlp16:=$vlp16
+      velodyne_driver:=$velodyne_driver
       wait_init:=$wait_init
-      res_path:=${PWD}/${PATH_REFERENCE_LOG}"
+      res_path:=${PWD}/${PATH_REFERENCE_LOG}
+      domain_id:=196"
 
-    - echo "$ROS1_COMMAND"
-    - eval $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
-    # Checks whether the ROS1_COMMAND has worked properly
+    - echo "$ROS2_COMMAND"
+    - eval $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    # Checks whether the ROS2_COMMAND has worked properly
     - test ${PIPESTATUS[0]} -eq 0
     - grep "comparison ignored" /tmp/test_log.txt
 
-
 # Perform test
-.ros_test:
-  stage: ros_test
+.ros2_test:
+  stage: ros2_test
   tags: [linux, ros]
-  needs: [linux_ros_wrapping_build]
-  dependencies: [linux_ros_wrapping_build]
-  image: gitlab.kitware.com:4567/keu-computervision/slam:ros1_noetic
+  needs:
+    - job: linux_ros2_wrapping_build
+      artifacts: true
+  dependencies: [linux_ros2_wrapping_build]
+  image: $CI_ENV_IMAGE
   variables:
     GIT_STRATEGY: none
     PATH_REFERENCE_LOG: "test_log/${test_name}/reference"
     PATH_RESULT_LOG: "test_log/${test_name}/result"
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" &&
+          $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
       when: always
   artifacts:
     paths:
-    - "catkin_ws/test_log/${test_name}"
-    expire_in: "60 days"
+    - "ros2_ws/test_log/${test_name}"
+    expire_in: "30 days"
+    when: always
   script:
     # Search the id of the latest pipeline from master
     - PIPELINE_ID=$(curl --location "https://gitlab.kitware.com/api/v4/projects/4640/pipelines/latest?ref=master" |
@@ -381,61 +439,61 @@ linux_ros_wrapping_build:
     - curl "https://gitlab.kitware.com/api/v4/projects/4640/jobs/${JOB_ID}/artifacts" --output artifacts_reference.zip
     - unzip artifacts_reference.zip
 
-    - cd catkin_ws
+    - cd ros2_ws
 
     # Launch test
     - cmake -E make_directory "$PATH_RESULT_LOG"
-    - source devel/setup.bash
+    - source install/setup.bash
 
-    - ROS1_COMMAND="roslaunch lidar_slam_test slam.launch
-      test_data:=${data_folder}/${test_name}/${test_name}.bag
+    - ROS2_COMMAND="ros2 launch lidar_slam_test slam.launch.py
+      test_data:=${data_folder}/${test_name}
       outdoor:=$outdoor
-      vlp16:=$vlp16
+      velodyne_driver:=$velodyne_driver
       wait_init:=$wait_init
       ref_path:=${PWD}/${PATH_REFERENCE_LOG}
-      res_path:=${PWD}/${PATH_RESULT_LOG}"
+      res_path:=${PWD}/${PATH_RESULT_LOG}
+      domain_id:=$((JOB_ID % 100))"
 
-    - echo "$ROS1_COMMAND"
-    - eval $ROS1_COMMAND 2>&1 | tee /tmp/test_log.txt
-    # Checks whether the ROS1_COMMAND has worked properly
+    - echo "$ROS2_COMMAND"
+    - eval $ROS2_COMMAND 2>&1 | tee /tmp/test_log.txt
+    # Checks whether the ROS2_COMMAND has worked properly
     - test ${PIPESTATUS[0]} -eq 0
     - grep "Test successfully passed" /tmp/test_log.txt
 
-
 # Create a reference for test1 from master branch
-ros_make_reference1:
-  extends: .ros_make_reference
+ros2_make_reference1:
+  extends: .ros2_make_reference
   variables:
     test_name: "test1"
     outdoor: "true"
-    vlp16: "false"
+    velodyne_driver: "false"
     wait_init: "2" # To have time to init the process
 
 # Create a reference for test2 from master branch
-ros_make_reference2:
-  extends: .ros_make_reference
+ros2_make_reference2:
+  extends: .ros2_make_reference
   variables:
     test_name: "test2"
     outdoor: "false"
-    vlp16: "true"
+    velodyne_driver: "true"
     wait_init: "4" # To have time to init the process
 
 # Perform test 1
-ros_test1:
-  extends: .ros_test
+ros2_test1:
+  extends: .ros2_test
   variables:
     test_name: "test1"
-    ref_name: "ros_make_reference1" # job name to find the corresponding artifact
+    ref_name: "ros2_make_reference1" # job name to find the corresponding artifact
     outdoor: "true"
-    vlp16: "false"
+    velodyne_driver: "false"
     wait_init: "2" # To have time to load the reference files
 
 # Perform test 2
-ros_test2:
-  extends: .ros_test
+ros2_test2:
+  extends: .ros2_test
   variables:
     test_name: "test2"
-    ref_name: "ros_make_reference2" # job name to find the corresponding artifact
+    ref_name: "ros2_make_reference2" # job name to find the corresponding artifact
     outdoor: "false"
-    vlp16: "true"
+    velodyne_driver: "true"
     wait_init: "4" # To have time to load the reference files
