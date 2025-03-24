@@ -8,7 +8,15 @@ project(LidarSlam
 #  CMake parameters
 #-------------------------
 
-set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ standard")
+# Doesn't build if it is with colcon and not from lidar_slam
+if ("$ENV{COLCON}" AND NOT "${slamlib_from_subdirectory}")
+    message(FATAL_ERROR
+    "You are trying to build LidarSlam ROS2 package from root\n"
+    "This package must be built from ros2_wrapping folder :\n"
+    "colcon build --base-paths slam_path/slam/ros2_wrapping/")
+endif()
+
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ standard")
 message(STATUS "Building LidarSlam with C++${CMAKE_CXX_STANDARD} standard")
 
 # Set a default build type if none was specified
@@ -28,6 +36,7 @@ list(APPEND CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
 # MSVC enforce MT
 if(WIN32 AND MSVC)
 	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+  add_compile_options(/bigobj)
 endif()
 
 # Include cmake directory to be able to do include() on cmake files
