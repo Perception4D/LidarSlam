@@ -624,7 +624,8 @@ private:
 // This manager can be used to build a pose graph
 // GPS measurements are represented in a specific world referential frame (e.g. ENU)
 // An offset transform links the GPS referential and the Lidar SLAM referential frame (e.g. first pose)
-// This offset must be set from outside this library and can be computed using the GPS data and some lidar SLAM poses
+// An initial offset can be set from outside this library 
+// and will be refined during PGO
 class GpsManager: public SensorManager<GpsMeasurement>
 {
 public:
@@ -664,6 +665,8 @@ private:
   // to Lidar SLAM reference frame
   // odom * offset = TrefGPS
   // basePose * calibGps = offset * gpsPose
+  // Note: this order is not normalized but allows to limit 
+  // matrix inversions in computations
   Eigen::Isometry3d Offset = Eigen::Isometry3d::Identity();
 };
 

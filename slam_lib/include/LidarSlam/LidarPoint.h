@@ -59,7 +59,7 @@ struct LidarPoint
   double time;
   float intensity;
   std::uint16_t laser_id;
-  std::uint8_t label;
+  std::uint16_t label;
 
   friend std::ostream& operator << (std::ostream& os, const LidarPoint& p);
 
@@ -75,7 +75,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (LidarSlam::LidarPoint,
                                    (double, time, time)
                                    (float, intensity, intensity)
                                    (std::uint16_t, laser_id, laser_id)
-                                   (std::uint8_t, label, label)
+                                   (std::uint16_t, label, label)
 )
 
 #ifdef USE_TEASERPP

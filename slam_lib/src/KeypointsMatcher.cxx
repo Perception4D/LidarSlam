@@ -148,7 +148,7 @@ KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildLineMatch(co
   Eigen::Vector3d mean;
   Eigen::Vector3d eigVals;
   Eigen::Matrix3d eigVecs;
-  Utils::ComputeMeanAndPCA(*previousEdges->GetKdTreePcl(), knnIndices, mean, eigVecs, eigVals);
+  Utils::ComputeMeanAndPCA(*(previousEdges->GetKdTreePcl()), knnIndices, mean, eigVecs, eigVals);
 
   // =============================================
   // Compute point-to-line optimization parameters
@@ -228,7 +228,7 @@ KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildPlaneMatch(c
   Eigen::Vector3d mean;
   Eigen::Vector3d eigVals;
   Eigen::Matrix3d eigVecs;
-  Utils::ComputeMeanAndPCA(*previousPlanes->GetKdTreePcl(), knnIndices, mean, eigVecs, eigVals);
+  Utils::ComputeMeanAndPCA(*(previousPlanes->GetKdTreePcl()), knnIndices, mean, eigVecs, eigVals);
 
   // If the second eigen value is close to the highest one and bigger than the
   // smallest one, it means that the points are distributed along a plane.
@@ -314,7 +314,7 @@ KeypointsMatcher::MatchingResults::MatchInfo KeypointsMatcher::BuildBlobMatch(co
   Eigen::Vector3d mean;
   Eigen::Vector3d eigVals;
   Eigen::Matrix3d eigVecs;
-  Utils::ComputeMeanAndPCA(*previousBlobs->GetKdTreePcl(), knnIndices, mean, eigVecs, eigVals);
+  Utils::ComputeMeanAndPCA(*(previousBlobs->GetKdTreePcl()), knnIndices, mean, eigVecs, eigVals);
 
   // Check PCA structure
   if (eigVals(0) <= 0. || eigVals(1) <= 0.)
@@ -361,7 +361,7 @@ void KeypointsMatcher::GetPerRingLineNeighbors(const RollingGridPtr previousEdge
     return;
 
   // Shortcut to keypoints cloud
-  const PointCloud& previousEdgesPoints = *previousEdges->GetKdTreePcl();
+  const PointCloud& previousEdgesPoints = *(previousEdges->GetKdTreePcl());
 
   // Take the closest point
   const Point& closest = previousEdgesPoints[knnIndices[0]];
@@ -421,7 +421,7 @@ void KeypointsMatcher::GetRansacLineNeighbors(const RollingGridPtr previousEdges
     return;
 
   // Shortcut to keypoints cloud
-  const PointCloud& previousEdgesPoints = *previousEdges->GetKdTreePcl();
+  const PointCloud& previousEdgesPoints = *(previousEdges->GetKdTreePcl());
 
   // To avoid square root when performing comparison
   const float squaredMaxDistInlier = maxDistInlier * maxDistInlier;

@@ -126,6 +126,11 @@ public:
   //! clean allows to remove the moving objects
   PointCloud::Ptr Get(bool clean = false) const;
 
+  //! Label non-fixed points in a pointcloud with respect to a fixed current map
+  //! Non-fixed points are labeled as 0, others as 1.
+  //! The sampling mode is to take the first point
+  void LabelNewPoints(PointCloud::Ptr& pointcloud, bool expand = false) const;
+
   //! Get the total number of points in rolling grid
   unsigned int Size() const {return this->NbPoints; }
 

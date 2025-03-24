@@ -738,6 +738,8 @@ public:
   Eigen::Isometry3d GetPoseCalibration() const;
   void SetPoseCalibration(const Eigen::Isometry3d& calib);
 
+  Eigen::Isometry3d GetPoseOffset() const;
+
   // Camera
   void AddCameraImage(const ExternalSensors::Image& image);
 
@@ -1203,7 +1205,7 @@ private:
   unsigned int ImuHasBeenUpdated = 0;
   // To update the IMU bias or not depending on the accuracy
   bool ImuUpdate = true;
-
+  
   // Landmarks manager
   // Each landmark has its own manager and is identified by its ID.
   // This map can be initialized from outside the lib if the absolute poses of the tags are known

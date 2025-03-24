@@ -125,8 +125,8 @@ RollingGrid::PointCloud::Ptr RollingGrid::Get(bool clean) const
     {
       // If all points can be used or if the point
       // does not lie in a moving object, extract it.
-      if (!clean || kvIn.second.count > this->MinFramesPerVoxel)
-        pc->push_back(kvIn.second.point);
+      if (!clean || kvIn.second.count >= this->MinFramesPerVoxel)
+        pc->emplace_back(kvIn.second.point);
     }
   }
 
@@ -235,8 +235,11 @@ void RollingGrid::Add(const PointCloud::Ptr& pointcloud, bool fixed, bool roll)
         auto& voxel = this->Voxels[idxOut][idxIn];
 
         // Check if the voxel contains a fixed point
-        if (voxel.point.label == 1)
+        if (voxel.point.label == static_cast<int>(LidarSlam::LidarPointLabel::FIXED))
           continue;
+
+        // If the point is not fixed, force label with new point label
+        voxel.point.label = point.label;
 
         switch(this->Sampling)
         {
@@ -322,9 +325,10 @@ void RollingGrid::Add(const PointCloud::Ptr& pointcloud, bool fixed, bool roll)
       // Shortcut to voxel
       auto& voxel = this->Voxels[idxOut][idxIn];
       voxel.point.time = Utils::PclStampToSec(pointcloud->header.stamp) + point.time;
-      // Point added is not fixed
-      voxel.point.label = static_cast<int>(fixed);
 
+      // If fixed is set, force the voxel to be fixed
+      if (fixed)
+          voxel.point.label = static_cast<int>(LidarSlam::LidarPointLabel::FIXED);
 
       if (!seen.count(idxOut) || !seen[idxOut].count(idxIn))
       {
@@ -337,6 +341,59 @@ void RollingGrid::Add(const PointCloud::Ptr& pointcloud, bool fixed, bool roll)
   // Clear the deprecated KD-tree if the map has been updated
   if (updated)
     this->KdTree.Reset();
+}
+
+//------------------------------------------------------------------------------
+void RollingGrid::LabelNewPoints(PointCloud::Ptr& pointcloud, bool expand) const
+{
+  std::vector<Eigen::Array3i> neighbors = expand ?
+                                            std::vector<Eigen::Array3i>({{ 1,  1, 1}, { 1,  1, 0}, { 1,  1, -1},
+                                                                         { 1,  0, 1}, { 1,  0, 0}, { 1,  0, -1},
+                                                                         { 1, -1, 1}, { 1, -1, 0}, { 1, -1, -1},
+                                                                         { 0,  1, 1}, { 0,  1, 0}, { 0,  1, -1},
+                                                                         { 0,  0, 1}, { 0,  0, 0}, { 0,  0, -1},
+                                                                         { 0, -1, 1}, { 0, -1, 0}, { 0, -1, -1},
+                                                                         {-1,  1, 1}, {-1,  1, 0}, {-1,  1, -1},
+                                                                         {-1,  0, 1}, {-1,  0, 0}, {-1,  0, -1},
+                                                                         {-1, -1, 1}, {-1, -1, 0}, {-1, -1, -1}}) :
+                                            std::vector<Eigen::Array3i>({{ 0,  0, 0}});
+
+  // Compute the 3D position of the center of the first voxel
+  Eigen::Array3f voxelGridOrigin = this->VoxelGridPosition - int(this->GridSize / 2) * this->VoxelWidth;
+
+  // Sample points which are different from fixed points in the rolling grid
+  for (Point& point : *pointcloud)
+  {
+    // Init label
+    point.label = static_cast<std::uint16_t>(LidarSlam::LidarPointLabel::DEFAULT);
+    // Find the outer voxel containing this point
+    Eigen::Array3i voxelCoordOut = Utils::PositionToVoxel<Eigen::Array3f>(point.getArray3fMap(), voxelGridOrigin, this->VoxelWidth);
+
+    // Check whether or not the point is within bounds
+    if (((0 <= voxelCoordOut) && (voxelCoordOut < this->GridSize)).all())
+    {
+      // Compute the position of the center of the inner voxel grid (=sampling voxel grid)
+      // which is the center of the outer voxel (from the rolling voxel grid)
+      Eigen::Array3f voxelGridCenterIn = voxelCoordOut.cast<float>() * this->VoxelWidth + voxelGridOrigin;
+      // Find the inner voxel containing this point (from the sampling vg)
+      Eigen::Array3i voxelCoordIn = Utils::PositionToVoxel<Eigen::Array3f>(point.getArray3fMap(), voxelGridCenterIn, this->LeafSize);
+      unsigned int idxOut = this->To1d(voxelCoordOut, this->GridSize);
+      if (!this->Voxels.count(idxOut))
+        continue;
+
+      for (auto& neigh : neighbors)
+      {
+        Eigen::Array3i studiedVox = voxelCoordIn + neigh;
+        unsigned int idxIn = this->To1d(studiedVox, this->GridInSize);
+        // If the inner voxel is occupied, label it as the voxel.
+        if (this->Voxels.at(idxOut).count(idxIn))
+        {
+          point.label = this->Voxels.at(idxOut).at(idxIn).point.label;
+          break;
+        }
+      }
+    }
+  }
 }
 
 //==============================================================================
@@ -404,7 +461,8 @@ void RollingGrid::Erase(int outVoxIdx, std::function<bool(const Point&)> heurist
     // Shortcut to voxel
     Voxel& voxel = itVoxelsIn->second;
     // If voxel is removable and in sphere, remove it
-    if (!voxel.point.label && heuristic(itVoxelsIn->second.point))
+    if (voxel.point.label != static_cast<int>(LidarSlam::LidarPointLabel::FIXED) &&
+        heuristic(itVoxelsIn->second.point))
     {
       itVoxelsIn = this->Voxels[outVoxIdx].erase(itVoxelsIn);
       --this->NbPoints;
@@ -443,13 +501,13 @@ void RollingGrid::BuildSubMap(const Eigen::Array3f& minPoint, const Eigen::Array
     // to extract all intersecting voxels
     for (const auto& kvOut : this->Voxels)
     {
-     // Check if the voxel lies within bounds
-     Eigen::Array3i idx3d = this->To3d(kvOut.first, this->GridSize);
-     if (((intersectionMin <= idx3d) && (idx3d <= intersectionMax)).all())
-     {
-       for (const auto& kvIn : kvOut.second)
-        this->SubMap->push_back(kvIn.second.point);
-     }
+      // Check if the voxel lies within bounds
+      Eigen::Array3i idx3d = this->To3d(kvOut.first, this->GridSize);
+      if (((intersectionMin <= idx3d) && (idx3d <= intersectionMax)).all())
+      {
+        for (const auto& kvIn : kvOut.second)
+          this->SubMap->push_back(kvIn.second.point);
+      }
     }
   }
   // If we want to reject moving objects
@@ -468,7 +526,8 @@ void RollingGrid::BuildSubMap(const Eigen::Array3f& minPoint, const Eigen::Array
        {
          // Check if enough points lie in the voxel
          // or if the points are fixed before adding it
-         if (kvIn.second.count >= this->MinFramesPerVoxel || kvIn.second.point.label == 1)
+         if (kvIn.second.count >= this->MinFramesPerVoxel ||
+             kvIn.second.point.label == static_cast<int>(LidarSlam::LidarPointLabel::FIXED))
           this->SubMap->push_back(kvIn.second.point);
        }
      }
@@ -582,7 +641,7 @@ void RollingGrid::BuildSubMap(const PointCloud& pc, int minNbPoints)
       for (const auto& kvIn : this->Voxels[vxIdx])
       {
         if (kvIn.second.count > this->MinFramesPerVoxel ||
-            kvIn.second.point.label == 1)
+            kvIn.second.point.label == static_cast<int>(LidarSlam::LidarPointLabel::FIXED))
           this->SubMap->push_back(kvIn.second.point);
       }
     }

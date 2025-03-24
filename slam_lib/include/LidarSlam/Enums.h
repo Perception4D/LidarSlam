@@ -26,6 +26,14 @@ namespace LidarSlam
 {
 
 //------------------------------------------------------------------------------
+//! Type of lidar point
+enum LidarPointLabel
+{
+  DEFAULT = 0,
+  FIXED = 1
+};
+
+//------------------------------------------------------------------------------
 //! Type of a keypoint
 enum Keypoint
 {
