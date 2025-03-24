@@ -2083,7 +2083,7 @@ bool Slam::DetectLoopWithTeaser(std::list<LidarState>::iterator& itQueryState,
   #ifdef USE_TEASERPP
   if (this->LogStates.size() < 2)
   {
-    PRINT_WARNING("Cannot detect loop closure: no enough logged states");
+    PRINT_WARNING("Cannot detect loop closure: not enough logged states");
     return false;
   }
   // Create query submap and get keypoints in BASE coordinates
