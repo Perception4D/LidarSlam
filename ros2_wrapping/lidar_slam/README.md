@@ -1,6 +1,6 @@
-# lidar_slam
+# Using LiDAR SLAM with ROS2 wrapping
 
-- [lidar\_slam](#lidar_slam)
+- [lidar\_slam](#using-lidar-slam-with-ros-wrapping)
   - [LiDAR SLAM node](#lidar-slam-node)
     - [Description and basic usage](#description-and-basic-usage)
       - [Slam node](#slam-node)
@@ -171,11 +171,11 @@ The SLAM node subscribes to one or several input pointclouds topics (default sin
 - **time** (`double`) : time offset to add to the pointcloud header timestamp to get approximate point-wise acquisition timestamp
 - **intensity** (`float`) : intensity/reflectivity of the point
 - **laser_id** (`uint16`) : numeric identifier of the laser ring that shot this point. The lowest/bottom laser ring should be 0, and it should increase upward.
-- **label** (`uint8`) : optional input, not yet used.
+- **label** (`uint16`) : optional input, not yet used.
 
 If your LiDAR driver does not output such data, you can use the `lidar_conversions` nodes.
 
-Optional input GPS (see [Optional GPS use](#optional-gps-use) section) fix must be a *gps_msgs/GPSFix* message published on topic '*gps_fix*'.
+Optional input GPS (see [GPS](#gps) section) fix must be a *gps_msgs/GPSFix* message published on topic '*gps_fix*'.
 
 SLAM outputs can also be configured out to publish :
 - current pose as an *nav_msgs/msg/Odometry* message on topic '*slam_odom*' and/or a TF from '*odometry_frame*' to '*tracking_frame*';
@@ -214,11 +214,11 @@ ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 12"
 ```
 
 ##### Reset ODOM
-At any time, ODOM can be reset so the current pose is null in ODOM. This can reduce numerical instability. 
+At any time, ODOM can be reset so the current pose is null in ODOM. This can reduce numerical instability.
 This should be used regularly in outside environment every 200m for example.
 
 ```bash
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 13"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 13"
 ```
 
 ##### Map update modes
@@ -283,12 +283,12 @@ ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 17, string
 ```
 
 ##### Set pose
-At any time, a pose message (`PoseWithCovarianceStamped`) can be sent through the topic `set_slam_pose` to reset the current pose
+At any time, a pose message (`PoseWithCovarianceStamped`) can be sent through the topic `set_pose` to reset the current pose
 
 ##### Switch ON/OFF the process
 At any time, the SLAM can be switched ON/OFF using the command message :
 ```bash
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 0"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 0"
 ```
 This disables the sensor messages handling of the node.
 
@@ -312,7 +312,7 @@ ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 30, string
 
 This command allows to estimate the calibration and to send a static TF transform between the base frame and the frame specified in the CSV file.
 
-If poses have been sent through `ext_poses` topic, the string_arg should remain empty : 
+If poses have been sent through `ext_poses` topic, the string_arg should remain empty :
 
 ```bash
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 30"
@@ -339,6 +339,7 @@ Another feature has been developped to fuse the confidence estimators to trigger
 - Divergence due to a combination of external factors
 
 These metrics can be visualized on RVIZ using the visualization plugin.
+
 ![Slam metric visualizator](<doc/Slam_confidence_estimator.png>)
 
 To enable this feature, you should turn on *failure_detector/enable* in the SLAM parameters.
@@ -414,19 +415,19 @@ Graph constraint and logging must be enabled in case of pose graph optimization.
 ### GPS
 
 GPS can be used to optimize the pose graph.
-To enable the GPS, modify the following parameters : 
+To enable the GPS, modify the following parameters :
 * `external_sensors.gps.enable: true`
 * `external_sensors.max_measures: 1000000` to be determined
 * `external_sensors.use_header_time: true` if necessary
 * `external_sensors.time_threshold: 0.1` to be determined
 * `slam.logging_timeout > t`, t is the duration on which LiDAR measurements can be stored, the oldest measurements are forgotten. Only the remaining poses are used to build and optimize the graph and to rebuild the map.
 * `logging/only_keyframes : true`
-  
+
 Then, *LidarSlamNode* subscribes to the GPS odometry on topic '*gps_odom*', and records the most recent GPS positions. To use GPS data, we transform GPS WGS84 fix into cartesian space using UTM projection.
 
 **NOTE** : If GPS odometry expresses the pose of a *gps_frame* different from *tracking_frame*, please ensure a valid calibration static TF is beeing broadcasted.
 
-A possible pipeline is the following : 
+A possible pipeline is the following :
 
 ```bash
 # Run the SLAM with gps topic remapping if needed:
@@ -434,19 +435,19 @@ ros2 launch lidar_slam slam_velodyne.launch.py # Start SLAM (external pose log m
 ...  # Run 1st real test or bag file
 # Stop the acquisition :
 # (or pause the system)
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 0"
-# Trigger PGO : optimize SLAM trajectory, recompute the map and update last pose 
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 0"
+# Trigger PGO : optimize SLAM trajectory, recompute the map and update last pose
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 20"
-# Restart the acquisition : 
+# Restart the acquisition :
 # (or play the bag again)
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 0"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 0"
 ```
 
 ### Tag detector
 
 A tag detector (like a camera with an april tag application) can be used to help the local SLAM process or to optimize a pose graph as post process.
 
-To enable the tag detector, modify the following parameters : 
+To enable the tag detector, modify the following parameters :
 * `external_sensors.landmark_detector.enable: true`
 * `external_sensors.max_measures: 1000000` to be determined
 * `external_sensors.use_header_time: true` if necessary
@@ -476,9 +477,9 @@ All these parameters are described in the supplied [config files](params).
 
 #### Pose graph optimization
 
-A pose graph optimization can be performed using the tags to close loops and to create a consistent map. The previous recommendations for landmarks integration in local optimizations hold. 
+A pose graph optimization can be performed using the tags to close loops and to create a consistent map. The previous recommendations for landmarks integration in local optimizations hold.
 
-To enable the pose graph, modify the following parameters : 
+To enable the pose graph, modify the following parameters :
 * `graph.constraint.landmark: true`
 * `slam.logging_timeout > t`, t is the duration on which LiDAR measurements can be stored, the oldest measurements are forgotten. Only the remaining poses are used to build and optimize the graph and to rebuild the map.
 * `logging/only_keyframes : true`
@@ -491,12 +492,12 @@ ros2 launch lidar_slam slam_velodyne.launch.py tags_topic:="your_tag_topic" # St
 ...  # Run 1st real test or bag file
 # Stop the acquisition :
 # (or pause the system)
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 0"
-# Trigger PGO : optimize SLAM trajectory, recompute the map and update last pose 
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 0"
+# Trigger PGO : optimize SLAM trajectory, recompute the map and update last pose
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 20, string_arg: path/to/landmarksAbsolutePoses.csv}"
-# Restart the acquisition : 
+# Restart the acquisition :
 # (or play the bag again)
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 0"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 0"
 ```
 
 **NOTE** : If the SLAM was running with initially loaded tag poses (`landmarks_file_path` is not empty), and one wants to run the pose graph optimization, the file parameter is not compulsory, one can just launch :
@@ -507,9 +508,9 @@ Again, running the SLAM in mapping mode with initially loaded tag poses can be d
 
 ### Camera
 
-A camera can be used to add color constraints to SLAM local optimization.
+A camera can be used to add image match based constraints to SLAM local optimization.
 
-To enable the camera, modify the following parameters : 
+To enable the camera, modify the following parameters :
 * `external_sensors.camera.enable: true`
 * `external_sensors.max_measures: 10` to be determined
 * `external_sensors.use_header_time: true` if necessary
@@ -536,7 +537,7 @@ Camera constraint added
 
 The wheel encoder measurement can be used in the slam front end optimization to solve some degree of liberty (e.g. in corridors).
 
-To enable the wheel encoder, modify the following parameters : 
+To enable the wheel encoder, modify the following parameters :
 * `external_sensors.wheel_encoder.enable: true`
 * `external_sensors.max_measures: 100000` to be determined
 * `external_sensors.use_header_time: true` if necessary
@@ -577,7 +578,7 @@ These poses can be used for different purposes:
 
 The external poses can be supplied through a message `geometry_msgs::msg::PoseWithCovarianceStamped` in the topic *ext_poses*. The calibration between the tracked frame and the frame called "ins" must be sent to the TF tree to be able to receive the measurements. Note that the poses can be supplied as a CSV file to optimize the graph (see Pose graph optimization section).
 
-To enable the wheel encoder, modify the following parameters : 
+To enable the wheel encoder, modify the following parameters :
 * `external_sensors.external_poses.enable: true`
 * `external_sensors.max_measures: 100000` to be determined
 * `external_sensors.use_header_time: true` if necessary
@@ -622,13 +623,13 @@ The calibration between the tracked frame and the frame defined in the header of
 
 ***WARNING***: Remember to set *max_measures*, and *time_threshold* to convenient values to be able to use the pose measurements.
 
-Modify the following parameters : 
+Modify the following parameters :
 
 * `graph.constraint.ext_poses: true`
 * `slam.logging_timeout > t`, t is the duration on which LiDAR measurements can be stored, the oldest measurements are forgotten. Only the remaining poses are used to build and optimize the graph and to rebuild the map.
 * `logging/only_keyframes : true`
 
-A possible pipeline is the following : 
+A possible pipeline is the following :
 
 ```bash
 # Run the SLAM with external topic remapping :
@@ -637,11 +638,11 @@ ros2 launch lidar_slam slam_velodyne.py ext_poses:="your_ext_pose_topic" # Start
 # Stop the acquisition :
 # (or pause the system)
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 0"
-# Trigger PGO : optimize SLAM trajectory, recompute the map and update last pose 
+# Trigger PGO : optimize SLAM trajectory, recompute the map and update last pose
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 20"
-# Restart the acquisition : 
+# Restart the acquisition :
 # (or play the bag again)
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 0"
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 0"
 ```
 
 **Tip** : save the maps and the trajectory before optimizing the graph to be sure to be able to come back if something goes wrong with the optimization.
@@ -654,7 +655,7 @@ For now, only the linear acceleration is used to apply a gravity constraint betw
 
 ***WARNING***: Remember to set *max_measures*, *use_header_time* and *time_threshold* to convenient values to be able to receive the measurements.
 
-A weight is parameterizable for the new gravity constraint. The more we trust the IMU measurement, the higher this weight should be. If 0., the feature is disabled.
+A weight is parameterizable for the gravity constraint. The more we trust the IMU measurement, the higher this weight should be. If 0., the feature is disabled.
 
 If the data are well added and synchronized, a log output should be visible with verbosity to 3 (default).
 This output should say :
