@@ -127,7 +127,7 @@ linux_build_superbuild:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
-    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_BRANCH == "ROS1/SlamRos1Wrapping"
       when: always
   script:
     - cmake -E remove_directory $build_dir
@@ -191,7 +191,7 @@ linux_ros_wrapping_build:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
-    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_BRANCH == "ROS1/SlamRos1Wrapping"
       when: always
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
@@ -218,7 +218,7 @@ linux_ros_wrapping_build:
 #   Perform ROS tests (on docker)
 # ------------------------------------------------------------------------------
 
-# Create a reference for any test from master branch
+# Create a reference for any test from ROS1/SlamRos1Wrapping branch
 .ros_make_reference:
   stage: ros_test
   tags: [linux, ros]
@@ -233,10 +233,10 @@ linux_ros_wrapping_build:
     - "catkin_ws/$PATH_REFERENCE_LOG"
     expire_in: "60 days"
   rules:
-    # Allow to manually create a reference for master from the web interface
-    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "master"
+    # Allow to manually create a reference for ROS1/SlamRos1Wrapping from the web interface
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "ROS1/SlamRos1Wrapping"
       when: manual
-    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_BRANCH == "ROS1/SlamRos1Wrapping"
       when: always
   script:
     - cd catkin_ws
@@ -277,13 +277,13 @@ linux_ros_wrapping_build:
     - "catkin_ws/test_log/${test_name}"
     expire_in: "60 days"
   script:
-    # Search the id of the latest pipeline from master
-    - PIPELINE_ID=$(curl --location "https://gitlab.kitware.com/api/v4/projects/4640/pipelines/latest?ref=master" |
+    # Search the id of the latest pipeline from ROS1/SlamRos1Wrapping
+    - PIPELINE_ID=$(curl --location "https://gitlab.kitware.com/api/v4/projects/4640/pipelines/latest?ref=ROS1/SlamRos1Wrapping" |
       jq -r ".id")
     # Check that the variable is set
     - ([[ -n "$PIPELINE_ID" ]])
 
-    # Search the id of the ref_name job in the latest pipeline from master
+    # Search the id of the ref_name job in the latest pipeline from ROS1/SlamRos1Wrapping
     - JOB_ID=$(curl "https://gitlab.kitware.com/api/v4/projects/4640/pipelines/${PIPELINE_ID}/jobs" |
       jq -r ".[] | select(.name == \"$ref_name\") | .id")
     # Check that the variable is set
@@ -315,7 +315,7 @@ linux_ros_wrapping_build:
     - grep "Test successfully passed" /tmp/test_log.txt
 
 
-# Create a reference for test1 from master branch
+# Create a reference for test1 from ROS1/SlamRos1Wrapping branch
 ros_make_reference1:
   extends: .ros_make_reference
   variables:
@@ -324,7 +324,7 @@ ros_make_reference1:
     vlp16: "false"
     wait_init: "2" # To have time to init the process
 
-# Create a reference for test2 from master branch
+# Create a reference for test2 from ROS1/SlamRos1Wrapping branch
 ros_make_reference2:
   extends: .ros_make_reference
   variables:
