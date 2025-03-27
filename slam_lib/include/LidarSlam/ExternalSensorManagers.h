@@ -202,6 +202,9 @@ public:
   void AddMeasurement(const T& m)
   {
     std::lock_guard<std::mutex> lock(this->Mtx);
+    if (!this->Measures.empty() && 
+        std::abs(this->Measures.back().Time - m.Time) < 1e-6)
+      return;
     this->Measures.emplace_back(m);
     if (this->Measures.size() > this->MaxMeasures)
     {
@@ -853,6 +856,8 @@ public:
     // If this is the first measurement,
     // dt is approximated using frequency set externally
     double dt = this->RawMeasures.empty()? 1. / this->Frequency : m.Time - this->RawMeasures.back().Time;
+    if (dt < 1e-6)
+      return;
     this->PreintegratorNewData->integrateMeasurement(m.Acceleration, m.AngleVelocity, dt);
     // Store raw measurement
     this->RawMeasures.emplace_back(m);
