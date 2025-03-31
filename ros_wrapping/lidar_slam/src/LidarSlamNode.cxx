@@ -1196,6 +1196,29 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       break;
     }
 
+    // Reset slam trajectory and update map
+    case lidar_slam::SlamCommand::RESET_ODOM:
+    {
+      Eigen::Isometry3d mapToOdom;
+      if (!Utils::Tf2LookupTransform(mapToOdom, this->TfBuffer, this->MapFrameId, this->OdometryFrameId))
+      {
+        ROS_WARN_STREAM("No transform from " << this->MapFrameId << " to " << this->OdometryFrameId << " : cannot reset ODOM.");
+        break;
+      }
+
+      LidarSlam::LidarState state = this->LidarSlam.GetLastState();
+      // Publish tf
+      geometry_msgs::TransformStamped tfStamped;
+      tfStamped.header.stamp = ros::Time(state.Time);
+      tfStamped.header.frame_id = this->MapFrameId;
+      tfStamped.child_frame_id = this->OdometryFrameId;
+      tfStamped.transform = Utils::IsometryToTfMsg(mapToOdom * state.Isometry);
+      this->TfBroadcaster.sendTransform(tfStamped);
+      this->LidarSlam.SetCurrentPose(Eigen::Isometry3d::Identity());
+      ROS_INFO_STREAM("ODOM has been moved, SLAM pose is now identity");
+      break;
+    }
+
     // Reset the SLAM internal state.
     case lidar_slam::SlamCommand::RESET_SLAM:
     {
