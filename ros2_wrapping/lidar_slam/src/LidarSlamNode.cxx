@@ -1364,24 +1364,24 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       RCLCPP_INFO_STREAM(this->get_logger(), "Optimizing the pose graph");
       if (!this->LidarSlam.OptimizeGraph())
         break;
-      
-      if (this->LidarSlam.GpsHasData() && 
+
+      if (this->LidarSlam.GpsHasData() &&
           this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS))
       {
         // Broadcast new calibration offset (GPS ref to odom)
         // which has been computed/refined with pose graph optimization
-        // Note : the offset in the library is defined as odom to GPS ref 
+        // Note : the offset in the library is defined as odom to GPS ref
         // for computation simplications
         Eigen::Isometry3d offset = this->LidarSlam.GetGpsOffset().inverse();
         PublishTransformTF(this->LastGpsMeas.Time, this->MapFrameId, this->OdometryFrameId, offset);
       }
 
-      if (this->LidarSlam.PoseHasData() && 
+      if (this->LidarSlam.PoseHasData() &&
           this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE))
       {
         // Broadcast new calibration offset (Pose ref to odom)
         // which has been computed/refined with pose graph optimization
-        // Note : the offset in the library is defined as odom to GPS ref 
+        // Note : the offset in the library is defined as odom to external sensor ref
         // for computation simplications
         Eigen::Isometry3d offset = this->LidarSlam.GetPoseOffset().inverse();
         PublishTransformTF(this->LastGpsMeas.Time, this->MapFrameId, this->OdometryFrameId, offset);
