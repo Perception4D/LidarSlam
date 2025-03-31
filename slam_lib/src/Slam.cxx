@@ -837,7 +837,8 @@ bool Slam::OptimizeGraph()
     // For the first optimization, we may not know the offset
     // between GPS reference frame (utm/enu/map) and Lidar SLAM reference frame (odom)
     // So we need to reduce it so initial errors can be contained in covariances
-    // The first graph optimization iterations should mainly correct the orientations
+    // Next section is used to initialize the GPS offset translation using one random synchronized measurement
+    // Then, the first graph optimization iterations should mainly correct the orientations
     if (this->GpsManager->GetOffset().matrix().isIdentity())
     {
       // Initialize GPS offset with first synchronized measurements
@@ -3390,6 +3391,14 @@ void Slam::SetPoseCalibration(const Eigen::Isometry3d& calib)
   if (!this->PoseManager)
     this->InitPoseSensor();
   this->PoseManager->SetCalibration(calib);
+}
+
+//-----------------------------------------------------------------------------
+Eigen::Isometry3d Slam::GetPoseOffset() const
+{
+  if (!this->PoseManager)
+    return Eigen::Isometry3d::Identity();
+  return this->PoseManager->GetOffset();
 }
 
 //-----------------------------------------------------------------------------

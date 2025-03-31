@@ -738,6 +738,8 @@ public:
   Eigen::Isometry3d GetPoseCalibration() const;
   void SetPoseCalibration(const Eigen::Isometry3d& calib);
 
+  Eigen::Isometry3d GetPoseOffset() const;
+
   // Camera
   void AddCameraImage(const ExternalSensors::Image& image);
 

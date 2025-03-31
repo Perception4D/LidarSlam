@@ -264,11 +264,6 @@ protected:
    */
   int BuildId(const std::vector<int>& ids);
 
-  // Publish static tf to link world (UTM) frame to SLAM origin
-  // PGO must have been run, so we can average
-  // the correspondant poses (GPS/LidarSLAM) distances to get the offset
-  void BroadcastGpsOffset();
-
   //----------------------------------------------------------------------------
 
   // SLAM stuff
@@ -313,7 +308,7 @@ protected:
   std::string WheelFrameId = "wheel";         ///< Frame of the wheel encoder
   std::string ExtPoseFrameId = "ins";         ///< Frame of the external pose
   std::string GpsFrameId = "gps";
-  ros::Time GpsLastTime;
+
   tf2_ros::Buffer TfBuffer;
   tf2_ros::TransformListener TfListener;
   tf2_ros::TransformBroadcaster TfBroadcaster;
@@ -370,7 +365,6 @@ protected:
   bool PublishTags = false;
 
   // GPS
-  Eigen::Isometry3d BaseToGpsOffset = Eigen::Isometry3d::Identity();  ///< Pose of the GPS antenna in BASE coordinates.
   ros::Subscriber GpsOdomSub;
   LidarSlam::ExternalSensors::GpsMeasurement LastGpsMeas;
 

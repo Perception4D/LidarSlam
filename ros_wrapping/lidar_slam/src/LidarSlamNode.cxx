@@ -1344,10 +1344,41 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::SlamCommand& msg)
       ROS_INFO_STREAM("Optimizing the pose graph");
       if (!this->LidarSlam.OptimizeGraph())
         break;
-      // Broadcast new calibration offset (GPS to base)
-      // if GPS used
-      if (this->LidarSlam.GpsHasData())
-        this->BroadcastGpsOffset();
+
+      if (this->LidarSlam.GpsHasData() &&
+          this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::GPS))
+      {
+        // Broadcast new calibration offset (GPS ref to odom)
+        // which has been computed/refined with pose graph optimization
+        // Note : the offset in the library is defined as odom to GPS ref
+        // for computation simplications
+        Eigen::Isometry3d offset = this->LidarSlam.GetGpsOffset().inverse();
+        // Publish tf
+        geometry_msgs::TransformStamped tfStamped;
+        tfStamped.header.stamp = ros::Time(this->LastGpsMeas.Time);
+        tfStamped.header.frame_id = this->MapFrameId;
+        tfStamped.child_frame_id = this->OdometryFrameId;
+        tfStamped.transform = Utils::IsometryToTfMsg(offset);
+        this->TfBroadcaster.sendTransform(tfStamped);
+      }
+
+      if (this->LidarSlam.PoseHasData() &&
+          this->LidarSlam.IsPGOConstraintEnabled(LidarSlam::PGOConstraint::EXT_POSE))
+      {
+        // Broadcast new calibration offset (Pose ref to odom)
+        // which has been computed/refined with pose graph optimization
+        // Note : the offset in the library is defined as odom to external sensor ref
+        // for computation simplications
+        Eigen::Isometry3d offset = this->LidarSlam.GetPoseOffset().inverse();
+        // Publish tf
+        geometry_msgs::TransformStamped tfStamped;
+        tfStamped.header.stamp = ros::Time(this->LastGpsMeas.Time);
+        tfStamped.header.frame_id = this->MapFrameId;
+        tfStamped.child_frame_id = this->OdometryFrameId;
+        tfStamped.transform = Utils::IsometryToTfMsg(offset);
+        this->TfBroadcaster.sendTransform(tfStamped);
+      }
+
       // Publish new trajectory
       if (this->Publish[PGO_PATH])
       {
@@ -2169,14 +2200,3 @@ void LidarSlamNode::SetSlamInitialState()
   }
 }
 
-//------------------------------------------------------------------------------
-void LidarSlamNode::BroadcastGpsOffset()
-{
-  Eigen::Isometry3d offset = this->LidarSlam.GetGpsOffset().inverse();
-  geometry_msgs::TransformStamped tfStamped;
-  tfStamped.header.stamp = this->GpsLastTime;
-  tfStamped.header.frame_id = this->OdometryFrameId;
-  tfStamped.child_frame_id = this->GpsFrameId;
-  tfStamped.transform = Utils::IsometryToTfMsg(offset);
-  this->StaticTfBroadcaster.sendTransform(tfStamped);
-}

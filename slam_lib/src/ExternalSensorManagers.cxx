@@ -543,7 +543,7 @@ bool GpsManager::ComputeSynchronizedMeasureOffset(double lidarTime, GpsMeasureme
   // Apply offset to represent the GPS measurement in SLAM reference frame
   synchMeas.Position = this->Offset * synchMeas.Position;
   // Rotate covariance
-  synchMeas.Covariance = this->GetOffset().linear() * synchMeas.Covariance;
+  synchMeas.Covariance = this->Offset.linear() * synchMeas.Covariance;
 
   return true;
 }
