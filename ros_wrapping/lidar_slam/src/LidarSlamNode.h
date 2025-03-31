@@ -306,12 +306,14 @@ protected:
   double StartTime = 0.;
 
   // TF stuff
-  std::string OdometryFrameId = "odom";       ///< Frame in which SLAM odometry and maps are expressed.
-  std::string TrackingFrameId = "base_link";  ///< Frame to track (ensure a valid TF tree is published).
+  std::string OdometryFrameId = "odom";       ///< Frame in which SLAM odometry and maps are expressed
+  std::string TrackingFrameId = "base_link";  ///< Frame to track (ensure a valid TF tree is published)
   std::string MainLidarId;
-  std::string GpsFrameId = "GPS";             ///< Frame to represent GPS positions.
+  std::string MapFrameId = "map";             ///< Frame in which GPS positions and external poses are represented
+  std::string WheelFrameId = "wheel";         ///< Frame of the wheel encoder
+  std::string ExtPoseFrameId = "ins";         ///< Frame of the external pose
+  std::string GpsFrameId = "gps";
   ros::Time GpsLastTime;
-  std::string WheelFrameId = "wheel";         ///< Frame of the wheel
   tf2_ros::Buffer TfBuffer;
   tf2_ros::TransformListener TfListener;
   tf2_ros::TransformBroadcaster TfBroadcaster;
@@ -378,7 +380,6 @@ protected:
 
   // External poses
   ros::Subscriber ExtPoseSub;
-  std::string ExtPoseFrameId;
 
   // Wheel encoder
   ros::Subscriber WheelOdomSub;

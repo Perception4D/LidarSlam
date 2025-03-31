@@ -456,11 +456,10 @@ void LidarSlamNode::ExtPoseCallback(const geometry_msgs::PoseWithCovarianceStamp
   // Set calibration
   Eigen::Isometry3d baseToPose;
   if(Utils::Tf2LookupTransform(baseToPose, this->TfBuffer, this->TrackingFrameId,
-                               poseMsg.header.frame_id, poseMsg.header.stamp))
+                               this->ExtPoseFrameId, poseMsg.header.stamp))
     this->LidarSlam.SetPoseCalibration(baseToPose);
 
-  // Set frame ID for optional calibration
-  this->ExtPoseFrameId = poseMsg.header.frame_id;
+  this->MapFrameId = poseMsg.header.frame_id;
 
   // Get external pose
   LidarSlam::ExternalSensors::PoseMeasurement poseMeas;
@@ -504,7 +503,7 @@ void LidarSlamNode::GpsCallback(const nav_msgs::Odometry& gpsMsg)
 
   // Calibration
   Eigen::Isometry3d baseToGps;
-  if (Utils::Tf2LookupTransform(baseToGps, this->TfBuffer, this->TrackingFrameId, "gps", gpsMsg.header.stamp))
+  if (Utils::Tf2LookupTransform(baseToGps, this->TfBuffer, this->TrackingFrameId, this->GpsFrameId, gpsMsg.header.stamp))
   {
     // Get gps pose
     this->LastGpsMeas.Position = Utils::PoseMsgToIsometry(gpsMsg.pose.pose).translation();
@@ -530,8 +529,7 @@ void LidarSlamNode::GpsCallback(const nav_msgs::Odometry& gpsMsg)
 
     // Add gps measurement to measurements list
     this->LidarSlam.AddGpsMeasurement(this->LastGpsMeas);
-    this->GpsLastTime = ros::Time(this->LastGpsMeas.Time);
-    this->GpsFrameId = gpsMsg.header.frame_id;
+    this->MapFrameId = gpsMsg.header.frame_id;
 
     if (this->LidarSlam.GetVerbosity() >= 3)
       ROS_INFO_STREAM("GPS position added with time "
@@ -1729,6 +1727,9 @@ void LidarSlamNode::SetSlamParameters()
   this->LidarSlam.SetWorldFrameId(this->OdometryFrameId);
   this->PrivNh.param("tracking_frame", this->TrackingFrameId, this->TrackingFrameId);
   this->LidarSlam.SetBaseFrameId(this->TrackingFrameId);
+  this->PrivNh.param("wheel_frame", this->WheelFrameId, this->WheelFrameId);
+  this->PrivNh.param("ins_frame", this->ExtPoseFrameId, this->ExtPoseFrameId);
+  this->PrivNh.param("gps_frame", this->GpsFrameId, this->GpsFrameId);
 
   // Keypoint extractors
   auto setExtractorMode = [this](LidarSlam::KeypointExtractorMode& mode,
