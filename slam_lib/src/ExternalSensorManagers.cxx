@@ -1049,8 +1049,6 @@ bool PoseManager::ComputeCalibration(const std::list<LidarState>& states,
   this->Calibration = this->Calibration * Utils::XYZQuatToIsometry(calibXYZQuat);
   if (this->Verbose)
     PRINT_INFO(summary.BriefReport());
-  if (this->Verbose)
-    PRINT_INFO("External pose calibration estimated to : \n" << this->Calibration.matrix());
 
   // If the trajectories are planar (vehicle case)
   // An uncertainty remains in translation (z world axes).
@@ -1081,6 +1079,9 @@ bool PoseManager::ComputeCalibration(const std::list<LidarState>& states,
     this->Calibration.translation() = this->Calibration.translation() -
                                       this->Calibration.translation().dot(trajNormal) * trajNormal;
   }
+
+  if (this->Verbose)
+    PRINT_INFO("External pose calibration estimated to : \n" << this->Calibration.matrix());
 
   return true;
 }
