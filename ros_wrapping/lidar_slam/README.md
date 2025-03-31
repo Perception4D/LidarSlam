@@ -13,6 +13,7 @@
       - [Multiple LiDAR sensors](#multiple-lidar-sensors)
       - [Online configuration](#online-configuration)
         - [Reset state](#reset-state)
+        - [Reset ODOM](#reset-odom)
         - [Map update modes](#map-update-modes)
         - [Reset the trajectory](#reset-the-trajectory)
         - [Save the current trajectory](#save-the-current-trajectory)
@@ -168,7 +169,13 @@ At any time, the SLAM state can be reset meaning the maps, the trajectory and th
 ```bash
 rostopic pub -1 /slam_command lidar_slam/SlamCommand "command: 12"
 ```
+##### Reset ODOM
+At any time, ODOM can be reset so the current pose is null in ODOM. This can reduce numerical instability.
+This should be used regularly in outside environment every 200m for example.
 
+```bash
+rostopic pub -1 /slam_command lidar_slam/msg/SlamCommand " command: 13"
+```
 ##### Map update modes
 
 At any time, commands `lidar_slam/SlamCommand/DISABLE_SLAM_MAP_UPDATE`, `lidar_slam/SlamCommand/ENABLE_SLAM_MAP_EXPANSION` and `lidar_slam/SlamCommand/ENABLE_SLAM_MAP_UPDATE` can be published to '*slam_command*' topic to change SLAM map update mode.
@@ -236,7 +243,7 @@ At any time, a pose message (`PoseWithCovarianceStamped`) can be sent through th
 ##### Switch ON/OFF the process
 At any time, the SLAM can be switched ON/OFF using the command message :
 ```bash
-rostopic pub -1 /slam_command lidar_slam/SlamCommand "command: 13"
+rostopic pub -1 /slam_command lidar_slam/SlamCommand "command: 0"
 ```
 This disables the sensor messages handling of the node.
 
