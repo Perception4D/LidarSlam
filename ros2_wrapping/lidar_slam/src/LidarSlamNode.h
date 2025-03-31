@@ -328,7 +328,6 @@ protected:
   std::string ExtPoseFrameId = "ins";         ///< Frame of the external pose
   std::string GpsFrameId = "gps";             ///< Frame of the GPS
 
-  rclcpp::Time GpsLastTime;
   std::unique_ptr<tf2_ros::Buffer> TfBuffer;
   std::shared_ptr<tf2_ros::TransformListener> TfListener;
   std::unique_ptr<tf2_ros::TransformBroadcaster> TfBroadcaster;
@@ -385,7 +384,6 @@ protected:
   bool PublishTags = false;
 
   // GPS
-  Eigen::Isometry3d BaseToGpsOffset = Eigen::Isometry3d::Identity();  ///< Pose of the GPS antenna in BASE coordinates.
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr GpsOdomSub;
   LidarSlam::ExternalSensors::GpsMeasurement LastGpsMeas;
 
