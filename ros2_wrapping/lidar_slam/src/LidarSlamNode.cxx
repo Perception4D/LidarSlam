@@ -1242,7 +1242,7 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       }
 
       LidarSlam::LidarState state = this->LidarSlam.GetLastState();
-      this->PublishTransformTF(state.Time, msg.string_arg, this->OdometryFrameId, mapToOdom * state.Isometry);
+      this->PublishTransformTF(state.Time, this->MapFrameId, this->OdometryFrameId, mapToOdom * state.Isometry);
       this->LidarSlam.SetCurrentPose(Eigen::Isometry3d::Identity());
       RCLCPP_INFO_STREAM(this->get_logger(), "ODOM has been moved, SLAM pose is now identity");
       break;
