@@ -167,6 +167,9 @@ LidarSlamNode::LidarSlamNode(ros::NodeHandle& nh, ros::NodeHandle& priv_nh)
   // SLAM commands
   this->SlamCommandSub = nh.subscribe("slam_command", 1, &LidarSlamNode::SlamCommandCallback, this);
 
+  // Reset pose with input message
+  this->SetPoseSub = nh.subscribe("set_pose", 1, &LidarSlamNode::SetPoseCallback, this);
+
   // Init logging of GPS data for GPS/SLAM calibration or Pose Graph Optimization.
   // Perfect synchronization is not required as GPS data are not used in SLAM local process
   if (this->UseExtSensor[LidarSlam::ExternalSensor::GPS])
@@ -1138,7 +1141,7 @@ void LidarSlamNode::SetPoseCallback(const geometry_msgs::PoseWithCovarianceStamp
   {
     // Compute pose in odometry frame and set SLAM pose
     Eigen::Isometry3d poseInOdom = offset * Utils::PoseMsgToIsometry(msg.pose.pose);
-    this->LidarSlam.JumpPose(poseInOdom);
+    this->LidarSlam.SetCurrentPose(poseInOdom);
     ROS_WARN_STREAM("SLAM pose set to :\n" << poseInOdom.matrix());
     // TODO: properly deal with covariance: rotate it, pass it to SLAM, notify trajectory jump?
   }
