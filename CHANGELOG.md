@@ -1,5 +1,79 @@
 # SLAM changes history
 
+## *v3.0 (2025/04/01)*
+
+The key update in v3.0 is the transition of the ROS1/ROS2 wrapper. The ROS2 wrapper has now been merged into the master branch. A new protected branch is created for ROS1 wrapper and this branch will no longer be maintained after EOL of ROS Noetic (May, 2025).
+
+This version also introduces several new features and improvements:
+- SLAM Toolbar for ParaView Wrapping: A new toolbar with a preset dialog has been added to enhance the UI.
+- Mini SLAM Filter in ParaView Wrapping: A lightweight SLAM filter is now available in the ParaView integration.
+- Obstacle Extraction in ROS Wrapping: An obstacle extraction feature has been implemented to improve functionality.
+
+Additionally, numerous bug fixes and stability enhancements have been made, making v3.0 more robust and reliable.
+
+The full list of changes is summarized below.
+
+### Core lib
+
+**Minor new features:**
+
+* Allow to apply the offset between external pose and slam odom after PGO (!452)
+
+**Bug fixes:**
+
+* Fix loop closure (!430)
+* Add sanity check for Nan value in point cloud (!445)
+* Add sanity check for doubled measurements (!468)
+* Fix log of estimated calibration matrix (!469)
+
+**Compilation / CMake related changes / CI:**
+
+* Update code for new g2o version (!431)
+* Fix CI tests (!432, !433, !475, !476)
+* Supply docker files, images and instructions (!435)
+* Update to C++ 17 (!461)
+* Update superbuild (!466)
+* Fix build issue with g2o and eigen (!441)
+
+### ROS2 wrapping
+
+**Major new features:**
+
+* Merge ROS2 wrapper into master branch (!448, !464, !463)
+* Use service to save maps instead of message command (!471)
+* Allow to set pose and reset odom during slam process (!457)
+* Add new feature to extract obstacles in aggregated frame (!428, !436, !439)
+
+**Feature modification**
+
+* Rename launch files (!454)
+
+**Bug fixes:**
+
+* Add sanity check for Nan value in point cloud (!449, !450)
+* Fix time factor in converters (!455)
+* Fix for multi-threading (!459, !460, !472)
+* Fix tf broadcast for external sensor (!453, !472)
+
+**Doc:**
+
+* Update install guide and slam guide (!467)
+
+### ParaView wrapping
+
+**Major new features:**
+
+* Add slam tool bar and preset dialog (!405, !427)
+* Add mini SLAM filter (!444)
+* Support MCAP format (!451)
+
+**Fix**
+
+* Fix for slam initialization (!425)
+* Fix to set manually input array  (!434)
+* Fix warning and timer log (!443)
+* Fix double frame issue (!442)
+
 ## *v2.2 (2024/04/18)*
 
 The main novelty for v2.2 is the availability of the ROS2 wrapper in feat/ROS2 branch.
