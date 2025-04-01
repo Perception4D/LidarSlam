@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>lidar_slam_test</name>
-  <version>2.2.0</version>
+  <version>3.0.0</version>
   <description>ROS tests on LiDAR SLAM library.</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->

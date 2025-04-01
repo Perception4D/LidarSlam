@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>slam_visualization</name>
-  <version>2.2.0</version>
+  <version>3.0.0</version>
   <description>RViz2 panel plugin to send commands to lidar_slam_node and display confidence estimators</description>
 
   <maintainer email="arthur.bourbousson@kitware.com">Arthur Bourbousson</maintainer>
