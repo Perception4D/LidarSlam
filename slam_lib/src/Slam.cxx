@@ -2915,7 +2915,7 @@ void Slam::UndistortWithPoseMeasurement(PointCloud::Ptr pc, double refTime,
   Eigen::Isometry3d invSynchPoseMeasCurrent = synchPoseMeasCurrent.Pose.inverse();
 
   // Transform with computed measures (parallelized)
-  #pragma omp parallel for num_threads(this->NbThreads)
+  // #pragma omp parallel for num_threads(this->NbThreads)
   for (int idxPt = startIdx; idxPt < endIdx; ++idxPt)
   {
     // Get transform from base at current time to base at point time
