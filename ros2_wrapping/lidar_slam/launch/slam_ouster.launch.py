@@ -180,7 +180,7 @@ def generate_launch_description():
         package="tf2_ros",
         executable="static_transform_publisher",
         name="tf_base_to_wheel",
-        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
         arguments=["--x", "0", "--y", "0", "--z", "0",
                   "--roll", "0", "--pitch", "0", "--yaw", "0",
                   "--frame-id", "base_link", "--child-frame-id", "wheel"]
@@ -190,7 +190,7 @@ def generate_launch_description():
         package="tf2_ros",
         executable="static_transform_publisher",
         name="tf_base_to_ins",
-        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
         arguments=["--x", "0", "--y", "0", "--z", "0",
                   "--roll", "0", "--pitch", "0", "--yaw", "0",
                   "--frame-id", "base_link", "--child-frame-id", "ins"]
@@ -200,7 +200,7 @@ def generate_launch_description():
         package="tf2_ros",
         executable="static_transform_publisher",
         name="tf_base_to_gps",
-        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        parameters=[{'use_sim_time': LaunchConfiguration('replay')}],
         arguments=["--x", "0", "--y", "0", "--z", "0",
                   "--roll", "0", "--pitch", "0", "--yaw", "0",
                   "--frame-id", "base_link", "--child-frame-id", "gps"]
