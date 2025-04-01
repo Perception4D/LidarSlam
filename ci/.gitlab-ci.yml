@@ -449,6 +449,7 @@ create_docker_image:
       test_data:=${data_folder}/${test_name}
       outdoor:=$outdoor
       velodyne_driver:=$velodyne_driver
+      scan_frame:=$scan_frame
       wait_init:=$wait_init
       ref_path:=${PWD}/${PATH_REFERENCE_LOG}
       res_path:=${PWD}/${PATH_RESULT_LOG}
@@ -467,6 +468,7 @@ ros2_make_reference1:
     test_name: "test1"
     outdoor: "true"
     velodyne_driver: "false"
+    scan_frame: "velodyne"
     wait_init: "2" # To have time to init the process
 
 # Create a reference for test2 from master branch
@@ -476,6 +478,7 @@ ros2_make_reference2:
     test_name: "test2"
     outdoor: "false"
     velodyne_driver: "true"
+    scan_frame: "scan_omni"
     wait_init: "4" # To have time to init the process
 
 # Perform test 1
@@ -486,6 +489,7 @@ ros2_test1:
     ref_name: "ros2_make_reference1" # job name to find the corresponding artifact
     outdoor: "true"
     velodyne_driver: "false"
+    scan_frame: "velodyne"
     wait_init: "2" # To have time to load the reference files
 
 # Perform test 2
@@ -496,4 +500,5 @@ ros2_test2:
     ref_name: "ros2_make_reference2" # job name to find the corresponding artifact
     outdoor: "false"
     velodyne_driver: "true"
+    scan_frame: "scan_omni"
     wait_init: "4" # To have time to load the reference files

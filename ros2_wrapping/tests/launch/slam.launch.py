@@ -18,15 +18,16 @@ def generate_launch_description():
   ###############
   ld = LaunchDescription([
     # General args
-    DeclareLaunchArgument("test_data",       default_value="",      description="Path to the test data"),
-    DeclareLaunchArgument("res_path",        default_value="/tmp",  description="Path to the folder where to store the results"),
-    DeclareLaunchArgument("ref_path",        default_value="",      description="Path to the reference data folder for results comparison"),
-    DeclareLaunchArgument("wait_init",       default_value="1",     description="Wait for test node initialization to replay data"),
-    DeclareLaunchArgument("outdoor",         default_value="true",  description="Decide which set of parameters to use"),
-    DeclareLaunchArgument("use_sim_time",    default_value="true",  description="Sim Time, used when replaying rosbag files"),
-    DeclareLaunchArgument("velodyne_driver", default_value="false", description="If true, start Velodyne driver."),
-    DeclareLaunchArgument("verbose",         default_value="false", description="If true, print the difference with reference during the comparison"),
-    DeclareLaunchArgument("domain_id", default_value="0", description="Set to different value to avoid interference when several computers running ROS2 on the same network."),
+    DeclareLaunchArgument("test_data",       default_value="",         description="Path to the test data"),
+    DeclareLaunchArgument("res_path",        default_value="/tmp",     description="Path to the folder where to store the results"),
+    DeclareLaunchArgument("ref_path",        default_value="",         description="Path to the reference data folder for results comparison"),
+    DeclareLaunchArgument("wait_init",       default_value="1",        description="Wait for test node initialization to replay data"),
+    DeclareLaunchArgument("outdoor",         default_value="true",     description="Decide which set of parameters to use"),
+    DeclareLaunchArgument("use_sim_time",    default_value="true",     description="Sim Time, used when replaying rosbag files"),
+    DeclareLaunchArgument("velodyne_driver", default_value="false",    description="If true, start Velodyne driver."),
+    DeclareLaunchArgument("scan_frame",      default_value="velodyne", description="Frame ID of the LiDAR scan"),
+    DeclareLaunchArgument("verbose",         default_value="false",    description="If true, print the difference with reference during the comparison"),
+    DeclareLaunchArgument("domain_id",       default_value="0",        description="Set to different value to avoid interference when several computers running ROS2 on the same network."),
     SetEnvironmentVariable(name='ROS_DOMAIN_ID',value=LaunchConfiguration('domain_id')),
     SetEnvironmentVariable(name='ROS_LOCALHOST_ONLY', value='1'),
 
@@ -174,7 +175,7 @@ def generate_launch_description():
     executable="static_transform_publisher",
     name="tf_base_to_lidar",
     #           X    Y    Z    rZ   rY   rX     FROM          TO
-    arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'velodyne', '--ros-args', '-p', f'reliability:=reliable', '-p', f'durability:=transient_local', '-p', f'history:=keep_all'],
+    arguments=['0', '0', '0', '0', '0', '0', 'base_link', LaunchConfiguration("scan_frame"), '--ros-args', '-p', f'reliability:=reliable', '-p', f'durability:=transient_local', '-p', f'history:=keep_all'],
     parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')},]
   )
 
