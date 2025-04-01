@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(lidar_conversions VERSION 2.2)
+project(lidar_conversions VERSION 3.0)
 
 # Compile as C++14, supported in ROS Kinetic and newer
 set(CMAKE_CXX_STANDARD 14)
