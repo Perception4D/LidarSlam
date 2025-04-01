@@ -184,7 +184,7 @@ def generate_launch_description():
   # If comparison is not required (simple evaluation), end process when the bag ends
   rosbag_action = ExecuteProcess(
     name='exec_rosbag',
-    cmd=['ros2', 'bag', 'play', LaunchConfiguration("test_data"), '--clock', '-d', LaunchConfiguration("wait_init"), '--start-offset', '0.5',
+    cmd=['ros2', 'bag', 'play', LaunchConfiguration("test_data"), '--clock', '--start-offset', LaunchConfiguration("wait_init"),
          '--qos-profile-overrides-path', os.path.join(get_package_share_directory('lidar_slam_test'), "params/qos_settings.yaml")],
     output= 'screen',
     log_cmd= True,

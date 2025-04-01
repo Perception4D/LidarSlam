@@ -389,6 +389,7 @@ create_docker_image:
       test_data:=${data_folder}/${test_name}
       outdoor:=$outdoor
       velodyne_driver:=$velodyne_driver
+      scan_frame:=$scan_frame
       wait_init:=$wait_init
       res_path:=${PWD}/${PATH_REFERENCE_LOG}
       domain_id:=196"
