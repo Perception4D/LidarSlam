@@ -1,5 +1,52 @@
 # SLAM changes history
 
+## *v3.0 (2025/04/01)*
+
+The key update in v3.0 is the transition of the ROS1/ROS2 wrapper. The ROS2 wrapper has now been merged into the master branch. A new protected branch is created for ROS1 and this branch will no longer be maintained after EOL of ROS NOETIC (May, 2025).
+
+Additionally, numerous bug fixes and stability enhancements have been made, making v3.0 more robust and reliable.
+
+The full list of changes is summarized below.
+
+### Core lib
+
+**Minor new features:**
+
+* Allow to apply the offset between external pose and slam odom after PGO (!452)
+
+**Bug fixes:**
+
+* Fix loop closure (!429)
+* Add sanity check for doubled measurements (!470)
+* Fix log of estimated calibration matrix (!470)
+
+**Compilation / CMake related changes / CI:**
+
+* Update code for new g2o version (!431)
+* Fix CI tests (!432, !433)
+* Supply docker files, images and instructions (!435)
+* Update to C++ 17 (!461)
+* Update superbuild (!466)
+* Fix build issue with g2o and eigen (!441)
+
+### ROS wrapping
+
+**Major new features:**
+
+* Create protected ROS1 branch and remove PV wrapping (!462)
+* Allow to set pose and reset odom during slam process (!470)
+
+**Bug fixes:**
+
+* Add sanity check for Nan value in point cloud (!440)
+* Fix time factor in converters (!470)
+* Fix for multi-threading (!470)
+* Fix tf broadcast for external sensor (!470)
+
+**Doc:**
+
+* Update install guide and slam guide (!465)
+
 ## *v2.2 (2024/04/18)*
 
 The main novelty for v2.2 is the availability of the ROS2 wrapper in feat/ROS2 branch.
