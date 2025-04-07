@@ -25,9 +25,8 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <nav_msgs/msg/path.hpp>
 
-// Boost
-#include <boost/filesystem.hpp>
-
+// std
+#include <filesystem>     // For std::filesystem (C++17)
 #include <iomanip>
 
 #ifdef USE_CV_BRIDGE
@@ -1155,12 +1154,25 @@ void LidarSlamNode::SavePointcloudService(
     const std::shared_ptr<lidar_slam::srv::SavePc::Request> req,
     const std::shared_ptr<lidar_slam::srv::SavePc::Response> res)
 {
-  std::string outputPrefix = req->output_prefix_path.empty() ? std::getenv("HOME") : req->output_prefix_path;
-  boost::filesystem::path outputPrefixPath(outputPrefix);
-  if (!boost::filesystem::exists(outputPrefixPath.parent_path()))
+  std::filesystem::path outputPrefixPath;
+  if (!req->output_prefix_path.empty())
+    outputPrefixPath = std::filesystem::path(req->output_prefix_path);
+  else
   {
-    RCLCPP_WARN_STREAM(this->get_logger(), "Output folder does not exist, saving to home folder :" << std::getenv("HOME"));
-    outputPrefixPath = boost::filesystem::path(std::getenv("HOME")) / boost::filesystem::path(outputPrefixPath.stem());
+    const char* home = nullptr;
+    #ifdef _WIN32
+      home = std::getenv("USERPROFILE");
+    #else
+      home = std::getenv("HOME");
+    #endif
+    outputPrefixPath = home ? std::filesystem::path(home) : std::filesystem::current_path();
+    outputPrefixPath /= "keypoint_maps";
+  }
+
+  if (!std::filesystem::exists(outputPrefixPath.parent_path()))
+  {
+    std::filesystem::create_directories(outputPrefixPath.parent_path());
+    RCLCPP_WARN_STREAM(this->get_logger(), "Output folder does not exist, creating new folder :" << outputPrefixPath.parent_path());
   }
 
   LidarSlam::PCDFormat pcdFormat = static_cast<LidarSlam::PCDFormat>(req->format);
@@ -1175,10 +1187,11 @@ void LidarSlamNode::SavePointcloudService(
   bool filtered = req->filtered;
   this->LidarSlam.SaveMapsToPCD(outputPrefixPath.string(), pcdFormat, filtered);
   RCLCPP_INFO_STREAM(this->get_logger(), "Pointcloud saved to " << outputPrefixPath.string());
-  res->success = true;
 
   if (this->LidarSlam.GetMapUpdate() == LidarSlam::MappingMode::NONE)
     RCLCPP_WARN_STREAM(this->get_logger(), "The initially loaded maps were not modified but are saved anyway.");
+
+  res->success = true;
 }
 
 //------------------------------------------------------------------------------

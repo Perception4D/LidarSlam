@@ -25,8 +25,8 @@
 // ROS
 #include <pcl_conversions/pcl_conversions.h>
 
-// Boost
-#include <boost/filesystem.hpp>
+// std
+#include <filesystem>     // For std::filesystem (C++17)
 
 // PCL
 #include <pcl/common/transforms.h>
@@ -350,12 +350,25 @@ void AggregationNode::SavePointcloudService(
     const std::shared_ptr<lidar_slam::srv::SavePc::Request> req,
     const std::shared_ptr<lidar_slam::srv::SavePc::Response> res)
 {
-  std::string outputPrefix = req->output_prefix_path.empty() ? std::getenv("HOME") : req->output_prefix_path;
-  boost::filesystem::path outputPrefixPath(outputPrefix);
-  if (!boost::filesystem::exists(outputPrefixPath.parent_path()))
+  std::filesystem::path outputPrefixPath;
+  if (!req->output_prefix_path.empty())
+    outputPrefixPath = std::filesystem::path(req->output_prefix_path);
+  else
   {
-    RCLCPP_WARN_STREAM(this->get_logger(), "Output folder does not exist, saving to home folder :" << std::getenv("HOME"));
-    outputPrefixPath = boost::filesystem::path(std::getenv("HOME")) / boost::filesystem::path(outputPrefixPath.stem());
+    const char* home = nullptr;
+    #ifdef _WIN32
+      home = std::getenv("USERPROFILE");
+    #else
+      home = std::getenv("HOME");
+    #endif
+    outputPrefixPath = home ? std::filesystem::path(home) : std::filesystem::current_path();
+    outputPrefixPath /= "keypoint_maps";
+  }
+
+  if (!std::filesystem::exists(outputPrefixPath.parent_path()))
+  {
+    std::filesystem::create_directories(outputPrefixPath.parent_path());
+    RCLCPP_WARN_STREAM(this->get_logger(), "Output folder does not exist, creating new folder :" << outputPrefixPath.parent_path());
   }
 
   LidarSlam::PCDFormat pcdFormat = static_cast<LidarSlam::PCDFormat>(req->format);
@@ -366,7 +379,7 @@ void AggregationNode::SavePointcloudService(
     RCLCPP_WARN_STREAM(this->get_logger(), "Incorrect PCD format value (" << pcdFormat << "). Setting it to 'BINARY_COMPRESSED'.");
     pcdFormat = LidarSlam::PCDFormat::BINARY_COMPRESSED;
   }
-    
+
 
   std::string outputFilePath = outputPrefixPath.string() + "_" + std::to_string(int(this->now().seconds())) + ".pcd";
   LidarSlam::savePointCloudToPCD<PointS>(outputFilePath, *this->Pointcloud, pcdFormat);
