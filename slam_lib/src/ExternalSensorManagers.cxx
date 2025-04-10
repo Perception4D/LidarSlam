@@ -744,10 +744,10 @@ void PoseManager::Reset(bool resetMeas)
 // ---------------------------------------------------------------------------
 bool PoseManager::ComputeSynchronizedMeasure(double lidarTime, PoseMeasurement& synchMeas, bool trackTime)
 {
+  std::lock_guard<std::mutex> lock(this->Mtx);
   if (this->Measures.size() <= 1)
     return false;
 
-  std::lock_guard<std::mutex> lock(this->Mtx);
   // Compute the two closest measures to current Lidar frame
   lidarTime -= this->TimeOffset;
 
@@ -890,11 +890,13 @@ bool PoseManager::CheckBounds(std::list<PoseMeasurement>::iterator prevIt, std::
 // Get pose at a specific timestamp using the IMU
 Eigen::Isometry3d PoseManager::GetPose(double time)
 {
-  std::lock_guard<std::mutex> lock(this->Mtx);
-  if (this->Measures.empty())
   {
-    PRINT_WARNING("No sensor data, pose cannot be supplied")
-    return Eigen::Isometry3d::Identity();
+    std::lock_guard<std::mutex> lock(this->Mtx);
+    if (this->Measures.empty())
+    {
+      PRINT_WARNING("No sensor data, pose cannot be supplied")
+      return Eigen::Isometry3d::Identity();
+    }
   }
   PoseMeasurement synchMeas;
   // Get synchronized pose with calibration applied
@@ -904,7 +906,10 @@ Eigen::Isometry3d PoseManager::GetPose(double time)
   if (time >= 0 && this->ComputeSynchronizedMeasureBase(time, synchMeas, trackTime))
     return synchMeas.Pose;
   else
+  {
+    std::lock_guard<std::mutex> lock(this->Mtx);
     return this->Measures.back().Pose;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1123,10 +1128,10 @@ bool PoseManager::UpdateOffset(const std::list<LidarState>& states)
 // ---------------------------------------------------------------------------
 bool CameraManager::ComputeSynchronizedMeasure(double lidarTime, Image& synchMeas, bool trackTime)
 {
+  std::lock_guard<std::mutex> lock(this->Mtx);
   if (this->Measures.size() <= 1)
     return false;
 
-  std::lock_guard<std::mutex> lock(this->Mtx);
   // Compute the two closest measures to current Lidar frame
   lidarTime -= this->TimeOffset;
   auto bounds = this->GetMeasureBounds(lidarTime, trackTime);
