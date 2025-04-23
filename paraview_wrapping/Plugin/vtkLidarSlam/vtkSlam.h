@@ -606,7 +606,7 @@ protected:
 
 private:
 
-  // If true, the input point time data is relative to the frame time, such as with MCAP data. 
+  // If true, the input point time data is relative to the frame time, such as with MCAP data.
   bool PointTimeRelativeToFrame = false;
   std::vector<bool> ArePointsValid;
 
