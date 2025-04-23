@@ -1266,8 +1266,8 @@ bool vtkSlam::IdentifyInputArrays(vtkPolyData* poly)
   while (this->TimeToSecondsFactor * duration > 0.9) // Min = ~1 Hz
   {
     this->TimeToSecondsFactor *= 1e-3;
-    PRINT_INFO("Time factor estimated to " << this->TimeToSecondsFactor)
   }
+  PRINT_INFO("Time factor estimated to " << this->TimeToSecondsFactor)
 
   return true;
 }
