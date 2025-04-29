@@ -11,7 +11,7 @@
     wheel_frame: "wheel"         # Frame for the wheel encoder
     ins_frame : "ins"            # Frame for the INS
     gps_frame : "gps"            # Frame for the GPS
-    
+
     lidars_nb: 1             # Number of lidars used. When various lidars used, keypoints extraction parameters need to be specify for each sensor.
     frames_mode: 1           # The frames collection mode. 0: wait a specific time to collect frames; 1: wait for all lidar devices
     frames_waiting_time: 0.2 # [s] Time to wait to receive frames

@@ -202,7 +202,7 @@ public:
   void AddMeasurement(const T& m)
   {
     std::lock_guard<std::mutex> lock(this->Mtx);
-    if (!this->Measures.empty() && 
+    if (!this->Measures.empty() &&
         std::abs(this->Measures.back().Time - m.Time) < 1e-6)
       return;
     this->Measures.emplace_back(m);
