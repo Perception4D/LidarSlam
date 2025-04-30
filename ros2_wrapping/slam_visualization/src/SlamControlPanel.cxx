@@ -37,7 +37,8 @@ SlamControlPanel::SlamControlPanel(QWidget* parent)
   this->visualization_node = std::make_shared<rclcpp::Node>("slam_control_pannel_node");
 
   this->CommandPublisher = this->visualization_node->create_publisher<lidar_slam::msg::SlamCommand>("slam_command", 1);
-  this->SavePcClient     = this->visualization_node->create_client<lidar_slam::srv::SavePc>("lidar_slam/save_pc");
+  this->SavePcSlamClient = this->visualization_node->create_client<lidar_slam::srv::SavePc>("lidar_slam/save_pc");
+  this->SavePcAggrClient = this->visualization_node->create_client<lidar_slam::srv::SavePc>("aggregation/save_pc");
   this->ResetClient      = this->visualization_node->create_client<lidar_slam::srv::Reset>("lidar_slam/reset");
 }
 
@@ -308,9 +309,10 @@ void SlamControlPanel::SaveMaps()
   // Call the save_pc service
   auto srv = std::make_shared<lidar_slam::srv::SavePc::Request>();
   srv->output_prefix_path = filePath.toStdString();
-  srv->format = 0;
+  srv->format = 2;
   srv->filtered = true;
-  this->SavePcClient->async_send_request(srv);
+  this->SavePcSlamClient->async_send_request(srv);
+  this->SavePcAggrClient->async_send_request(srv);
 }
 
 //----------------------------------------------------------------------------

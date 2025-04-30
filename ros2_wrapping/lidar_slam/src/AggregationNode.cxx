@@ -61,7 +61,7 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
 
   // Init service
   this->SaveService = this->create_service<lidar_slam::srv::SavePc>(
-      "lidar_slam/save_pc",
+      "aggregation/save_pc",
       std::bind(&AggregationNode::SavePointcloudService, this, std::placeholders::_1, std::placeholders::_2));
 
   // Init service

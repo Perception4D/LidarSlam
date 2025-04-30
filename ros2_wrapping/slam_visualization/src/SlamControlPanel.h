@@ -173,7 +173,8 @@ private:
   rclcpp::CallbackGroup::SharedPtr SlamCallbackGroup;
   rclcpp::Publisher<lidar_slam::msg::SlamCommand>::SharedPtr CommandPublisher;
   rclcpp::Subscription<lidar_slam::msg::Confidence>::SharedPtr ConfidenceSubscriber;
-  rclcpp::Client<lidar_slam::srv::SavePc>::SharedPtr SavePcClient;
+  rclcpp::Client<lidar_slam::srv::SavePc>::SharedPtr SavePcSlamClient;
+  rclcpp::Client<lidar_slam::srv::SavePc>::SharedPtr SavePcAggrClient;
   rclcpp::Client<lidar_slam::srv::Reset>::SharedPtr ResetClient;
 };
 
