@@ -16,15 +16,9 @@
       - [With local dependencies](#with-local-dependencies)
       - [With Superbuild](#with-superbuild)
   - [ROS wrapping](#ros-wrapping)
+  - [ROS2 wrapping on Linux](#ros2-wrapping-on-linux)
     - [Dependencies](#dependencies-1)
     - [Installation](#installation-1)
-      - [With system dependencies](#with-system-dependencies-1)
-      - [With local dependencies](#with-local-dependencies-1)
-      - [With Superbuild](#with-superbuild-1)
-    - [Live usage](#live-usage)
-  - [ROS2 wrapping on Linux](#ros2-wrapping-on-linux)
-    - [Dependencies](#dependencies-2)
-    - [Installation](#installation-2)
       - [With system dependencies](#with-system-dependencies-2)
       - [With local dependencies](#with-local-dependencies-2)
       - [With Superbuild](#with-superbuild-2)
@@ -35,8 +29,8 @@
       - [Install pcl-conversions](#install-pcl-conversions)
     - [Install SLAM package](#install-slam-package)
   - [ParaView wrapping](#paraview-wrapping)
-    - [Dependencies](#dependencies-3)
-    - [Installation](#installation-3)
+    - [Dependencies](#dependencies-2)
+    - [Installation](#installation-2)
     - [Usage](#usage)
     - [Use SLAM in LidarView](#use-slam-in-lidarview)
 
@@ -175,7 +169,6 @@ Ensure all *LidarSlam* dependencies are respected (see next sections to do so). 
 |:---------------:|:---------------:|:----------------------------------------------------------------------------------:|:---------:|
 | ROS             | humble/iron     | `ros-$ROS_DISTRO-desktop-full`                                                     | mandatory |
 | pcl-ros         | 1.7.4           | `ros-$ROS_DISTRO-pcl-ros`                                                          | mandatory |
-| gps_common      | 0.3.0           | `ros-$ROS_DISTRO-gps-common`                                                       | optional  |
 | apriltag        | 3.2.0           | `ros-$ROS_DISTRO-apriltag`                                                         | optional  |
 | g2o             | 5.3             | `ros-$ROS_DISTRO-libg2o`                                                           | optional  |
 
@@ -185,7 +178,7 @@ _Example:_ velodyne driver installation
 
 Install the updated Velodyne driver using:
 ```
-sudo apt install ros-$ROS_DISTRO-velodyne ros-$ROS_DISTRO-velodyne-pcl`
+sudo apt install ros-$ROS_DISTRO-velodyne`
 ```
 
 ### Installation
