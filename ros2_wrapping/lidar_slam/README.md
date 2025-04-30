@@ -272,9 +272,12 @@ ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 15, string
 
 ##### Save maps
 
-The current maps can be saved as PCD at any time by calling `/lidar_slam/save_pc` service. Use the service request `filtered` to specify whether to save the whole maps or remove potential moving objects. Use the service request `format` to choose the PCD file format: 0) ascii, 1) binary, 2) binary_compressed.
+The current keypoints maps can be saved as `.pcd` files by calling `/lidar_slam/save_pc` service. The request parameters control output behavior:
+- `output_prefix_path`: path prefix to save the maps (e.g. /path/to/maps/prefix)
+- `filtered`:  true to remove potential dynamic objects, false to save all points
+-  `format`: 0 = ASCII, 1 = binary, 2 = binary compressed
 
-To save the entire keypoints maps:
+To save the full keypoints maps:
 
 ```bash
 ros2 service call /lidar_slam/save_pc lidar_slam/srv/SavePc "{output_prefix_path: /path/to/maps/prefix, format: 2, filtered: false}"
@@ -283,6 +286,8 @@ OR to save the filtered keypoints maps:
 ```bash
 ros2 service call /lidar_slam/save_pc lidar_slam/srv/SavePc "{output_prefix_path: /path/to/maps/prefix, format: 2, filtered: true}"
 ```
+
+The `Save maps` button in the SLAM Control Panel performs the same service call to save filtered keypoints maps. If the aggregation node is enabled, it also calls `/aggregation/save_pc` to save the dense aggregated map. For details on saving the dense map, refer to the section [aggregation node](#classic-aggregation).
 
 ##### Set pose
 At any time, a pose message (`PoseWithCovarianceStamped`) can be sent through the topic `set_pose` to reset the current pose
@@ -711,13 +716,13 @@ Another node called **aggregation_node** is included in the **lidar_slam** packa
 - *min_points_per_voxel* : corresponds to the minimum number of frames which should have a point in a voxel to consider this voxel is not a moving object. It has been seen more than *min_points_per_voxel*, so it is considered "enough" to be a static object. All voxels that have been seen less than *min_points_per_voxel* times are not included to the output cloud.
 - *min_dist_around_trajectory* : If positive, it is the distance (in meters) from each SLAM pose under which no point will be added to the aggregated map. It allows to remove moving objects passing through trajectory. Hypothesis is : if the robot/person has been there, no point should be added.
 
-This node can answer to a service called **save_pc** to save the pointcloud on disk as a PCD file. The command should be :
+This node can answer to a service called `/aggregation/save_pc` to save the pointcloud on disk as a PCD file. The command should be :
 
 ```bash
-ros2 service call /lidar_slam/save_pc lidar_slam/srv/SavePc "{output_prefix_path: 'prefix/path/where/to/save/the/cloud', format: 0, filtered: true}"
+ros2 service call /aggregation/save_pc lidar_slam/srv/SavePc "{output_prefix_path: 'prefix/path/where/to/save/the/cloud', format: 2}"
 ```
+to save the pointcloud as a PCD Binary compressed file at *prefix/path/where/to/save/the/cloud_CurrentTime.pcd*.
 
-To save the pointcloud as a PCD ASCII file at *prefix/path/where/to/save/the/cloud_CurrentTime.pcd*.
 All possible formats are :
 - **ASCII** : 0
 - **Binary** : 1
