@@ -428,8 +428,8 @@ void Slam::AddFrames(const std::vector<PointCloud::Ptr>& frames)
   }
 
   PRINT_VERBOSE(2, "\n#########################################################");
-  PRINT_INFO("Processing frame " << this->NbrFrameProcessed << std::fixed << std::setprecision(9) <<
-             " (at time " << this->CurrentTime << ")" << std::scientific);
+  PRINT_VERBOSE(1, "Processing frame " << this->NbrFrameProcessed << std::fixed << std::setprecision(9) <<
+                   " (at time " << this->CurrentTime << ")" << std::scientific);
   PRINT_VERBOSE(2, "#########################################################\n");
 
   // Compute the edge and planar keypoints
