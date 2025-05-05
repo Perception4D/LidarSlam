@@ -730,7 +730,7 @@ All possible formats are :
 
 Another service called **reset** allows to reset the ongoing map with current input.
 ```bash
-ros2 service call /lidar_slam/reset lidar_slam/srv/Reset
+ros2 service call /aggregation/reset lidar_slam/srv/Reset
 ```
 
 **NOTE** : **aggregation_node** can be directly run from the launch files, adding the argument *aggregate:=true* to the launch command.

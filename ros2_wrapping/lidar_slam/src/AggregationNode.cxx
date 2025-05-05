@@ -59,14 +59,14 @@ AggregationNode::AggregationNode(std::string name_node, const rclcpp::NodeOption
   this->PoseSubscriber = this->create_subscription<nav_msgs::msg::Odometry>(
             "slam_odom", 1, std::bind(&AggregationNode::PoseCallback, this, std::placeholders::_1));
 
-  // Init service
+  // Init save pointcloud service
   this->SaveService = this->create_service<lidar_slam::srv::SavePc>(
       "aggregation/save_pc",
       std::bind(&AggregationNode::SavePointcloudService, this, std::placeholders::_1, std::placeholders::_2));
 
-  // Init service
+  // Init reset service
   this->RstService = this->create_service<lidar_slam::srv::Reset>(
-      "lidar_slam/reset",
+      "aggregation/reset",
       std::bind(&AggregationNode::ResetService, this, std::placeholders::_1, std::placeholders::_2));
 
   // Performances parameter
