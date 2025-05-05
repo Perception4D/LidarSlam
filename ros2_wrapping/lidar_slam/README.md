@@ -175,8 +175,6 @@ The SLAM node subscribes to one or several input pointclouds topics (default sin
 
 If your LiDAR driver does not output such data, you can use the `lidar_conversions` nodes.
 
-Optional input GPS (see [GPS](#gps) section) fix must be a *gps_msgs/GPSFix* message published on topic '*gps_fix*'.
-
 SLAM outputs can also be configured out to publish :
 - current pose as an *nav_msgs/msg/Odometry* message on topic '*slam_odom*' and/or a TF from '*odometry_frame*' to '*tracking_frame*';
 - extracted keypoints from current frame as *sensor_msgs/msg/PointCloud2* on topics '*keypoints/{edges,planes,blobs}*';
@@ -185,13 +183,11 @@ SLAM outputs can also be configured out to publish :
 - registered and undistorted point cloud from current frame, in odometry frame, as *sensor_msgs/msg/PointCloud2* on topic '*slam_registered_points*';
 - confidence estimations on pose output, as *lidar_slam/msg/Confidence* custom message on topic '*slam_confidence*'. It contains the pose covariance, an overlap estimation, the number of matched keypoints, a binary estimator to check motion limitations and the computation time.
 
-UTM/GPS conversion node can output SLAM pose as a *gps_msgs/msg/GPSFix* message on topic '*slam_fix*'.
-
 **NOTE** : It is possible to track any *tracking_frame* in *odometry_frame*, using a pointcloud expressed in an *lidar_frame*. However, please ensure that a valid TF tree is beeing published to link *lidar_frame* to *tracking_frame*.
 
 #### Multiple LiDAR sensors
 
-When there are multiple LiDAR devices, frames coming from different devices should be collected. There are two collection modes: waiting for all lidars or waiting for a time duration.
+When there are multiple LiDAR devices, frames coming from different devices should be collected. There are two collection modes: _waiting for all lidars_ or _waiting for a time duration_.
 
 A SLAM iteration runs when:
 * Only one LiDAR sensor is implied,
@@ -206,12 +202,36 @@ Some features are available online. Note that an interface for some of these fea
 **WARNING** : The slam_visualization plugin is not available on Windows
 
 ![Slam Control Panel](<doc/Slam_command_list.png>)
+
 ##### Reset state
-At any time, the SLAM state can be reset meaning the maps, the trajectory and the external sensors are cleaned and all the metrics are reset as for the first frame acquisition. Note that it disables the recovery mode as well.
+At any time, the SLAM state can be reset, meaning the maps, the trajectory and the external sensor data are cleared, and all metrics are reset as if it were the first frame. This also disables the recovery mode.
 
 ```bash
-ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 12"
+ros2 service call /lidar_slam/reset lidar_slam/srv/Reset
 ```
+
+##### Set initial state
+At any time, one can set an initial pose and/or load an initial pose by calling `/lidar_slam/set_initial_state` service. This will update the ROS parameters _maps.initial_pose_ and _maps.initial_maps_.
+
+**WARNING** : Calling this service will automatically reset the SLAM state. If the aggregation node is enabled, you should also manually reset it using its own service. For more information, refer to [aggregation node](#classic-aggregation) section.
+
+Service fields:
+- `initial_pose`: initial pose as geometry_msgs/PoseWithCovarianceStamped
+- `map_prefix_path`: path to the initial map prefix (used to load PCD files)
+
+To set both initial pose and initial map for slam:
+
+```bash
+ros2 service call /lidar_slam/set_initial_state lidar_slam/srv/SetInitialState "{initial_pose: {header: {frame_id: 'odom'}, pose: {pose: {position: {x: 0.0, y: 0.0, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}}}, map_prefix_path: '/path/to/initial_map_prefix'}"
+```
+OR to set only initial pose or initial map:
+```bash
+ros2 service call /lidar_slam/set_initial_state lidar_slam/srv/SetInitialState "{initial_pose: {header: {frame_id: 'odom'}, pose: {pose: {position: {x: 0.0, y: 0.0, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}}}'}"
+# OR
+ros2 service call /lidar_slam/set_initial_state lidar_slam/srv/SetInitialState "{map_prefix_path: '/path/to/initial_map_prefix'}"
+```
+**NOTE**: The frame_id in initial_pose.header.frame_id must be set correctly (e.g., odom).
+If left unset or incorrect, the pose will be ignored.
 
 ##### Reset ODOM
 At any time, ODOM can be reset so the current pose is null in ODOM. This can reduce numerical instability.
