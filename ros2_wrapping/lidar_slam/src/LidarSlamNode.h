@@ -42,7 +42,10 @@
 
 // SLAM
 #include <LidarSlam/Slam.h>
+
+// Local
 #include <lidar_slam/srv/save_pc.hpp>
+#include <lidar_slam/srv/reset.hpp>
 
 #define PRINT_VERBOSE(minVerbosityLevel, stream) if (this->LidarSlam.GetVerbosity() >= (minVerbosityLevel)) {std::cout << stream << std::endl;}
 
@@ -162,12 +165,21 @@ public:
 
   //----------------------------------------------------------------------------
   /*!
-   * @brief     Callback to service to save the maps
+   * @brief     Service to save the maps
    * @param[in] request and result
    */
   void SavePointcloudService(
     const std::shared_ptr<lidar_slam::srv::SavePc::Request> req,
     const std::shared_ptr<lidar_slam::srv::SavePc::Response> res);
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief     Service to reset slam states and maps
+   * @param[in] request and result
+   */
+  void ResetService(
+    const std::shared_ptr<lidar_slam::srv::Reset::Request> req,
+    const std::shared_ptr<lidar_slam::srv::Reset::Response> res);
 
 protected:
 
@@ -323,6 +335,7 @@ protected:
 
   // Services
   rclcpp::Service<lidar_slam::srv::SavePc>::SharedPtr SaveService;
+  rclcpp::Service<lidar_slam::srv::Reset>::SharedPtr RstService;
 
   // Output pose required frequency (Hz)
   double TrajFrequency = -1;

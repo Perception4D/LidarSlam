@@ -241,10 +241,15 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
     }
   }
 
-  // Init service
+  // Init save keypoints maps service
   this->SaveService = this->create_service<lidar_slam::srv::SavePc>(
       "lidar_slam/save_pc",
       std::bind(&LidarSlamNode::SavePointcloudService, this, std::placeholders::_1, std::placeholders::_2));
+
+  // Init reset service
+  this->RstService = this->create_service<lidar_slam::srv::Reset>(
+      "lidar_slam/reset",
+      std::bind(&LidarSlamNode::ResetService, this, std::placeholders::_1, std::placeholders::_2));
 
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("LiDAR SLAM is ready !"));
 }
@@ -1191,6 +1196,16 @@ void LidarSlamNode::SavePointcloudService(
   if (this->LidarSlam.GetMapUpdate() == LidarSlam::MappingMode::NONE)
     RCLCPP_WARN_STREAM(this->get_logger(), "The initially loaded maps were not modified but are saved anyway.");
 
+  res->success = true;
+}
+
+//------------------------------------------------------------------------------
+void LidarSlamNode::ResetService(const std::shared_ptr<lidar_slam::srv::Reset::Request> req,
+                                 const std::shared_ptr<lidar_slam::srv::Reset::Response> res)
+{
+  RCLCPP_WARN(this->get_logger(), "Resetting the SLAM internal state.");
+  this->LidarSlam.Reset(true);
+  this->SetSlamInitialState();
   res->success = true;
 }
 
