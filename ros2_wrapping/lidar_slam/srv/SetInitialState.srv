@@ -1,0 +1,5 @@
+geometry_msgs/PoseWithCovarianceStamped initial_pose
+string map_prefix_path
+
+---
+bool success

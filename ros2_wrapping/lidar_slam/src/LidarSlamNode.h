@@ -46,6 +46,7 @@
 // Local
 #include <lidar_slam/srv/save_pc.hpp>
 #include <lidar_slam/srv/reset.hpp>
+#include <lidar_slam/srv/set_initial_state.hpp>
 
 #define PRINT_VERBOSE(minVerbosityLevel, stream) if (this->LidarSlam.GetVerbosity() >= (minVerbosityLevel)) {std::cout << stream << std::endl;}
 
@@ -180,6 +181,15 @@ public:
   void ResetService(
     const std::shared_ptr<lidar_slam::srv::Reset::Request> req,
     const std::shared_ptr<lidar_slam::srv::Reset::Response> res);
+
+  //----------------------------------------------------------------------------
+  /*!
+   * @brief     Service to set initial slam pose and load initial map
+   * @param[in] request and result
+   */
+  void SetInitialStateService(
+    const std::shared_ptr<lidar_slam::srv::SetInitialState::Request> req,
+    const std::shared_ptr<lidar_slam::srv::SetInitialState::Response> res);
 
 protected:
 
@@ -336,6 +346,7 @@ protected:
   // Services
   rclcpp::Service<lidar_slam::srv::SavePc>::SharedPtr SaveService;
   rclcpp::Service<lidar_slam::srv::Reset>::SharedPtr RstService;
+  rclcpp::Service<lidar_slam::srv::SetInitialState>::SharedPtr SetInitStateService;
 
   // Output pose required frequency (Hz)
   double TrajFrequency = -1;

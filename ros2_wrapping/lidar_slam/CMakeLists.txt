@@ -98,7 +98,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/SlamCommand.msg"
   "srv/SavePc.srv"
   "srv/Reset.srv"
-  DEPENDENCIES std_msgs
+  "srv/SetInitialState.srv"
+  DEPENDENCIES std_msgs geometry_msgs
 )
 ament_export_dependencies(rosidl_default_runtime)
 

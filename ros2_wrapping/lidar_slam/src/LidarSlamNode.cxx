@@ -251,6 +251,11 @@ LidarSlamNode::LidarSlamNode(std::string name_node, const rclcpp::NodeOptions& o
       "lidar_slam/reset",
       std::bind(&LidarSlamNode::ResetService, this, std::placeholders::_1, std::placeholders::_2));
 
+  // Init set initial slam state service
+  this->SetInitStateService = this->create_service<lidar_slam::srv::SetInitialState>(
+      "lidar_slam/set_initial_state",
+      std::bind(&LidarSlamNode::SetInitialStateService, this, std::placeholders::_1, std::placeholders::_2));
+
   RCLCPP_INFO_STREAM(this->get_logger(), BOLD_GREEN("LiDAR SLAM is ready !"));
 }
 
@@ -1206,6 +1211,45 @@ void LidarSlamNode::ResetService(const std::shared_ptr<lidar_slam::srv::Reset::R
   RCLCPP_WARN(this->get_logger(), "Resetting the SLAM internal state.");
   this->LidarSlam.Reset(true);
   this->SetSlamInitialState();
+  res->success = true;
+}
+
+//------------------------------------------------------------------------------
+void LidarSlamNode::SetInitialStateService(const std::shared_ptr<lidar_slam::srv::SetInitialState::Request> req,
+                                           const std::shared_ptr<lidar_slam::srv::SetInitialState::Response> res)
+{
+  // Reset SLAM
+  this->LidarSlam.Reset(true);
+
+  // Set initial SLAM pose
+  if (!req->initial_pose.header.frame_id.empty())
+  {
+    Eigen::Isometry3d initialTransform = Utils::PoseMsgToIsometry(req->initial_pose.pose.pose);
+    // Get initial pose represented in Lidar SLAM ref frame (odom)
+    Eigen::Isometry3d offset = Eigen::Isometry3d::Identity();
+    if (Utils::Tf2LookupTransform(offset, *this->TfBuffer, this->OdometryFrameId, req->initial_pose.header.frame_id, req->initial_pose.header.stamp))
+      initialTransform = offset * initialTransform;
+
+    // Update initial_pose parameter
+    Eigen::Vector6d initialPose6D = LidarSlam::Utils::IsometryToXYZRPY(initialTransform);
+    std::vector<double> pose(initialPose6D.data(), initialPose6D.data() + initialPose6D.size());
+    rclcpp::Parameter updated_param("maps.initial_pose", pose);
+    this->set_parameter(updated_param);
+  }
+
+  // Load initial SLAM maps if requested
+  std::string& mapsPathPrefix = req->map_prefix_path;
+  if (!mapsPathPrefix.empty())
+  {
+    // Update initial_maps path
+    rclcpp::Parameter updated_param("maps.initial_maps", mapsPathPrefix);
+    this->set_parameter(updated_param);
+  }
+
+  // Set slam initial states
+  this->SetSlamInitialState();
+
+  // Send response
   res->success = true;
 }
 
