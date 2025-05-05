@@ -19,8 +19,7 @@ uint8 ENABLE_SLAM_MAP_UPDATE = 10
 
 # Reset slam trajectory from a trajectory file
 uint8 RESET_TRAJECTORY = 11
-# Reset the SLAM state. Clear the maps and the trajectory, set the current pose to origin.
-uint8 RESET_SLAM = 12
+
 # Reset ODOM so current pose is identity
 # This allows to minimize numerical instability in odometry
 # This command should be used regularly in outside environment (each 200m step for example)

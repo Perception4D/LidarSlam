@@ -1261,15 +1261,6 @@ void LidarSlamNode::SlamCommandCallback(const lidar_slam::msg::SlamCommand& msg)
       break;
     }
 
-    // Reset the SLAM internal state.
-    case lidar_slam::msg::SlamCommand::RESET_SLAM:
-    {
-      RCLCPP_WARN(this->get_logger(), "Resetting the SLAM internal state.");
-      this->LidarSlam.Reset(true);
-      this->SetSlamInitialState();
-      break;
-    }
-
     // Enable/Disable the SLAM process
     case lidar_slam::msg::SlamCommand::SWITCH_ON_OFF:
     {
