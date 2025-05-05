@@ -39,7 +39,8 @@ SlamControlPanel::SlamControlPanel(QWidget* parent)
   this->CommandPublisher = this->visualization_node->create_publisher<lidar_slam::msg::SlamCommand>("slam_command", 1);
   this->SavePcSlamClient = this->visualization_node->create_client<lidar_slam::srv::SavePc>("lidar_slam/save_pc");
   this->SavePcAggrClient = this->visualization_node->create_client<lidar_slam::srv::SavePc>("aggregation/save_pc");
-  this->ResetClient      = this->visualization_node->create_client<lidar_slam::srv::Reset>("lidar_slam/reset");
+  this->ResetSlamClient  = this->visualization_node->create_client<lidar_slam::srv::Reset>("lidar_slam/reset");
+  this->ResetAggrClient  = this->visualization_node->create_client<lidar_slam::srv::Reset>("aggregation/reset");
 }
 
 //----------------------------------------------------------------------------
@@ -248,11 +249,13 @@ void SlamControlPanel::CreateLayout()
 //----------------------------------------------------------------------------
 void SlamControlPanel::ResetSlamState()
 {
-  // Send command to reset the SLAM algorithm
-  this->SendCommand(lidar_slam::msg::SlamCommand::RESET_SLAM);
-  // Call service for aggregation node
   auto req = std::make_shared<lidar_slam::srv::Reset::Request>();
-  this->ResetClient->async_send_request(req);
+
+  // Reset SLAM states
+  this->ResetSlamClient->async_send_request(req);
+
+  // Reset Aggregation map
+  this->ResetAggrClient->async_send_request(req);
 }
 
 //----------------------------------------------------------------------------

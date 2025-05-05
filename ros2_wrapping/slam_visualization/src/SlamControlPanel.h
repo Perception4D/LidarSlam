@@ -175,7 +175,8 @@ private:
   rclcpp::Subscription<lidar_slam::msg::Confidence>::SharedPtr ConfidenceSubscriber;
   rclcpp::Client<lidar_slam::srv::SavePc>::SharedPtr SavePcSlamClient;
   rclcpp::Client<lidar_slam::srv::SavePc>::SharedPtr SavePcAggrClient;
-  rclcpp::Client<lidar_slam::srv::Reset>::SharedPtr ResetClient;
+  rclcpp::Client<lidar_slam::srv::Reset>::SharedPtr ResetSlamClient;
+  rclcpp::Client<lidar_slam::srv::Reset>::SharedPtr ResetAggrClient;
 };
 
 } // namespace lidar_visualization.
