@@ -314,7 +314,7 @@ inline int ComputeLaserId(const Eigen::Vector3d& currentPoint, unsigned int nbLa
  * @param cloudRaw PointCloud published by lidar driver
  */
 template <typename PointType>
-inline Eigen::Vector2d GetFirstValidPoint(const pcl::PointCloud<PointType> cloudRaw)
+inline Eigen::Vector2d GetFirstValidPoint(const pcl::PointCloud<PointType>& cloudRaw)
 {
   for (auto id = 0; id < cloudRaw.size(); id++)
   {
@@ -323,6 +323,7 @@ inline Eigen::Vector2d GetFirstValidPoint(const pcl::PointCloud<PointType> cloud
       return {cloudRaw[id].x, cloudRaw[id].y};
     }
   }
+  return Eigen::Vector2d::Zero();
 }
 
 //----------------------------------------------------------------------------
@@ -333,7 +334,7 @@ inline Eigen::Vector2d GetFirstValidPoint(const pcl::PointCloud<PointType> cloud
  * @param nbLasers Number of lasers of the lidar
  */
 template <typename PointType>
-inline bool IsRotationClockwise(const pcl::PointCloud<PointType> cloudRaw, unsigned int nbLasers)
+inline bool IsRotationClockwise(const pcl::PointCloud<PointType>& cloudRaw, unsigned int nbLasers)
 {
   for (auto id = 0; id < cloudRaw.size(); id++)
   {
@@ -342,6 +343,7 @@ inline bool IsRotationClockwise(const pcl::PointCloud<PointType> cloudRaw, unsig
       return cloudRaw[id].x * cloudRaw[id + nbLasers].y - cloudRaw[id].y * cloudRaw[id + nbLasers].x > 0;
     }
   }
+  return false;
 }
 
 //----------------------------------------------------------------------------
